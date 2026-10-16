@@ -68,7 +68,7 @@ export function createPointGlobe(canvas) {
     shadow.addColorStop(0, '#143e3220'); shadow.addColorStop(1, '#143e3200');
     ctx.save(); ctx.translate(0, height*.18); ctx.scale(1, .80); ctx.fillStyle=shadow; ctx.fillRect(0,0,width,height); ctx.restore();
     const sphere = ctx.createRadialGradient(x0-radius*.35,y0-radius*.45,radius*.05,x0+radius*.17,y0+radius*.15,radius*1.12);
-    sphere.addColorStop(0,'#2a5949'); sphere.addColorStop(.5,'#173f34'); sphere.addColorStop(.85,'#092b25'); sphere.addColorStop(1,'#031b19');
+    sphere.addColorStop(0,'#295e76'); sphere.addColorStop(.5,'#19465e'); sphere.addColorStop(.85,'#0c2c41'); sphere.addColorStop(1,'#071d2f');
     ctx.beginPath(); ctx.arc(x0,y0,radius,0,Math.PI*2); ctx.fillStyle=sphere; ctx.fill();
     ctx.save(); ctx.clip();
     function project(lat, lon) {
@@ -100,7 +100,7 @@ export function createPointGlobe(canvas) {
     }
     ctx.globalAlpha=1;
     const shade=ctx.createLinearGradient(x0-radius,y0-radius,x0+radius,y0+radius);
-    shade.addColorStop(0,'#d9f2b50a'); shade.addColorStop(.5,'#001e1c00'); shade.addColorStop(1,'#0018147a');
+    shade.addColorStop(0,'#d9f2b50a'); shade.addColorStop(.5,'#001e3000'); shade.addColorStop(1,'#0018247a');
     ctx.fillStyle=shade; ctx.fillRect(x0-radius,y0-radius,radius*2,radius*2); ctx.restore();
     ctx.strokeStyle='#9bb99566';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x0,y0,radius,0,Math.PI*2);ctx.stroke();
   }

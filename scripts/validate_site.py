@@ -143,6 +143,63 @@ assert hashlib.sha256(land_source.read_bytes()).hexdigest() == meta["land"]["sha
 assert meta["land"]["license"] == "Public domain"
 assert (ROOT / "assets/data/NATURAL_EARTH_ATTRIBUTION.txt").is_file()
 
+
+def webp_dimensions(content):
+    """Read dimensions from standard WebP chunks without an imaging library."""
+    assert content[:4] == b"RIFF" and content[8:12] == b"WEBP", "Invalid WebP signature"
+    assert int.from_bytes(content[4:8], "little") + 8 == len(content), "Invalid WebP container length"
+    offset, dimensions = 12, []
+    while offset < len(content):
+        assert offset + 8 <= len(content), "Truncated WebP chunk header"
+        kind = content[offset:offset + 4]
+        size = int.from_bytes(content[offset + 4:offset + 8], "little")
+        payload = content[offset + 8:offset + 8 + size]
+        assert len(payload) == size, "Truncated WebP chunk"
+        if kind == b"VP8 ":
+            assert len(payload) >= 10 and payload[3:6] == b"\x9d\x01\x2a", "Invalid VP8 frame header"
+            dimensions.append((int.from_bytes(payload[6:8], "little") & 0x3fff,
+                               int.from_bytes(payload[8:10], "little") & 0x3fff))
+        elif kind == b"VP8L":
+            assert len(payload) >= 5 and payload[0] == 0x2f, "Invalid VP8L header"
+            packed = int.from_bytes(payload[1:5], "little")
+            dimensions.append(((packed & 0x3fff) + 1, ((packed >> 14) & 0x3fff) + 1))
+        elif kind == b"VP8X":
+            assert len(payload) >= 10, "Invalid VP8X header"
+            dimensions.append((int.from_bytes(payload[4:7], "little") + 1,
+                               int.from_bytes(payload[7:10], "little") + 1))
+        assert kind != b"ANIM", "Terrain texture must be a static image"
+        offset += 8 + size + (size % 2)
+    assert offset == len(content) and dimensions, "Incomplete WebP image"
+    assert len(set(dimensions)) == 1, "Conflicting WebP dimensions"
+    return dimensions[0]
+
+
+terrain_dir = ROOT / "assets/textures"
+terrain_metadata = json.loads((terrain_dir / "earth-terrain.attribution.json").read_text())
+terrain_output = terrain_metadata["output"]
+assert terrain_output["filename"] == "earth-terrain.webp"
+terrain_content = (terrain_dir / terrain_output["filename"]).read_bytes()
+assert webp_dimensions(terrain_content) == (terrain_output["width"], terrain_output["height"]) == (4096, 2048)
+assert len(terrain_content) == terrain_output["bytes"] < 1_000_000
+assert hashlib.sha256(terrain_content).hexdigest() == terrain_output["sha256"]
+assert terrain_metadata["title"] == "Natural Earth I with Shaded Relief"
+assert terrain_metadata["version"] == "3.2.0" and terrain_metadata["scale"] == "1:50m"
+assert terrain_metadata["license"] == "Public domain"
+assert terrain_metadata["licenseUrl"] == "https://www.naturalearthdata.com/about/terms-of-use/"
+assert terrain_metadata["downloadUrl"] == "https://naturalearth.s3.amazonaws.com/50m_raster/NE1_50M_SR.zip"
+assert terrain_metadata["sourceArchive"]["sha256"] == "ae930744c0cf3d10e73c292726b74c81a40490a75829f8299dec9069e5d0e934"
+assert (terrain_metadata["sourceRaster"]["width"], terrain_metadata["sourceRaster"]["height"]) == (10800, 5400)
+world_file = terrain_metadata["sourceRaster"]["worldFileValues"]
+assert len(world_file) == 6
+assert all(abs(a - b) < 1e-10 for a, b in zip(world_file, [1/30, 0, 0, -1/30, -180 + 1/60, 90 - 1/60]))
+assert terrain_metadata["georeferencing"]["datum"] == "WGS84"
+assert terrain_metadata["georeferencing"]["bounds"] == {"west": -180, "east": 180, "north": 90, "south": -90}
+assert isinstance(terrain_metadata["processing"]["colorAdjustment"], (str, dict))
+assert terrain_metadata["processing"]["colorAdjustment"], "Terrain display adjustment must be documented"
+assert (ROOT / terrain_metadata["processing"]["script"]).is_file()
+assert (terrain_dir / "ATTRIBUTION.txt").is_file()
+assert "terrain-background" in pages[(ROOT / "data-notes.html").resolve()].ids
+
 benchmarks = json.loads((ROOT / "assets/benchmarks.json").read_text())
 assert len(benchmarks["models"]) == 8
 assert len({model["id"] for model in benchmarks["models"]}) == 8
@@ -160,4 +217,5 @@ for font in (ROOT / "assets/fonts").glob("*.woff2"):
 for forbidden in ("sources", ".tools", ".env", "node_modules"):
     assert not (ROOT / forbidden).exists(), f"Development/raw data must stay outside website: {forbidden}"
 print(f"Validated {len(pages)} pages, {references} local references, {len(data['map']['points']):,} map points, all trajectories, and 112 benchmark values.")
-print(f"Surface: {cell_count:,} cells; {counts[2]:,} originals, {counts[3]:,} interpolated, {counts[1]:,} neutral land, {counts[0]:,} ocean. Decoding, source cross-checks, nodata, and land-source checksum passed.")
+print(f"Surface: {cell_count:,} cells; {counts[2]:,} originals, {counts[3]:,} interpolated, {counts[1]:,} unsupported land, {counts[0]:,} ocean. Decoding, source cross-checks, nodata, and land-source checksum passed.")
+print(f"Terrain: 4096 x 2048 WebP, {len(terrain_content):,} bytes; source provenance, world-file coordinates, image headers, and checksum verified.")

@@ -47,7 +47,7 @@
           <canvas id="globe" tabindex="0" role="img" aria-label="Interactive globe of CarbonGlobe ecosystem simulations. Drag or use the arrow keys to rotate. Aboveground biomass at simulation year 40, initial forest age 10 years."></canvas>
           <div class="globe-coordinate" aria-hidden="true"><span>GLOBAL COVERAGE</span><strong>0.5° × 0.5°</strong><span>ONE PLANET. DECADES OF CHANGE.</span></div>
           <div class="globe-controls"><button id="globe-toggle" class="round-button" type="button" aria-label="Pause globe rotation" aria-pressed="false"><span id="globe-play-icon">Ⅱ</span></button><span>DRAG TO EXPLORE</span><span class="globe-hint">↔</span></div>
-          <div class="globe-legend"><span id="globe-legend-title">ABOVEGROUND BIOMASS</span><div id="globe-color-ramp" class="color-ramp"></div><div class="globe-legend-scale"><span>0</span><span id="globe-max">12+ kg C m⁻²</span></div><small>ED simulations · year 40 · initial age 10</small><span id="globe-gap-key"><i aria-hidden="true"></i> No simulation data</span></div>
+          <div class="globe-legend"><span id="globe-legend-title">ABOVEGROUND BIOMASS</span><div id="globe-color-ramp" class="color-ramp"></div><div class="globe-legend-scale"><span>0</span><span id="globe-max">12+ kg C m⁻²</span></div><small>ED simulations · year 40 · initial age 10</small><span id="globe-gap-key"><i aria-hidden="true"></i><span id="globe-gap-label">Terrain background</span></span></div>
           <p id="globe-status" class="visual-status" role="status">Loading simulation sites…</p>
         </div>
         <div class="globe-options-panel" aria-label="Globe display options">
@@ -59,9 +59,9 @@
             </div>
             <label class="globe-variable-label" for="globe-variable"><span>VARIABLE</span><select id="globe-variable"><option value="agb">Aboveground biomass</option><option value="height">Canopy height</option></select></label>
           </div>
-          <div class="globe-ocean-row"><span class="globe-control-label">OCEAN</span><div class="globe-ocean-switch" role="group" aria-label="Ocean color"><button type="button" data-globe-ocean="blue" aria-pressed="true"><i class="ocean-swatch ocean-swatch-blue" aria-hidden="true"></i>Midnight blue</button><button type="button" data-globe-ocean="green" aria-pressed="false"><i class="ocean-swatch ocean-swatch-green" aria-hidden="true"></i>Forest green</button></div></div>
           <div id="globe-elevation-control" class="globe-elevation-control" hidden><label for="globe-elevation">Height emphasis</label><input id="globe-elevation" type="range" min="0" max="100" value="50" aria-describedby="globe-mode-note"><span aria-hidden="true">+</span></div>
           <p id="globe-mode-note" class="globe-mode-note" aria-live="polite">Smooth view interpolates the simulation grid for display.</p>
+          <p id="globe-terrain-note" class="globe-terrain-note" hidden>Snow &amp; ice, drylands, and shaded relief · <a href="data-notes.html#terrain-background">Natural Earth background</a></p>
         </div>
       </div>
       <div class="hero-bottom"><span class="eyebrow">FROM CLIMATE DRIVERS TO CARBON FUTURES</span><a href="#dataset" aria-label="Discover the dataset">SCROLL TO DISCOVER <span>↓</span></a></div>

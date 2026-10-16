@@ -26,7 +26,7 @@ predictions. The exporter reads the source arrays with read-only memory maps.
 The globe's color scales clip at 0–12 kg C m⁻² for biomass and 0–40 m for height.
 Values above the upper limit share the highest color and column length. Column
 lengths are an exaggerated linear display scale, not tree heights relative to Earth's radius.
-Blue and green ocean choices affect appearance only. The original point JSON
+Oceans are blue in every mode. The original point JSON
 retains values beyond the color scale and negative outputs subject to rounding.
 The explorer's original trajectories are unchanged by the globe display modes.
 
@@ -44,7 +44,7 @@ classify land and ocean at exact 0.5-degree cell centers, including polygon hole
 | Provenance class | Cells | Meaning |
 | --- | ---: | --- |
 | 0 | 172,916 | Ocean; no carbon value |
-| 1 | 30,731 | Unsupported land; neutral display and no carbon value |
+| 1 | 30,731 | Unsupported land; geographic background and no carbon value |
 | 2 | 54,152 | Original ED reference value |
 | 3 | 1,401 | Land gap filled for visualization only |
 
@@ -54,7 +54,7 @@ the independent land mask; sampled paths between them cannot cross ocean at the
 grid resolution. Donor directions must surround the target, with no angular gap
 greater than 180 degrees, to reject one-sided extrapolation into unsupported
 interiors. Filled cells never become donors. Every filled value remains within
-its donors' range. Unsupported land stays neutral; values are not projected
+its donors' range. Unsupported land retains no carbon value; values are not projected
 across large desert gaps or oceans.
 
 The full source contains 586 original cells whose centers fall outside the
@@ -79,6 +79,47 @@ The unchanged `ne_50m_land.geojson` is pinned to commit
 `ca96624a56bd078437bca8184e78163e5039ad19` and checked against SHA-256
 `e874b27a51d146452be360cafb3cc50c86001074a67d534113e6534682f9826b`.
 See [the included attribution](assets/data/NATURAL_EARTH_ATTRIBUTION.txt).
+
+## Geographic terrain background
+
+`assets/textures/earth-terrain.webp` is a 4096 × 2048, north-up equirectangular
+derivative of [Natural Earth I with Shaded Relief](https://www.naturalearthdata.com/downloads/50m-raster-data/50m-natural-earth-1/),
+1:50 million, version 3.2.0. The official source archive is
+[`NE1_50M_SR.zip`](https://naturalearth.s3.amazonaws.com/50m_raster/NE1_50M_SR.zip).
+This is separate imagery from the vector land polygons used in the provenance
+mask. Natural Earth map data is public domain.
+
+The 10800 × 5400 TIFF is converted to RGB, downsampled with Lanczos, and encoded
+as WebP at quality 85. The approximately 0.73 MB derivative preserves the source
+geography. The [raster metadata](assets/textures/earth-terrain.attribution.json)
+records any uniform display adjustment alongside archive, TIFF, and output
+hashes, world-file coordinates, and preparation details;
+[raster attribution](assets/textures/ATTRIBUTION.txt) accompanies it.
+
+The imagery supplies geographic context, including light ice-covered areas,
+sandy desert colors, and shaded mountain relief. These colors are not ED carbon
+values, categorical land-cover predictions, current snow conditions, or current
+weather. They do not replace missing values in either JSON export.
+
+- **Smooth surface:** terrain appears only on unsupported land (mask class 1).
+  Original and locally interpolated cells retain their quantitative display;
+  mask class 0 stays blue.
+- **3D columns:** columns still use the same 13,546 original sampled cells.
+  Original source locations have a dark green underlay; unsupported and
+  interpolated land locations show terrain underneath. The interpolated carbon
+  values do not become columns.
+- **Original dots:** original quantitative dots sit over geographic land imagery.
+  No filled carbon values are displayed in this mode.
+
+Many deserts and mountains already contain original ED values, sometimes near
+zero. Those values remain data, rather than being treated as missing based on
+their magnitude. The separate no-data mask determines where smooth mode shows
+terrain. The 586 original cells outside the independent vector coastline remain
+preserved as reference data.
+
+If the terrain image cannot load, geographic areas use a flat sand color and an
+explanatory note is shown. A browser without WebGL 2 uses original dots over a
+blue sphere without terrain. These display fallbacks do not modify any data.
 
 ## Coordinates and indexing
 
@@ -171,6 +212,19 @@ It also uses the included, checksum-verified Natural Earth source, downloading
 the pinned file only if it is absent. It checks latitude reconstruction, all
 original values, land-only interpolation, donor ranges, and quantization error.
 Its separate surface JSON is approximately 1.73 MB.
+
+The terrain derivative is prepared separately from the Natural Earth raster;
+it is not generated from CarbonGlobe outputs. Its packaged metadata records the
+source archive, coordinate extent, transformation, dimensions, and checksums.
+To regenerate it in a standalone website checkout with Pillow installed, keep
+the source archive cache outside the deployable website directory:
+
+```bash
+python scripts/prepare_terrain.py --cache-dir ../carbonglobe-terrain-cache
+```
+
+The script downloads the approximately 41 MB source archive when absent,
+verifies its checksum, and recreates the local texture and attribution files.
 
 Upstream code was inspected at commit
 `a99036367b76a2a7c738bc0e8530a5e57415c2dc`. The resulting JSON is approximately

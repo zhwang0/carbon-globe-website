@@ -7,7 +7,7 @@ const radians = Math.PI / 180;
 const caps = {agb: 12, height: 40};
 const labels = {agb: 'Aboveground biomass', height: 'Canopy height'};
 const ramp = [0x448466, 0xa4c268, 0xe0ed8b].map(hex => new THREE.Color(hex));
-const neutral = 0xaaa99a;
+const terrainPlaceholder = 0xb9aa8e;
 function colorAt(value) {
   const t = Math.max(0, Math.min(1, value));
   return ramp[t < .5 ? 0 : 1].clone().lerp(ramp[t < .5 ? 1 : 2], t < .5 ? t * 2 : (t - .5) * 2);
@@ -18,17 +18,19 @@ function fallback(canvas) {
     button.disabled = button.dataset.globeMode !== 'points';
     button.setAttribute('aria-pressed', String(!button.disabled));
   });
-  all('[data-globe-ocean]').forEach(button => {
-    button.disabled = true; button.setAttribute('aria-pressed', String(button.dataset.globeOcean === 'green'));
-  });
   $('#globe-variable').value = 'agb'; $('#globe-variable').disabled = true;
   $('#globe-elevation-control').hidden = true; $('#globe-gap-key').hidden = true;
-  $('#globe-mode-note').textContent = 'Original dots are available in this browser. Smooth and 3D views need WebGL 2.';
-  canvas.dataset.renderer = 'canvas2d';
+  $('#globe-mode-note').textContent = 'Original dots are available in this browser. Smooth, 3D, and terrain views need WebGL 2.';
+  canvas.dataset.renderer = 'canvas2d'; canvas.dataset.ocean = 'blue';
   return {...createPointGlobe(canvas), setSurface() {}, surfaceError() {}};
 }
 
 export function createGlobe(canvas) {
+  // Older shared links may contain the retired ocean-color setting.
+  const url = new URL(location.href);
+  if (url.searchParams.has('ocean')) {
+    url.searchParams.delete('ocean'); history.replaceState(null, '', url);
+  }
   let renderer;
   try {
     const context = canvas.getContext('webgl2', {alpha: true, antialias: true});
@@ -54,9 +56,9 @@ export function createGlobe(canvas) {
   const params = new URLSearchParams(location.search);
   let mode = ['surface', 'relief', 'points'].includes(params.get('globe')) ? params.get('globe') : 'surface';
   let variable = params.get('variable') === 'height' ? 'height' : 'agb';
-  let ocean = params.get('ocean') === 'green' ? 'green' : 'blue';
   let emphasis = 50, longitude = -28 * radians, tilt = .16;
   let rawPoints = [], pointsMesh, columnsMesh, surfaceReady = false, failedSurface = false;
+  let terrainReady = false, failedTerrain = false;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let paused = reducedMotion.matches, dragging = false, visible = true, dirty = true, lastPointer, lastFrame = 0;
 
@@ -64,9 +66,10 @@ export function createGlobe(canvas) {
   empty.needsUpdate = true;
   const uniforms = {
     fields: {value: empty}, classes: {value: empty}, hasSurface: {value: false},
-    variable: {value: 0}, viewMode: {value: 0}, oceanColor: {value: new THREE.Color(0x113b51)},
+    terrain: {value: empty}, hasTerrain: {value: false},
+    variable: {value: 0}, viewMode: {value: 0}, oceanColor: {value: new THREE.Color(0x19465e)},
     lowColor: {value: ramp[0]}, midColor: {value: ramp[1]}, highColor: {value: ramp[2]},
-    landColor: {value: new THREE.Color(neutral)}
+    landColor: {value: new THREE.Color(terrainPlaceholder)}
   };
   const surfaceMaterial = new THREE.ShaderMaterial({
     uniforms,
@@ -75,17 +78,18 @@ export function createGlobe(canvas) {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `precision highp float;
       varying vec3 localPosition; varying vec3 viewNormal;
-      uniform sampler2D fields; uniform sampler2D classes;
-      uniform bool hasSurface; uniform int variable; uniform int viewMode;
+      uniform sampler2D fields; uniform sampler2D classes; uniform sampler2D terrain;
+      uniform bool hasSurface; uniform bool hasTerrain; uniform int variable; uniform int viewMode;
       uniform vec3 oceanColor; uniform vec3 lowColor; uniform vec3 midColor; uniform vec3 highColor; uniform vec3 landColor;
       void main() {
         vec3 n = normalize(localPosition);
         vec2 uv = vec2(atan(n.x, n.z) / 6.28318530718 + .5, .5 - asin(clamp(n.y, -1., 1.)) / 3.14159265359);
         float kind = texture2D(classes, uv).r;
         vec3 color = oceanColor;
-        if (hasSurface && viewMode != 2 && kind > .1) {
-          color = landColor;
-          if (kind > .5 && (viewMode != 1 || kind < .9)) {
+        if (hasSurface && kind > .1) {
+          // The geographic raster supplies context, never an ED value.
+          color = hasTerrain ? texture2D(terrain, uv).rgb : landColor;
+          if (viewMode != 2 && kind > .5 && (viewMode != 1 || kind < .9)) {
             vec4 data = texture2D(fields, uv);
             float value = (variable == 0 ? data.r : data.g) / max(data.b, .001);
             color = value < .5 ? mix(lowColor, midColor, value * 2.) : mix(midColor, highColor, (value - .5) * 2.);
@@ -159,33 +163,34 @@ export function createGlobe(canvas) {
       button.setAttribute('aria-pressed', String(button.dataset.globeMode === mode));
       button.disabled = failedSurface && button.dataset.globeMode === 'surface';
     });
-    all('[data-globe-ocean]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.globeOcean === ocean)));
     $('#globe-variable').value = variable;
     $('#globe-elevation-control').hidden = mode !== 'relief';
     $('label[for="globe-elevation"]').textContent = variable === 'height' ? 'Height emphasis' : 'Column emphasis';
-    $('#globe-gap-key').hidden = mode === 'points' || !surfaceReady;
+    $('#globe-gap-key').hidden = !surfaceReady;
+    $('#globe-gap-key').classList.toggle('terrain-unavailable', !terrainReady);
+    $('#globe-gap-label').textContent = terrainReady ? 'Terrain background' : 'Land background';
     $('#globe-legend-title').textContent = labels[variable].toUpperCase();
     $('#globe-max').textContent = variable === 'height' ? '40 m' : '12+ kg C m⁻²';
     $('#globe-mode-note').textContent = mode === 'surface'
-      ? (surfaceReady ? 'Full 0.5° grid with nearby land gaps interpolated. Land without simulation coverage stays neutral.' : 'Preparing the full grid and interpolated land surface…')
+      ? (surfaceReady ? 'Full 0.5° grid with nearby land gaps interpolated. Terrain shows through where simulation data is unavailable.' : 'Preparing the full grid and interpolated land surface…')
       : mode === 'relief' ? 'Original sampled cells. Column heights are exaggerated for comparison; they are not Earth-scale vegetation.'
-      : 'Original 1° display sample from the 0.5° simulation grid, without gap filling.';
+      : 'Original 1° display sample over a geographic background, without gap filling.';
     if (failedSurface) $('#globe-mode-note').textContent += ' The smooth surface could not load; reload to try again.';
-    canvas.setAttribute('aria-label', `${labels[variable]} globe, ${mode === 'surface' ? 'smooth surface with local land interpolation' : mode === 'relief' ? 'exaggerated 3D columns' : 'original sampled dots'}, ${ocean === 'blue' ? 'midnight blue' : 'forest green'} ocean. Year 40, initial forest age 10 years. Drag or use arrow keys to rotate.`);
-    canvas.dataset.mode = mode; canvas.dataset.variable = variable; canvas.dataset.ocean = ocean;
+    if (failedTerrain) $('#globe-mode-note').textContent += ' Terrain imagery could not load; plain land is shown instead.';
+    $('#globe-terrain-note').hidden = !terrainReady || !surfaceReady;
+    canvas.setAttribute('aria-label', `${labels[variable]} globe, ${mode === 'surface' ? 'smooth surface with local land interpolation' : mode === 'relief' ? 'exaggerated 3D columns' : 'original sampled dots'}, midnight blue ocean${terrainReady && surfaceReady ? ' and a geographic terrain background' : ''}. Year 40, initial forest age 10 years. Drag or use arrow keys to rotate.`);
+    canvas.dataset.mode = mode; canvas.dataset.variable = variable; canvas.dataset.ocean = 'blue';
     uniforms.variable.value = variable === 'height' ? 1 : 0;
     uniforms.viewMode.value = mode === 'points' ? 2 : mode === 'relief' ? 1 : 0;
-    uniforms.oceanColor.value.set(ocean === 'blue' ? 0x19465e : 0x245342);
     if (pointsMesh) pointsMesh.visible = mode === 'points' || (mode === 'surface' && !surfaceReady);
     if (columnsMesh) columnsMesh.visible = mode === 'relief';
     if (saveURL) {
-      const url = new URL(location.href); url.searchParams.set('globe', mode); url.searchParams.set('variable', variable); url.searchParams.set('ocean', ocean);
+      const url = new URL(location.href); url.searchParams.set('globe', mode); url.searchParams.set('variable', variable);
       history.replaceState(null, '', url);
     }
     resize(); dirty = true;
   }
   all('[data-globe-mode]').forEach(button => button.addEventListener('click', () => { mode = button.dataset.globeMode; syncUI(true); }));
-  all('[data-globe-ocean]').forEach(button => button.addEventListener('click', () => { ocean = button.dataset.globeOcean; syncUI(true); }));
   $('#globe-variable').addEventListener('change', event => { variable = event.target.value; updateDataGeometry(); syncUI(true); });
   $('#globe-elevation').addEventListener('input', event => {
     emphasis = Number(event.target.value); event.target.style.setProperty('--progress', `${emphasis}%`);
@@ -243,6 +248,18 @@ export function createGlobe(canvas) {
     renderer.render(scene, camera); dirty = false;
   }
   syncUI(); updateRotationButton(); requestAnimationFrame(frame);
+  new THREE.TextureLoader().load('assets/textures/earth-terrain.webp', texture => {
+    // The shader addresses north at v=0, matching the scientific grid's rows.
+    texture.flipY = false; texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+    texture.needsUpdate = true;
+    uniforms.terrain.value = texture; uniforms.hasTerrain.value = true;
+    terrainReady = true; canvas.dataset.terrainReady = 'true'; syncUI();
+  }, undefined, () => {
+    failedTerrain = true; canvas.dataset.terrainReady = 'false'; syncUI();
+  });
   return {
     setPoints(points) {
       rawPoints = points; updateDataGeometry(); syncUI(); $('#globe-status').hidden = true;
