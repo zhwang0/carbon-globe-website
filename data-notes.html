@@ -39,7 +39,7 @@
     <p>Values come from the process-based Ecosystem Demography (ED) model in their original physical units. They describe simulated ecosystem responses under supplied environmental conditions. They are reference outputs, rather than direct field observations or predictions from a trained machine learning emulator.</p>
     <h2>What is selected</h2>
     <ul>
-      <li><strong>The globe:</strong> 13,546 of the dataset’s 54,152 land cells, sampled at every second row and column of the original 0.5° grid. Color shows aboveground biomass at simulation year 40 for an initial forest age of 10 years. Neighboring cells are not averaged.</li>
+      <li><strong>The globe:</strong> aboveground biomass or canopy height at simulation year 40, starting from a forest age of 10 years. Smooth surface uses all 54,152 original cells and 1,401 locally interpolated land gaps. Original dots and 3D columns show the same 13,546 original cells sampled from every second grid row and column.</li>
       <li><strong>The explorer:</strong> six individual cells near regional anchors in the Amazon Basin, Congo Basin, Pacific Northwest, Central Europe, Southeast Asia, and eastern Australia. These are illustrative locations, not regional averages or in-situ stations.</li>
       <li><strong>Starting ages:</strong> 1, 10, 50, and 100 years are available in the explorer, selected from the dataset’s 15 initial forest ages.</li>
     </ul>
@@ -56,13 +56,19 @@
       </tbody>
     </table>
     <p>The paper describes the three carbon flux variables as annual targets. Their plotted values preserve the benchmark’s December selection, with the paper’s units; no new annual aggregation is calculated.</p>
-    <p>The globe’s color scale clips at 0 and 12 kg C m⁻², so values above 12 share the highest color. The downloadable JSON retains the underlying values, including negative model outputs, subject to rounding: three decimal places for map values and six for trajectories. No normalization, smoothing, or fitted curves are applied.</p>
+    <p>The globe’s color scales run from 0 to 12 kg C m⁻² for biomass and 0 to 40 m for canopy height; larger values share the highest color. The 3D columns use an exaggerated linear display scale, not tree heights relative to Earth’s radius. Blue and green ocean choices change appearance only.</p>
+    <p>The original point export retains underlying values, including negative outputs, subject to rounding: three decimal places for map points and six for trajectories. The explorer’s original trajectories remain unchanged; their values are not spatially interpolated, smoothed, or fitted.</p>
+    <h2>A surface with explicit limits</h2>
+    <p>Natural Earth land polygons independently distinguish land and ocean. To fill small gaps on land, the surface export uses four surrounding original cells within 2 angular degrees, weighted by inverse squared distance. Connecting paths must remain on land, and filled cells never become sources for more filling. This limits interpolation to nearby supported gaps; it does not project values across large unsupported regions or oceans.</p>
+    <p>The 30,731 land cells without supported values remain neutral. All 54,152 original ED cells are preserved, including 586 whose centers lie outside the independent coastline mask. Those coastline mismatches are retained as reference data but cannot seed interpolation.</p>
+    <p>The separate surface asset stores values at 0.01-unit precision, with at most 0.005 units of quantization error. Its provenance mask distinguishes original values, the 1,401 interpolated cells, unsupported land, and ocean. Smooth rendering is a visual aid; it does not increase the scientific resolution of the simulation.</p>
     <h2>How locations are reconstructed</h2>
     <p>Included cells in the 360 × 720 spatial mask follow the same row order as the source arrays. Their latitude is reconstructed from north to south at 0.5° cell centers. All 3,373 supplied training latitudes and 852 test latitudes match this reconstruction exactly.</p>
     <p>Longitude uses the standard west-to-east global cell-center convention, starting at −179.75°. This is an inferred convention: the supplied files and upstream preprocessing do not include an explicit longitude vector. The full coordinate formulas and selected source indices are recorded in the technical notes.</p>
     <h2>Follow the sources</h2>
     <p>Read the <a href="assets/paper.pdf">CarbonGlobe paper</a>, explore the <a href="https://huggingface.co/datasets/zhwang1/CarbonGlobe">original dataset</a>, or inspect the <a href="https://github.com/zhwang0/carbon-globe/tree/a99036367b76a2a7c738bc0e8530a5e57415c2dc">benchmark code at the reviewed commit</a>.</p>
-    <p><a href="assets/data/carbon-globe.json" download>Download the visualization JSON</a> to access the selected values and their metadata. This extract uses the original CarbonGlobe simulation arrays only; future SSP competition data is not included.</p>
+    <p>Download the <a href="assets/data/carbon-globe.json" download>original points and trajectories</a> or the <a href="assets/data/globe-surface.json" download>surface grid and provenance mask</a>. Both use the original CarbonGlobe simulation arrays; future SSP competition data is not included.</p>
+    <p>Land geometry is made with <a href="https://www.naturalearthdata.com/downloads/50m-physical-vectors/50m-land/">Natural Earth</a>, whose maps are <a href="https://www.naturalearthdata.com/about/terms-of-use/">public domain</a>. See the <a href="assets/data/NATURAL_EARTH_ATTRIBUTION.txt">included source attribution</a> for the pinned polygon dataset.</p>
     <div class="note-footer"><p>For file-level provenance, source indices, coordinate validation, and reproduction instructions, read the <a href="DATA_NOTES.md">technical data notes</a>.</p><a href="index.html#explore">Return to the explorer →</a></div>
   </main>
 </body>

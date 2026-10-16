@@ -6,7 +6,7 @@ The original model implementations remain at [zhwang0/carbon-globe](https://gith
 
 ## Local preview
 
-No frontend dependencies or build step are required. From this directory:
+No package installation or build step is required; the renderer is included locally. From this directory:
 
 ```sh
 python -m http.server 8000 --bind 127.0.0.1
@@ -16,33 +16,43 @@ Open `http://localhost:8000`. Use an HTTP server rather than opening `index.html
 
 ## Contents
 
-- `index.html`, `styles.css`, `app.js`: responsive website, interactive canvas globe, simulation explorer, benchmark comparison, and citation tools.
+- `index.html`, `styles.css`, `app.js`, `globe.js`: responsive website, interactive globe, simulation explorer, benchmark comparison, and citation tools.
 - `assets/data/carbon-globe.json`: compact export from the original ED simulation arrays. See [data provenance](DATA_NOTES.md).
+- `assets/data/globe-surface.json`: full 0.5-degree globe grid with original values, bounded land-only display interpolation, and an explicit provenance mask.
+- `assets/data/ne_50m_land.geojson`: pinned public-domain Natural Earth polygons used to classify land independently of carbon values; source and checksum are recorded in the surface metadata.
+- `assets/vendor/`: locally hosted browser rendering code and its license; no package installation is needed to view the website.
 - `assets/benchmarks.json`: all RMSE and MAE values from the published paper's main Table 1.
 - `assets/paper.pdf`, `assets/citation.bib`: the verified published paper and official proceedings citation. The local source folder's template PDF was not used.
 - `assets/fonts/`: locally hosted Manrope and DM Mono fonts with their SIL Open Font License files.
 - `scripts/export_data.py`: regenerate the visualization export from locally available original datasets. NumPy is needed for regeneration, not for serving the website.
+- `scripts/export_globe_surface.py`: regenerate the full globe surface and validate the bounded interpolation against original ED cells and independent land geometry.
 - `scripts/validate_site.py`: check local page links and visualization asset integrity with Python's standard library.
 - `.github/workflows/pages.yml`: deploy the static website to GitHub Pages.
 
 ## Hosting
 
-The intended dedicated repository is `zhwang0/carbon-globe-website`, with public URL `https://zhwang0.github.io/carbon-globe-website/`.
+The dedicated repository is `zhwang0/carbon-globe-website`, with public URL `https://zhwang0.github.io/carbon-globe-website/`.
 
-Create the repository, push this directory, then choose **GitHub Actions** as the source in **Settings → Pages**. The included workflow publishes on pushes to `main` and can also be run manually. All runtime asset paths are relative, so project-subdirectory hosting works.
+GitHub Pages uses **GitHub Actions** as its publishing source. The included workflow publishes on pushes to `main` and can also be run manually. All runtime asset paths are relative, so project-subdirectory hosting works.
 
 If the repository name or hosting destination changes, update the absolute Open Graph URL and image URL in `index.html` and the URLs in `sitemap.xml` and `robots.txt`.
 
 Do not add the raw `sources/` directory or development `.tools/` directory to this repository. Only the contents of this `website/` directory belong here.
 
-To regenerate the extract in a standalone checkout, run `python scripts/export_data.py --source /path/to/original/datasets` in an environment with NumPy installed. Run `python scripts/validate_site.py` to check the static package before publishing.
+To regenerate the extracts in a standalone checkout, run `python scripts/export_data.py --source /path/to/original/datasets` and `python scripts/export_globe_surface.py --source /path/to/original/datasets` in an environment with NumPy installed. The surface exporter uses the included Natural Earth source; it downloads the pinned version only when the file is missing. Run `python scripts/validate_site.py` to check the static package before publishing.
 
 ## Scientific interpretation
 
 The explorer shows modeled responses to supplied environmental drivers, not direct observations or independent future climate predictions. Site trajectories are individual grid cells, not regional averages. Initial forest age is a simulation seed condition. Annual benchmark states use the December slice of the supplied targets.
+
+The globe compares three display modes for AGB or canopy height at initial age 10, year 40. **Smooth surface** uses all 54,152 original ED sites plus 1,401 conservatively interpolated land gaps; 30,731 unsupported land cells stay neutral. Interpolation requires four surrounding original donors within 2 angular degrees and land-only connecting paths. It does not recursively fill large gaps. The surface quantizes values to 0.01 units, with maximum error 0.005, and identifies every cell as ocean, unsupported land, original, or interpolated. All original cells remain present, including 586 outside the independent coastline mask.
+
+**3D columns** and **Original dots** use the same 13,546 original sampled cells, without gap filling. Column lengths use an exaggerated linear display scale. Colors cap at 12 kg C m⁻² for AGB or 40 m for canopy height; these caps do not alter the downloaded physical values. Blue and green ocean choices are cosmetic. The explorer's raw trajectories remain unchanged.
 
 The benchmark comparison uses the main paper's overall evaluation with input perturbations during training. It does not represent a live leaderboard. Cross-variable error magnitudes have different units; compare models within a selected variable.
 
 ## Attribution
 
 Research materials and dataset excerpts remain subject to the authors' and original datasets' terms and citation requirements. Source links and extraction details are recorded in the data notes and benchmark metadata. Fonts are distributed under the included SIL Open Font Licenses.
+
+Land geometry is made with [Natural Earth](https://www.naturalearthdata.com/downloads/50m-physical-vectors/50m-land/), whose map data is public domain. The official website links its author-maintained GitHub repository. The pinned source and license links are included in [NATURAL_EARTH_ATTRIBUTION.txt](assets/data/NATURAL_EARTH_ATTRIBUTION.txt).
