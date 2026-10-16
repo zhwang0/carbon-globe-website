@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f5ed">
+  <meta name="description" content="Meet CarbonGlobe: the first global-scale, machine-learning-ready dataset for forest carbon forecasting. Explore 40 years of ecosystem simulations, 54,152 locations, and eight ML benchmarks.">
+  <meta property="og:title" content="CarbonGlobe — A living planet. A learnable future.">
+  <meta property="og:description" content="A global-scale dataset and benchmark for forecasting the forest carbon cycle. NeurIPS 2025.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://zhwang0.github.io/carbon-globe-website/assets/social.png">
+  <meta property="og:url" content="https://zhwang0.github.io/carbon-globe-website/">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>CarbonGlobe — Forest carbon forecasting, ready for AI</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" type="module"></script>
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="icon-external" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6h12v12"/></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="icon-globe" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><ellipse cx="16" cy="16" rx="6" ry="13"/><path d="M3 16h26M6 8.5c6 3 14 3 20 0M6 23.5c6-3 14-3 20 0"/></symbol>
+  </defs></svg>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="CarbonGlobe home"><svg aria-hidden="true"><use href="#icon-globe"/></svg>CarbonGlobe<span class="brand-dot"></span></a>
+    <button class="menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="main-nav"><span></span><span></span></button>
+    <nav id="main-nav" aria-label="Main navigation">
+      <a href="#dataset">The dataset</a><a href="#explore">Explore</a><a href="#benchmarks">Benchmarks</a><a href="#possibilities">What’s next</a>
+      <a class="nav-paper" href="assets/paper.pdf" target="_blank" rel="noopener">Read the paper <svg class="icon"><use href="#icon-external"/></svg></a>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="hero-copy">
+        <a class="publication-tag" href="https://neurips.cc/virtual/2025/loc/san-diego/poster/121701" target="_blank" rel="noopener"><span class="status-dot"></span>NEURIPS 2025 <span class="tag-divider">/</span> DATASETS & BENCHMARKS <svg class="icon"><use href="#icon-external"/></svg></a>
+        <h1 id="hero-heading">A living planet.<br>A learnable<br><span class="serif">future.</span></h1>
+        <p class="hero-description">Earth’s forests are part of our climate future.<br>Let’s make their dynamics learnable.</p>
+        <p class="hero-detail">Meet <strong>CarbonGlobe</strong>, the first global-scale, ML-ready dataset for forecasting forest carbon dynamics.</p>
+        <div class="hero-actions"><a class="button button-dark" href="#explore">Explore the data <svg class="icon"><use href="#icon-arrow"/></svg></a><a class="text-link" href="https://huggingface.co/datasets/zhwang1/CarbonGlobe" target="_blank" rel="noopener">Get the dataset <svg class="icon"><use href="#icon-external"/></svg></a></div>
+      </div>
+      <div class="globe-scene">
+        <div class="globe-eyebrow"><span class="status-dot"></span> A WORLD OF FOREST DYNAMICS</div>
+        <canvas id="globe" tabindex="0" role="img" aria-label="Rotating globe of sampled CarbonGlobe simulation sites. Drag or use left and right arrow keys to rotate. Aboveground biomass at simulation year 40, initial forest age 10 years."></canvas>
+        <div class="globe-coordinate" aria-hidden="true"><span>GLOBAL COVERAGE</span><strong>0.5° × 0.5°</strong><span>ONE PLANET. DECADES OF CHANGE.</span></div>
+        <div class="globe-controls"><button id="globe-toggle" class="round-button" aria-label="Pause globe rotation" aria-pressed="false"><span id="globe-play-icon">Ⅱ</span></button><span>DRAG TO EXPLORE</span><span class="globe-hint">↔</span></div>
+        <div class="globe-legend"><span>ABOVEGROUND BIOMASS</span><div class="color-ramp"></div><div><span>0</span><span id="globe-max">12+ kg C m⁻²</span></div><small>ED simulations · year 40 · initial age 10</small></div>
+        <p id="globe-status" class="visual-status" role="status">Loading simulation sites…</p>
+      </div>
+      <div class="hero-bottom"><span class="eyebrow">FROM CLIMATE DRIVERS TO CARBON FUTURES</span><a href="#dataset" aria-label="Discover the dataset">SCROLL TO DISCOVER <span>↓</span></a></div>
+    </section>
+    <section class="metrics" aria-label="Dataset at a glance">
+      <div><strong>54,152<span>↗</span></strong><span>Global simulation sites</span></div><div><strong>40<span>yrs</span></strong><span>Long-horizon forecasting</span></div><div><strong>136</strong><span>Environmental input features</span></div><div><strong>7</strong><span>Ecosystem target variables</span></div>
+    </section>
+    <section id="dataset" class="section dataset-section">
+      <div class="section-heading"><span class="eyebrow"><span class="section-number">01</span> THE DATASET</span><span class="small-note">GROUNDED IN ECOLOGY. PREPARED FOR AI.</span></div>
+      <div class="split-heading"><h2>The next frontier<br>is <span class="serif">on the ground.</span></h2><div><p>Machine learning is transforming weather forecasting. Understanding how forests respond to changing conditions is another essential piece of the Earth system.</p><p>CarbonGlobe opens that piece to the ML community: decades of ecosystem simulations, harmonized inputs, and reproducible benchmarks in one ready-to-use dataset.</p></div></div>
+      <div class="pipeline" aria-label="How CarbonGlobe is built">
+        <article class="pipeline-step"><div class="step-top"><span>01 / OBSERVE</span><svg class="icon"><use href="#icon-arrow"/></svg></div><div class="pipeline-art drivers-art" aria-hidden="true"><span>≈</span><span>☷</span><span>CO₂</span><span>⌁</span></div><h3>A world of inputs.</h3><p>Meteorology, atmospheric CO₂, and soil properties brought onto a consistent global grid.</p><div class="source-label">MERRA-2 · CARBONTRACKER · ROSETTA</div></article>
+        <article class="pipeline-step"><div class="step-top"><span>02 / SIMULATE</span><svg class="icon"><use href="#icon-arrow"/></svg></div><div class="pipeline-art forest-art" aria-hidden="true"><svg viewBox="0 0 230 78"><path d="M8 70h214M34 70V40m0-27L14 49h40ZM88 70V30m0-29L59 54h58ZM146 70V40m0-24-24 40h48ZM195 70V39m0-32-24 48h48Z"/></svg></div><h3>Ecology in motion.</h3><p>The process-based Ecosystem Demography model simulates plant growth and the forest carbon cycle.</p><div class="source-label">ED v3.0 · 15 INITIAL FOREST AGES</div></article>
+        <article class="pipeline-step"><div class="step-top"><span>03 / LEARN</span><span class="tiny-badge">ML-READY</span></div><div class="pipeline-art tensor-art" aria-hidden="true"><span>climate<sub>t</sub></span><b>+</b><span>forest<sub>t</sub></span><b>→</b><span class="tensor-target">forest<sub>t+1</sub></span></div><h3>Ready for discovery.</h3><p>Learn ecosystem responses from a starting state and environmental drivers. Evaluate over 40 annual steps.</p><div class="source-label">812,280 SITE–AGE SEQUENCES</div></article>
+      </div>
+      <div class="dataset-footnote"><span class="note-mark">↳</span><p><strong>Simulation data, with a scientific foundation.</strong> Targets come from the calibrated ED model. They represent modeled ecosystem responses under supplied environmental conditions, rather than direct observations or unconditional predictions.</p><a class="text-link" href="assets/paper.pdf#page=4" target="_blank" rel="noopener">How it’s built <svg class="icon"><use href="#icon-external"/></svg></a></div>
+      <details class="paper-figure"><summary>A closer look at the dataset construction <span aria-hidden="true">+</span></summary><figure><img src="assets/figures/overview.webp" alt="The CarbonGlobe dataset construction pipeline, showing climate, carbon dioxide, and soil inputs; ED ecosystem simulation; and machine-learning-ready input and target sequences." width="2200" height="1962" loading="lazy"><figcaption>The original dataset overview from the CarbonGlobe paper. <a href="assets/paper.pdf" target="_blank" rel="noopener">Read the methodology ↗</a></figcaption></figure></details>
+    </section>
+    <section id="explore" class="explore-section">
+      <div class="section-heading"><span class="eyebrow"><span class="section-number">02</span> A WINDOW INTO THE DATA</span><span class="small-note"><span class="status-dot"></span> REAL ED SIMULATION OUTPUTS</span></div>
+      <div class="explore-heading"><h2>Forty years.<br><span class="serif">Your point of view.</span></h2><p>A forest changes with its location, its age, and its environment. Pick a starting point and trace one possible trajectory through the dataset.</p></div>
+      <div id="explorer" class="explorer" aria-busy="true">
+        <div class="explorer-toolbar"><label>LOCATION<select id="site-select" disabled><option>Loading locations…</option></select></label><label>INITIAL FOREST AGE<select id="age-select" disabled><option value="1">1 year</option><option value="10" selected>10 years</option><option value="50">50 years</option><option value="100">100 years</option></select></label><label>ECOSYSTEM VARIABLE<select id="variable-select" disabled><option value="agb">Aboveground biomass</option><option value="height">Canopy height</option><option value="soil">Soil carbon</option><option value="lai">Leaf area index</option><option value="gpp">Gross primary production</option><option value="npp">Net primary production</option><option value="rh">Heterotrophic respiration</option></select></label></div>
+        <div class="explorer-body"><aside class="location-panel"><div class="location-kicker"><span class="status-dot"></span><span id="site-region">GLOBAL FOREST ECOSYSTEMS</span></div><h3 id="site-name">Explore a location</h3><span id="site-coordinates" class="mono">—</span><canvas id="locator" aria-label="Map highlighting the selected simulation site" role="img"></canvas><div class="location-value"><span id="selected-variable-label">Aboveground biomass</span><strong id="selected-value">—</strong><span id="selected-unit">kg C m⁻²</span></div><div class="location-year">SIMULATION YEAR <span id="year-readout">40</span></div></aside><div class="chart-panel"><div class="chart-heading"><div><span class="chart-overline">THE LONG VIEW</span><h3 id="chart-title">Aboveground biomass over time</h3></div><span class="chart-key"><i></i> ED simulation</span></div><svg id="trajectory-chart" viewBox="0 0 720 310" role="img" aria-label="Simulation trajectory. Select a location, age and variable to explore the data."></svg><div class="timeline"><button id="timeline-play" class="round-button" aria-label="Play simulation timeline" disabled>▶</button><label for="year-slider" class="sr-only">Simulation year</label><span class="mono">00</span><input id="year-slider" type="range" min="0" max="40" value="40" step="1" disabled><span class="mono">40</span></div><div class="chart-footer"><span>Annual benchmark states · initial state + 40 steps</span><button id="download-series" class="text-link" disabled>Download this series <svg class="icon"><use href="#icon-download"/></svg></button></div></div></div>
+        <p id="explorer-status" class="explorer-status" role="status">Preparing a small selection from the original CarbonGlobe dataset…</p>
+      </div>
+      <div class="explore-caption"><p>Selected sites and ages illustrate the dataset; they are not regional averages. Annual states use the December slice, following the published benchmark. The globe shows a spatial sample of the global simulation grid.</p><a href="data-notes.html">Data & provenance ↗</a></div>
+    </section>
+    <section id="benchmarks" class="section benchmark-section">
+      <div class="section-heading"><span class="eyebrow"><span class="section-number">03</span> THE BENCHMARK</span><span class="small-note">A STARTING POINT FOR BETTER MODELS</span></div>
+      <div class="benchmark-layout"><div class="benchmark-copy"><h2>Fast is good.<br><span class="serif">Faithful is better.</span></h2><p>Long forecasts are hard. Small errors accumulate, and performance shifts across ecosystem variables, climates, and forest ages.</p><p>We benchmark eight ML models against ED simulations, using standard errors alongside metrics for annual changes and the final forecast state.</p><div class="benchmark-callout"><span class="eyebrow">ONE DATASET. MANY CHALLENGES.</span><div><strong>8</strong><span>baseline<br>models</span><strong>3</strong><span>evaluation<br>views</span></div></div><a class="text-link" href="assets/paper.pdf#page=8" target="_blank" rel="noopener">See the full evaluation <svg class="icon"><use href="#icon-external"/></svg></a></div><div class="benchmark-chart-wrap"><div class="benchmark-toolbar"><label><span class="sr-only">Benchmark variable</span><select id="benchmark-variable"><option value="height">Canopy height</option><option value="agb">Aboveground biomass</option><option value="soil">Soil carbon</option><option value="lai">Leaf area index</option><option value="gpp">Gross primary production</option><option value="npp">Net primary production</option><option value="rh">Heterotrophic respiration</option></select></label><div class="metric-toggle" role="group" aria-label="Error metric"><button data-metric="rmse" class="active" aria-pressed="true">RMSE</button><button data-metric="mae" aria-pressed="false">MAE</button></div></div><div class="benchmark-axis"><span id="benchmark-unit">ERROR · m</span><span>LOWER IS BETTER ↓</span></div><div id="benchmark-bars" aria-live="polite"><p class="loading-text">Loading published results…</p></div><p class="benchmark-source">Published Table 1 · overall test set · models trained with input perturbations. <a href="assets/benchmarks.json" download>Source data ↗</a></p></div></div>
+    </section>
+    <section id="possibilities" class="possibilities-section">
+      <div class="section-heading"><span class="eyebrow"><span class="section-number">04</span> AN OPEN INVITATION</span><span class="small-note">THE NEXT CHAPTER IS YOURS TO BUILD</span></div>
+      <div class="possibilities-layout"><div><h2>From the atmosphere<br>to the <span class="serif">living Earth.</span></h2><p>Better ecosystem emulators could connect advances in weather and climate AI with the slower, complex dynamics of forests.</p><p class="future-note">These are research opportunities opened by the benchmark, rather than demonstrated model integrations.</p><a class="button button-lime" href="https://huggingface.co/datasets/zhwang1/CarbonGlobe" target="_blank" rel="noopener">Build on CarbonGlobe <svg class="icon"><use href="#icon-external"/></svg></a></div><div class="opportunities"><article><span>01</span><div><h3>Connect climate and ecosystems</h3><p>Explore how changing environmental drivers translate into long-term forest carbon responses.</p></div><svg class="icon"><use href="#icon-external"/></svg></article><article><span>02</span><div><h3>Bring ecological knowledge into AI</h3><p>Develop models that account for carbon processes, ecological constraints, and heterogeneous landscapes.</p></div><svg class="icon"><use href="#icon-external"/></svg></article><article><span>03</span><div><h3>Make long horizons more reliable</h3><p>Reduce accumulated error and study performance across forest ages and climate conditions.</p></div><svg class="icon"><use href="#icon-external"/></svg></article></div></div>
+    </section>
+    <section class="section resources-section" id="resources">
+      <div class="section-heading"><span class="eyebrow"><span class="section-number">05</span> OPEN SCIENCE, SHARED PROGRESS</span></div>
+      <div class="resource-heading"><h2>Start <span class="serif">exploring.</span></h2><p>The data, the methods, and the code.<br>Everything you need to take the next step.</p></div>
+      <div class="resource-links"><a href="assets/paper.pdf" target="_blank" rel="noopener"><span class="resource-type">READ</span><strong>The paper</strong><span>NeurIPS 2025 <svg class="icon"><use href="#icon-external"/></svg></span></a><a href="https://huggingface.co/datasets/zhwang1/CarbonGlobe" target="_blank" rel="noopener"><span class="resource-type">EXPLORE</span><strong>The dataset</strong><span>Hugging Face <svg class="icon"><use href="#icon-external"/></svg></span></a><a href="https://github.com/zhwang0/carbon-globe" target="_blank" rel="noopener"><span class="resource-type">BUILD</span><strong>The code</strong><span>GitHub <svg class="icon"><use href="#icon-external"/></svg></span></a><a href="https://www.kaggle.com/datasets/zhihaow/carbonglobe" target="_blank" rel="noopener"><span class="resource-type">DOWNLOAD</span><strong>Data mirror</strong><span>Kaggle <svg class="icon"><use href="#icon-external"/></svg></span></a></div>
+      <div class="citation-block"><div><span class="eyebrow">CITE CARBONGLOBE</span><h3>Built for research.<br>Shared for what comes next.</h3><button id="copy-citation" class="text-link">Copy BibTeX <svg class="icon"><use href="#icon-arrow"/></svg></button><span id="copy-status" role="status"></span><a class="citation-download" href="assets/citation.bib" download>Download .bib</a></div><div><p class="paper-title">CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems</p><p class="authors">Zhihao Wang · Lei Ma · George Hurtt · Xiaowei Jia · Yanhua Li · Ruohan Li · Zhili Li · Shuo Xu · Yiqun Xie</p><p class="affiliations">University of Maryland · University of Pittsburgh · Worcester Polytechnic Institute</p><a class="publication-link" href="https://proceedings.neurips.cc/paper_files/paper/2025/hash/0b82662b6c32e887bb252a74d8cb2d5e-Abstract-Datasets_and_Benchmarks_Track.html" target="_blank" rel="noopener">Advances in Neural Information Processing Systems 38, 2025 ↗</a></div></div>
+    </section>
+  </main>
+  <footer><a class="brand" href="#"><svg aria-hidden="true"><use href="#icon-globe"/></svg>CarbonGlobe<span class="brand-dot"></span></a><span>UNDERSTAND THE FOREST. EXPAND THE POSSIBLE.</span><a href="mailto:zhwang1@umd.edu">Get in touch ↗</a><a href="#" class="back-top">Back to top ↑</a></footer>
+  <noscript><div class="noscript-note">The paper, dataset, and code links work without JavaScript. Enable JavaScript to use the interactive globe and data explorer.</div></noscript>
+</body>
+</html>

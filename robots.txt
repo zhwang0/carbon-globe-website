@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zhwang0.github.io/carbon-globe-website/sitemap.xml

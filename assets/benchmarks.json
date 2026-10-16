@@ -1,0 +1,367 @@
+{
+  "source": {
+    "label": "CarbonGlobe paper · Table 1",
+    "url": "assets/paper.pdf#page=8",
+    "publishedUrl": "https://proceedings.neurips.cc/paper_files/paper/2025/file/0b82662b6c32e887bb252a74d8cb2d5e-Paper-Datasets_and_Benchmarks_Track.pdf#page=8",
+    "doi": "10.52202/085713-0261",
+    "table": 1,
+    "page": 8,
+    "protocol": "Overall evaluation with noise-perturbation training; comparison with ED simulation targets over 40 annual steps.",
+    "note": "Published benchmark results, not a live leaderboard. Lower values indicate lower error. Compare models within the same variable and metric; variables have different units."
+  },
+  "metrics": [
+    {
+      "id": "rmse",
+      "label": "RMSE",
+      "name": "Root mean squared error",
+      "lowerIsBetter": true
+    },
+    {
+      "id": "mae",
+      "label": "MAE",
+      "name": "Mean absolute error",
+      "lowerIsBetter": true
+    }
+  ],
+  "variables": [
+    {
+      "id": "height",
+      "label": "Vegetation height",
+      "shortLabel": "Height",
+      "unit": "m",
+      "description": "Vegetation canopy height"
+    },
+    {
+      "id": "agb",
+      "label": "Aboveground biomass",
+      "shortLabel": "AGB",
+      "unit": "kgC m⁻²",
+      "description": "Carbon stored in aboveground biomass"
+    },
+    {
+      "id": "soil",
+      "label": "Soil carbon",
+      "shortLabel": "SC",
+      "unit": "kgC m⁻²",
+      "description": "Carbon stored in soil"
+    },
+    {
+      "id": "lai",
+      "label": "Leaf area index",
+      "shortLabel": "LAI",
+      "unit": "dimensionless",
+      "description": "Leaf area per unit ground area"
+    },
+    {
+      "id": "gpp",
+      "label": "Gross primary production",
+      "shortLabel": "GPP",
+      "unit": "kgC m⁻² (annual)",
+      "description": "Annual gross primary production"
+    },
+    {
+      "id": "npp",
+      "label": "Net primary production",
+      "shortLabel": "NPP",
+      "unit": "kgC m⁻² (annual)",
+      "description": "Annual net primary production"
+    },
+    {
+      "id": "rh",
+      "label": "Heterotrophic respiration",
+      "shortLabel": "Rh",
+      "unit": "kgC m⁻² (annual)",
+      "description": "Annual heterotrophic respiration"
+    }
+  ],
+  "models": [
+    {
+      "id": "lstm",
+      "name": "LSTM",
+      "paperLabel": "LSTM",
+      "family": "Recurrent",
+      "values": {
+        "height": {
+          "rmse": 3.352,
+          "mae": 1.89
+        },
+        "agb": {
+          "rmse": 1.363,
+          "mae": 0.869
+        },
+        "soil": {
+          "rmse": 1.942,
+          "mae": 1.354
+        },
+        "lai": {
+          "rmse": 0.708,
+          "mae": 0.46
+        },
+        "gpp": {
+          "rmse": 0.281,
+          "mae": 0.137
+        },
+        "npp": {
+          "rmse": 0.139,
+          "mae": 0.068
+        },
+        "rh": {
+          "rmse": 0.161,
+          "mae": 0.088
+        }
+      }
+    },
+    {
+      "id": "lstnet",
+      "name": "LSTNet",
+      "paperLabel": "LSTNet",
+      "family": "Recurrent",
+      "values": {
+        "height": {
+          "rmse": 2.887,
+          "mae": 1.608
+        },
+        "agb": {
+          "rmse": 1.228,
+          "mae": 0.798
+        },
+        "soil": {
+          "rmse": 1.284,
+          "mae": 0.833
+        },
+        "lai": {
+          "rmse": 0.661,
+          "mae": 0.427
+        },
+        "gpp": {
+          "rmse": 0.27,
+          "mae": 0.129
+        },
+        "npp": {
+          "rmse": 0.135,
+          "mae": 0.064
+        },
+        "rh": {
+          "rmse": 0.149,
+          "mae": 0.081
+        }
+      }
+    },
+    {
+      "id": "deeped",
+      "name": "DeepED",
+      "paperLabel": "DeepED",
+      "family": "Knowledge-guided",
+      "values": {
+        "height": {
+          "rmse": 1.9,
+          "mae": 0.891
+        },
+        "agb": {
+          "rmse": 0.491,
+          "mae": 0.248
+        },
+        "soil": {
+          "rmse": 0.66,
+          "mae": 0.354
+        },
+        "lai": {
+          "rmse": 0.416,
+          "mae": 0.21
+        },
+        "gpp": {
+          "rmse": 0.258,
+          "mae": 0.128
+        },
+        "npp": {
+          "rmse": 0.127,
+          "mae": 0.059
+        },
+        "rh": {
+          "rmse": 0.148,
+          "mae": 0.084
+        }
+      }
+    },
+    {
+      "id": "transformer",
+      "name": "Transformer",
+      "paperLabel": "TF",
+      "family": "Transformer",
+      "values": {
+        "height": {
+          "rmse": 2.888,
+          "mae": 1.75
+        },
+        "agb": {
+          "rmse": 1.154,
+          "mae": 0.626
+        },
+        "soil": {
+          "rmse": 1.71,
+          "mae": 1.083
+        },
+        "lai": {
+          "rmse": 0.449,
+          "mae": 0.247
+        },
+        "gpp": {
+          "rmse": 0.217,
+          "mae": 0.088
+        },
+        "npp": {
+          "rmse": 0.107,
+          "mae": 0.043
+        },
+        "rh": {
+          "rmse": 0.121,
+          "mae": 0.059
+        }
+      }
+    },
+    {
+      "id": "informer",
+      "name": "Informer",
+      "paperLabel": "IF",
+      "family": "Transformer",
+      "values": {
+        "height": {
+          "rmse": 2.915,
+          "mae": 1.773
+        },
+        "agb": {
+          "rmse": 1.266,
+          "mae": 0.654
+        },
+        "soil": {
+          "rmse": 1.803,
+          "mae": 1.196
+        },
+        "lai": {
+          "rmse": 0.461,
+          "mae": 0.25
+        },
+        "gpp": {
+          "rmse": 0.234,
+          "mae": 0.094
+        },
+        "npp": {
+          "rmse": 0.116,
+          "mae": 0.045
+        },
+        "rh": {
+          "rmse": 0.124,
+          "mae": 0.063
+        }
+      }
+    },
+    {
+      "id": "dlinear",
+      "name": "DLinear",
+      "paperLabel": "DL",
+      "family": "Linear",
+      "values": {
+        "height": {
+          "rmse": 5.731,
+          "mae": 4.124
+        },
+        "agb": {
+          "rmse": 3.191,
+          "mae": 2.284
+        },
+        "soil": {
+          "rmse": 4.371,
+          "mae": 3.383
+        },
+        "lai": {
+          "rmse": 1.119,
+          "mae": 0.814
+        },
+        "gpp": {
+          "rmse": 0.578,
+          "mae": 0.389
+        },
+        "npp": {
+          "rmse": 0.289,
+          "mae": 0.193
+        },
+        "rh": {
+          "rmse": 0.268,
+          "mae": 0.186
+        }
+      }
+    },
+    {
+      "id": "crossformer",
+      "name": "Crossformer",
+      "paperLabel": "CF",
+      "family": "Transformer",
+      "values": {
+        "height": {
+          "rmse": 2.91,
+          "mae": 1.563
+        },
+        "agb": {
+          "rmse": 1.218,
+          "mae": 0.614
+        },
+        "soil": {
+          "rmse": 1.144,
+          "mae": 0.637
+        },
+        "lai": {
+          "rmse": 0.506,
+          "mae": 0.298
+        },
+        "gpp": {
+          "rmse": 0.235,
+          "mae": 0.114
+        },
+        "npp": {
+          "rmse": 0.117,
+          "mae": 0.056
+        },
+        "rh": {
+          "rmse": 0.131,
+          "mae": 0.065
+        }
+      }
+    },
+    {
+      "id": "timexer",
+      "name": "TimeXer",
+      "paperLabel": "TX",
+      "family": "Transformer",
+      "values": {
+        "height": {
+          "rmse": 3.879,
+          "mae": 2.301
+        },
+        "agb": {
+          "rmse": 1.583,
+          "mae": 1.046
+        },
+        "soil": {
+          "rmse": 1.77,
+          "mae": 1.317
+        },
+        "lai": {
+          "rmse": 1.127,
+          "mae": 0.701
+        },
+        "gpp": {
+          "rmse": 0.972,
+          "mae": 0.477
+        },
+        "npp": {
+          "rmse": 0.581,
+          "mae": 0.237
+        },
+        "rh": {
+          "rmse": 0.512,
+          "mae": 0.284
+        }
+      }
+    }
+  ]
+}
