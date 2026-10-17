@@ -15,6 +15,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="digital-earth.css">
+  <link rel="stylesheet" href="film-embed.css">
   <script src="app.js" type="module"></script>
 </head>
 <body>
@@ -48,7 +49,7 @@
           <span class="emulator-arrow" aria-hidden="true">→</span>
           <span class="emulator-state">Next forest<small>state</small></span>
         </figure>
-        <div class="hero-actions"><a class="button button-dark" href="#explore">Explore the data <svg class="icon"><use href="#icon-arrow"/></svg></a><a class="text-link" href="https://huggingface.co/datasets/zhwang1/CarbonGlobe" target="_blank" rel="noopener">Get the dataset <svg class="icon"><use href="#icon-external"/></svg></a></div>
+        <div class="hero-actions"><a class="button button-dark" href="#film">Watch the film <svg class="icon"><use href="#icon-arrow"/></svg></a><a class="text-link" href="https://huggingface.co/datasets/zhwang1/CarbonGlobe" target="_blank" rel="noopener">Get the dataset <svg class="icon"><use href="#icon-external"/></svg></a></div>
       </div>
       <div class="globe-scene">
         <div class="globe-viewport">
@@ -78,6 +79,10 @@
     </section>
     <section class="metrics" aria-label="Dataset at a glance">
       <div><strong>54,152<span>↗</span></strong><span>Global simulation sites</span></div><div><strong>40<span>yrs</span></strong><span>Long-horizon forecasting</span></div><div><strong>136</strong><span>Environmental input features</span></div><div><strong>7</strong><span>Ecosystem target variables</span></div>
+    </section>
+    <section id="film" class="home-film" aria-labelledby="home-film-heading">
+      <div class="home-film-heading"><div><span class="eyebrow">FROM FORESTS TO AI</span><h2 id="home-film-heading">One forest.<br><span class="serif">A planetary possibility.</span></h2></div><a class="text-link" href="film.html">Explore the film <span aria-hidden="true">↗</span></a></div>
+      <figure><video controls playsinline preload="metadata" poster="assets/film/poster.jpg?v=global-48" width="1280" height="720" aria-label="CarbonGlobe: forest growth, global simulation data, and a conceptual AI ecosystem emulator" aria-describedby="home-film-caption"><source src="assets/film/carbon-globe-emulation.mp4?v=global-48" type="video/mp4">Your browser cannot play this video. <a href="assets/film/carbon-globe-emulation.mp4?v=global-48" download>Download the MP4</a>.</video><figcaption id="home-film-caption"><p>48 seconds, from forest dynamics to AI emulation. Real ED references; illustrated trees and network. Future-scenario forecasts are a research direction.</p><a href="assets/film/provenance.json?v=global-48">Source details ↗</a></figcaption></figure>
     </section>
     <section id="dataset" class="section dataset-section">
       <div class="section-heading"><span class="eyebrow"><span class="section-number">01</span> THE DATASET</span><span class="small-note">GROUNDED IN ECOLOGY. PREPARED FOR AI.</span></div>

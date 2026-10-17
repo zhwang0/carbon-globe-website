@@ -21,6 +21,7 @@ Open `http://localhost:8000`. Use an HTTP server rather than opening `index.html
 - `index.html`, `styles.css`, `app.js`, `globe.js`: responsive website, interactive globe, simulation explorer, benchmark comparison, and citation tools.
 - `assets/data/carbon-globe.json`: compact export from the original ED simulation arrays. See [data provenance](DATA_NOTES.md).
 - `assets/data/globe-surface.json`: full 0.5-degree globe grid with original values, bounded land-only display interpolation, and an explicit provenance mask.
+- `assets/data/film-growth.json`: 3,373 original sites with 41 December states for initial age 1, plus three example cells at initial ages 1, 10, and 50 and annual forcing summaries; approximately 0.83 MB.
 - `assets/data/ne_50m_land.geojson`: pinned public-domain Natural Earth polygons used to classify land independently of carbon values; source and checksum are recorded in the surface metadata.
 - `assets/textures/earth-terrain.webp`: local 4096 × 2048 Natural Earth I shaded-relief background. Its geographic colors supply context, not ED values.
 - `assets/textures/earth-terrain.attribution.json`, `ATTRIBUTION.txt`: terrain source, version, geographic extent, preparation details, and checksums.
@@ -31,11 +32,12 @@ Open `http://localhost:8000`. Use an HTTP server rather than opening `index.html
 - `assets/fonts/`: locally hosted Manrope and DM Mono fonts with their SIL Open Font License files.
 - `scripts/export_data.py`: regenerate the visualization export from locally available original datasets. NumPy is needed for regeneration, not for serving the website.
 - `scripts/export_globe_surface.py`: regenerate the full globe surface and validate the bounded interpolation against original ED cells and independent land geometry.
+- `scripts/export_film_data.py`: regenerate the film's original global trajectories and age-group profiles using read-only NumPy memory maps.
 - `scripts/prepare_terrain.py`: recreate the geographic texture from the official Natural Earth raster; requires Pillow only for regeneration.
 - `scripts/prepare_land_mask.py`: regenerate the display coastline from the bundled polygons using Pillow, without downloading new sources.
 - `scripts/validate_site.py`: check local page links and visualization asset integrity with Python's standard library.
 - `film.html`, `film.css`, `film.js`: separate cinematic concept preview with native video playback and progressive scroll reveals.
-- `assets/film/`: a 20-second silent H.264 film, original rendered chapter images, and machine-readable provenance.
+- `assets/film/`: a 48-second silent H.264 film, original rendered chapter images, and machine-readable provenance.
 - `scripts/render_film.py`, `render_film.html`, `render_film_scene.js`: deterministic Three.js frame rendering and video encoding; requires Playwright with Chromium, Pillow, and imageio-ffmpeg only for regeneration.
 - `.github/workflows/pages.yml`: deploy the static website to GitHub Pages.
 
@@ -51,11 +53,17 @@ Do not add the raw `sources/` directory or development `.tools/` directory to th
 
 To regenerate the extracts in a standalone checkout, run `python scripts/export_data.py --source /path/to/original/datasets` and `python scripts/export_globe_surface.py --source /path/to/original/datasets` in an environment with NumPy installed. The surface exporter uses the included Natural Earth source; it downloads the pinned version only when the file is missing. Run `python scripts/validate_site.py` to check the static package before publishing.
 
+For the film data, run `python scripts/export_film_data.py --source /path/to/original/datasets`, then `python scripts/render_film.py` to recreate the MP4 and chapter images. Add `--stills-only` to render chapter images without encoding video. The renderer starts and stops its own local HTTP server. Regeneration needs the original dataset; serving and standard-library validation do not. Validation checks all film coordinates against the separate full-grid export, overlapping Congo trajectories against the explorer data, and fingerprints of the source-verified numeric payloads. Deliberate scientific-data changes require fresh source verification before updating those fingerprints.
+
 To regenerate the terrain with Pillow installed, run `python scripts/prepare_terrain.py --cache-dir ../carbonglobe-terrain-cache`, then `python scripts/prepare_land_mask.py` for its display coastline. The approximately 41 MB raster source download stays in that separate cache; only the compact textures and provenance files belong in the website. Validation uses Python's standard library and checks image dimensions, hashes, geographic metadata, scientific exports, and local links.
 
 ## Scientific interpretation
 
-The separate motion concept uses the Congo Basin cell at 0.75°S, 22.75°E (source index 42864), initial forest age 1. Its height and biomass values come from the existing 41-state December trajectory. Original procedural tree geometry scales with canopy height; foliage opacity follows LAI. Tree positions and branches are illustrations, not measured structures or individual-tree predictions. The neural network is conceptual. The final curve shows the ED reference, not an emulator prediction. Values between annual states are interpolated only for motion. Run `python scripts/render_film.py` to recreate the MP4 and chapter images, or add `--stills-only` to render images without video encoding. This starts and stops its own local HTTP server. No generative video service, external footage, or reference-site assets are used.
+The 48-second motion concept progresses from a Congo Basin forest illustration through different initial-age groups, global growth, an Earth-to-emulator workflow, and conditional forecasting as a research direction. The Congo cell is at 0.75°S, 22.75°E (source index 42864). Age groups use separate ED simulations initialized at ages 1, 10, and 50; they do not reconstruct detailed ED cohorts or measured individual trees. Procedural tree height follows canopy height, and foliage opacity follows the Congo December LAI. Tree positions and branches remain illustrations.
+
+Global growth uses 3,373 original cells, sampled every fourth row and column of the 0.5-degree grid, at initial age 1. Each cell retains all 41 December states spanning 40 transitions, with no spatial interpolation or averaging. Height and AGB are quantized to 0.01 units (maximum error 0.005). The film's global height colors use a fixed 0–35 m ramp. Example curves for the Congo Basin, eastern United States, and central Finland show ED reference trajectories. Annual temperature, precipitation, and CO₂ summaries provide context from the paired input arrays; regional differences do not establish isolated climate effects. Forcing indices 1–40 label transitions, without asserting independently verified calendar dates.
+
+The neural network and future-scenario workflow are conceptual. No trained-model predictions, SSP scenarios, or numerical counterfactual forecasts are shown. Values between annual states are interpolated only for motion. No generative video service, external footage, or reference-site assets are used. The explorer's original trajectories remain unchanged.
 
 The explorer shows modeled responses to supplied environmental drivers, not direct observations or independent future climate predictions. Site trajectories are individual grid cells, not regional averages. Initial forest age is a simulation seed condition. Annual benchmark states use the December slice of the supplied targets.
 

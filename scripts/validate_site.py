@@ -248,6 +248,105 @@ for model in benchmarks["models"]:
         assert all(math.isfinite(v) and v >= 0 for v in errors.values())
         assert errors["rmse"] >= errors["mae"]
 
+# Film values were independently checked against the original read-only NumPy
+# arrays when exported. CI checks their immutable payload fingerprints and uses
+# the separately exported surface mask / Congo trajectories to verify alignment.
+# Raw-selection hashes in the metadata describe pre-quantization float32 values;
+# they cannot be recomputed from this lossy browser asset without the raw dataset.
+film_path = ROOT / "assets/data/film-growth.json"
+film = json.loads(film_path.read_text())
+film_meta = film["meta"]
+assert film_path.stat().st_size < 3_000_000
+assert film_meta["schemaVersion"] == 1
+assert film_meta["years"] == list(range(41)), "Film state years must include initial year 0"
+assert film_meta["initialAges"] == [1, 10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 350, 400, 450, 500]
+assert film_meta["profileInitialAges"] == [1, 10, 50] and film_meta["globalInitialAge"] == 1
+assert film_meta["encoding"] == "base64 little-endian uint16"
+assert (film_meta["scale"], film_meta["offset"], film_meta["nodata"]) == (0.01, 0, 65535)
+assert film_meta["order"] == "site-major then year; index = siteIndex * 41 + simulationYear"
+assert film_meta["siteColumns"] == ["lat", "lon", "sourceIndex"]
+assert film_meta["globalShape"] == [3373, 41] and film_meta["sampleCount"] == 3373
+assert film_meta["sourceCommit"] == data["meta"]["sourceCommit"]
+assert film_meta["verifiedDatasetNumbers"] == {
+    "sites": 54152, "initialAges": 15, "siteAgeSequences": 812280,
+    "rolloutYears": 40, "inputFeatures": 136, "targetVariables": 7, "benchmarkModels": 8,
+}
+assert len(film_meta["benchmarkModels"]) == len(benchmarks["models"]) == 8
+expected_film_sites = []
+for source_index, cell_index in enumerate(original_indexes):
+    row, col = divmod(cell_index, 720)
+    if row % 4 == 0 and col % 4 == 0:
+        expected_film_sites.append([89.75 - row * 0.5, -179.75 + col * 0.5, source_index])
+assert film["global"]["sites"] == expected_film_sites, "Film coordinates/source indices disagree with original surface cells"
+assert len(expected_film_sites) == 3373
+film_field_hashes = {
+    "height": "a8c0ad30a5146a8ae6eb59194414580a5e6b58db247c6e6fe1908bf3a2229e94",
+    "agb": "5e1bfc5edf5c398072f037c38c731e7b20e52189bf9e88bc96d805be047063a6",
+}
+for variable, maximum in (("height", 100), ("agb", 100)):
+    payload = base64.b64decode(film["global"][variable], validate=True)
+    assert len(payload) == 3373 * 41 * 2, f"Invalid film {variable} length"
+    assert hashlib.sha256(payload).hexdigest() == film_field_hashes[variable], f"Film {variable} payload changed or years reordered"
+    values = array("H")
+    values.frombytes(payload)
+    if sys.byteorder != "little":
+        values.byteswap()
+    assert all(v != film_meta["nodata"] and 0 <= v * 0.01 < maximum for v in values)
+    raw_range = film_meta["globalRawRanges"][variable]
+    assert abs(min(values) * 0.01 - raw_range["min"]) <= 0.0050001
+    assert abs(max(values) * 0.01 - raw_range["max"]) <= 0.0050001
+    assert 0 <= film_meta["maximumAbsoluteQuantizationError"][variable] <= 0.0050001
+
+assert [s["id"] for s in film["profiles"]] == ["congo", "eastern-us", "boreal"]
+assert film_meta["profileSourceIndices"] == [s["sourceIndex"] for s in film["profiles"]]
+independent_sites = {site["id"]: site for site in data["sites"]}
+film_overlap_values = 0
+for site in film["profiles"]:
+    source_index = site["sourceIndex"]
+    assert isinstance(source_index, int) and 0 <= source_index < 54152
+    assert original_indexes[source_index] == grid_index(site["lat"], site["lon"])
+    assert set(site["trajectories"]) == {"1", "10", "50"}
+    for age, outputs in site["trajectories"].items():
+        assert set(outputs) == {"height", "agb", "lai"}
+        for variable, series in outputs.items():
+            assert len(series) == 41
+            upper_bound = 30 if variable == "lai" else 100
+            assert all(math.isfinite(v) and -0.01 <= v < upper_bound for v in series)
+            if site["id"] in independent_sites:
+                independent = independent_sites[site["id"]]
+                assert (source_index, site["lat"], site["lon"]) == (independent["sourceIndex"], independent["lat"], independent["lon"])
+                expected = independent["trajectories"][age][variable]
+                assert all(abs(a - b) <= 1e-6 for a, b in zip(series, expected)), f"Film {site['id']} {age}/{variable} differs from independent trajectory"
+                film_overlap_values += len(series)
+    climate = site["climate"]
+    assert set(climate) == {"years", "temperatureC", "precipitationMm", "co2Ppm"}
+    assert climate["years"] == list(range(1, 41)), "Forcing years describe 40 transitions, not the initial state"
+    for variable, lower, upper in (("temperatureC", -80, 60), ("precipitationMm", 0, 10000), ("co2Ppm", 200, 600)):
+        assert len(climate[variable]) == 40
+        assert all(math.isfinite(v) and lower <= v <= upper for v in climate[variable])
+assert film_overlap_values == 369
+profiles_payload = json.dumps(film["profiles"], sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+assert hashlib.sha256(profiles_payload).hexdigest() == "af53a0e8f9de5c115fdb4721b7540a61418b39bf289b3959600ca5b1c88fb823", "Film profiles/forcing summaries differ from source-verified export"
+source_descriptions = {item["file"]: item for item in film_meta["sourceFiles"]}
+assert set(source_descriptions) == {"data_global/glob_Y001.npy", "data_global/glob_Y010.npy", "data_global/glob_Y050.npy", "data_global/glob_X_fea.npy"}
+for filename, item in source_descriptions.items():
+    assert item["dtype"] == "float32"
+    assert item["shape"] == ([54152, 40, 12, 136] if "glob_X" in filename else [54152, 41, 12, 7])
+    assert item["bytes"] == math.prod(item["shape"]) * 4 + 128
+assert len(film_meta["selectedValueHashes"]) == 5
+for item in film_meta["selectedValueHashes"]:
+    assert item["file"] in source_descriptions and re.fullmatch(r"[0-9a-f]{64}", item["sha256"])
+assert len(film_meta["supportingFileHashes"]) == 3
+assert all(re.fullmatch(r"[0-9a-f]{64}", digest) for digest in film_meta["supportingFileHashes"].values())
+film_provenance_path = ROOT / "assets/film/provenance.json"
+if film_provenance_path.is_file():
+    film_provenance = json.loads(film_provenance_path.read_text())
+    if film_provenance.get("source") == "../data/film-growth.json":
+        assert film_provenance["sourceSha256"] == hashlib.sha256(film_path.read_bytes()).hexdigest()
+        if "profileSourceSha256" in film_provenance:
+            assert film_provenance["profileSourceSha256"] == hashlib.sha256((ROOT / "assets/data/carbon-globe.json").read_bytes()).hexdigest()
+print(f"Film: 3,373 original sites x 41 states x 2 fields; 3 profiles, 369 independent overlap values, coordinate ordering, physical bounds, and payload fingerprints verified.")
+
 assert (ROOT / "assets/paper.pdf").read_bytes().startswith(b"%PDF-")
 assert (ROOT / "assets/social.png").read_bytes().startswith(b"\x89PNG")
 for font in (ROOT / "assets/fonts").glob("*.woff2"):

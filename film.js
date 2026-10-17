@@ -1,4 +1,17 @@
 // Progressive enhancement: the document is fully visible without JavaScript.
+const film = document.querySelector('.film-player video');
+const durationLabel = document.querySelector('#film-duration');
+function showFilmDuration() {
+  if (!film || !durationLabel || !Number.isFinite(film.duration)) return;
+  const totalSeconds = Math.round(film.duration);
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+  durationLabel.textContent = `${minutes}:${seconds} / `;
+  durationLabel.hidden = false;
+}
+film?.addEventListener('loadedmetadata', showFilmDuration);
+showFilmDuration();
+
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 const sections = [...document.querySelectorAll('[data-reveal]')];
 let revealObserver;
