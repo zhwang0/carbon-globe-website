@@ -1,5 +1,14 @@
 /* The research path from ecosystem simulations to a digital Earth. */
 .hero-description{max-width:420px}
+.hero-emulator{display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1.15fr) 18px minmax(0,1fr);align-items:center;gap:10px;max-width:385px;margin:22px 0 0;padding-top:17px;border-top:1px solid var(--line)}
+.emulator-state{font-size:12px;line-height:1.6}
+.emulator-state:last-child{text-align:right}
+.emulator-state small{display:block;font-size:11px;color:var(--muted)}
+.emulator-arrow{font-size:19px;color:#72866c;text-align:center}
+.emulator-model{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--forest);font-size:11px;font-weight:650;line-height:1.5}
+.emulator-model svg{width:58px;height:32px;fill:var(--paper);stroke:currentColor;stroke-width:1.2;stroke-linecap:round}
+.emulator-model svg path{opacity:.5}
+.emulator-model svg circle{fill:#e5efcb}
 .digital-earth-section{padding-top:72px;padding-bottom:64px}
 .digital-earth-section::after{opacity:.6}
 .digital-earth-section>*{position:relative;z-index:1}
@@ -45,6 +54,7 @@
  .earth-directions h3{font-size:21px}
 }
 @media(max-width:950px){
+ .hero-emulator{max-width:310px;gap:7px;grid-template-columns:minmax(0,1fr) 12px minmax(0,1.15fr) 12px minmax(0,1fr)}
  .digital-earth-section .small-note{display:none}
  .earth-intro{gap:32px;grid-template-columns:1fr 1.1fr}
  .earth-intro h2{font-size:39px}
@@ -66,6 +76,7 @@
  .earth-research-label{font-size:8px}
 }
 @media(max-width:760px){
+ .hero-emulator{max-width:360px}
  .digital-earth-section{padding-top:49px;padding-bottom:44px}
  .digital-earth-section .section-heading{margin-bottom:29px}
  .earth-intro{grid-template-columns:1fr;gap:25px}
@@ -95,6 +106,9 @@
  .earth-invitation .button{font-size:12px;min-height:48px;white-space:normal}
 }
 @media(max-width:380px){
+ .hero-emulator{gap:5px}
+ .emulator-state,.emulator-model{font-size:11px}
+ .emulator-state small{font-size:10px}
  .earth-intro h2{font-size:36px}
  .earth-path>li{grid-template-columns:49px minmax(0,1fr);gap:16px}
  .earth-stage-art{width:47px;height:43px}
