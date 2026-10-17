@@ -5,6 +5,12 @@ Ecosystem Demography (ED) simulations supplied in `sources/datasets/`. It contai
 reference simulation outputs, rather than observations or trained emulator
 predictions. The exporter reads the source arrays with read-only memory maps.
 
+CarbonGlobe pairs these process-based reference simulations with environmental
+drivers and benchmarks to train and evaluate AI ecosystem emulators. The
+website's digital Earth and ecosystem digital-twin framing describes that
+research foundation and its potential for Earth-system modeling; the globe
+visualizes dataset extracts, rather than operating a live digital twin.
+
 ## What the website shows
 
 - **Globe:** aboveground biomass or canopy height at simulation year 40, with
@@ -29,6 +35,13 @@ lengths are an exaggerated linear display scale, not tree heights relative to Ea
 Oceans are blue in every mode. The original point JSON
 retains values beyond the color scale and negative outputs subject to rounding.
 The explorer's original trajectories are unchanged by the globe display modes.
+
+In Smooth surface, the opacity slider blends the data overlay with geographic
+terrain: **0% shows terrain only; 100% gives the strongest data colors**. Lower
+opacity changes how the legend colors appear against the background. At 100%,
+colors are closest to the standalone ramp, although lighting and edge feathering
+still affect appearance. Sun lighting and the atmospheric glow are cosmetic.
+The opacity setting does not modify values, interpolation, or scientific coverage.
 
 The paper describes a historical 1981–2021 period. The interactive chart uses
 simulation year indices to preserve the meaning of the 41 stored target records
@@ -58,9 +71,11 @@ its donors' range. Unsupported land retains no carbon value; values are not proj
 across large desert gaps or oceans.
 
 The full source contains 586 original cells whose centers fall outside the
-Natural Earth land mask. These reference values remain class 2, but cannot seed
-interpolation. This accommodates differences between the simulation grid and
-the independent coastline instead of discarding original data.
+Natural Earth land mask. These reference values remain class 2 in the full
+surface export, but cannot seed interpolation. Smooth mode clips displayed
+data colors to the separate cartographic coastline described below. Original
+dots and columns retain their original sampled coastal points. No source values
+are discarded from either data export.
 
 The two fields are base64-encoded little-endian unsigned 16-bit arrays. Decode
 physical values as `encoded * 0.01 + 0`; `65535` marks no data. The separate
@@ -80,7 +95,7 @@ The unchanged `ne_50m_land.geojson` is pinned to commit
 `e874b27a51d146452be360cafb3cc50c86001074a67d534113e6534682f9826b`.
 See [the included attribution](assets/data/NATURAL_EARTH_ATTRIBUTION.txt).
 
-## Geographic terrain background
+## Geographic terrain and coastline
 
 `assets/textures/earth-terrain.webp` is a 4096 × 2048, north-up equirectangular
 derivative of [Natural Earth I with Shaded Relief](https://www.naturalearthdata.com/downloads/50m-raster-data/50m-natural-earth-1/),
@@ -101,9 +116,9 @@ sandy desert colors, and shaded mountain relief. These colors are not ED carbon
 values, categorical land-cover predictions, current snow conditions, or current
 weather. They do not replace missing values in either JSON export.
 
-- **Smooth surface:** terrain appears only on unsupported land (mask class 1).
-  Original and locally interpolated cells retain their quantitative display;
-  mask class 0 stays blue.
+- **Smooth surface:** the data overlay is blended over geographic terrain.
+  Original and locally interpolated values determine the overlay colors;
+  unsupported land has no data overlay. The opacity control sets the mixture.
 - **3D columns:** columns still use the same 13,546 original sampled cells.
   Original source locations have a dark green underlay; unsupported and
   interpolated land locations show terrain underneath. The interpolated carbon
@@ -113,9 +128,22 @@ weather. They do not replace missing values in either JSON export.
 
 Many deserts and mountains already contain original ED values, sometimes near
 zero. Those values remain data, rather than being treated as missing based on
-their magnitude. The separate no-data mask determines where smooth mode shows
-terrain. The 586 original cells outside the independent vector coastline remain
-preserved as reference data.
+their magnitude. The source mask determines where a data overlay is supported.
+
+The separate `assets/textures/earth-land-mask.png` supplies a 4096 × 2048
+antialiased coastline from the same pinned Natural Earth 1:50m polygons. It is
+rasterized at twice the display dimensions, then reduced with periodic
+longitude handling. White means land, black means ocean, and intermediate edge
+values soften the cartographic boundary; they are not scientific confidence
+values. [Mask metadata](assets/textures/earth-land-mask.attribution.json) and
+[attribution](assets/textures/LAND_MASK_ATTRIBUTION.txt) document the source and
+transformation. This display mask does not redefine the 0.5-degree source grid.
+
+In Smooth surface, the renderer clips colors at this geographic coastline and
+feathers data edges inward within supported cells. This softens visible pixel
+edges without extending the scientific coverage or creating additional values.
+The geographic coastline controls the land/ocean appearance, while the original
+four-class mask continues to describe the scientific data. Oceans remain blue.
 
 If the terrain image cannot load, geographic areas use a flat sand color and an
 explanatory note is shown. A browser without WebGL 2 uses original dots over a
@@ -221,10 +249,13 @@ the source archive cache outside the deployable website directory:
 
 ```bash
 python scripts/prepare_terrain.py --cache-dir ../carbonglobe-terrain-cache
+python scripts/prepare_land_mask.py
 ```
 
 The script downloads the approximately 41 MB source archive when absent,
 verifies its checksum, and recreates the local texture and attribution files.
+The land-mask script needs Pillow and the bundled polygon source; it performs
+no download and writes only the display mask and its provenance files.
 
 Upstream code was inspected at commit
 `a99036367b76a2a7c738bc0e8530a5e57415c2dc`. The resulting JSON is approximately

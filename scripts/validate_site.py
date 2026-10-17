@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 import re
 import sys
+import zlib
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -200,6 +201,43 @@ assert (ROOT / terrain_metadata["processing"]["script"]).is_file()
 assert (terrain_dir / "ATTRIBUTION.txt").is_file()
 assert "terrain-background" in pages[(ROOT / "data-notes.html").resolve()].ids
 
+
+def grayscale_png_dimensions(content):
+    """Validate a PNG's grayscale IHDR using only the standard library."""
+    assert len(content) >= 33 and content[:8] == b"\x89PNG\r\n\x1a\n", "Invalid PNG signature"
+    assert int.from_bytes(content[8:12], "big") == 13 and content[12:16] == b"IHDR", "Invalid PNG IHDR"
+    assert zlib.crc32(content[12:29]) & 0xffffffff == int.from_bytes(content[29:33], "big"), "Invalid PNG header checksum"
+    assert content[24:29] == bytes([8, 0, 0, 0, 0]), "Display land mask must be 8-bit grayscale, non-interlaced PNG"
+    return int.from_bytes(content[16:20], "big"), int.from_bytes(content[20:24], "big")
+
+
+display_mask_meta = json.loads((terrain_dir / "earth-land-mask.attribution.json").read_text())
+display_mask_output = display_mask_meta["output"]
+assert display_mask_output["filename"] == "earth-land-mask.png"
+display_mask_content = (terrain_dir / display_mask_output["filename"]).read_bytes()
+assert grayscale_png_dimensions(display_mask_content) == (display_mask_output["width"], display_mask_output["height"]) == (4096, 2048)
+assert len(display_mask_content) == display_mask_output["bytes"] < 500_000
+assert hashlib.sha256(display_mask_content).hexdigest() == display_mask_output["sha256"]
+assert display_mask_meta["license"] == "Public domain"
+assert display_mask_meta["licenseUrl"] == terrain_metadata["licenseUrl"]
+assert display_mask_meta["source"]["file"] == "assets/data/ne_50m_land.geojson"
+assert display_mask_meta["source"]["sha256"] == meta["land"]["sha256"]
+assert display_mask_meta["source"]["commit"] == meta["land"]["commit"]
+assert display_mask_meta["source"]["url"] == meta["land"]["source"]
+assert display_mask_meta["source"]["scale"] == "1:50m"
+for key in ("projection", "datum", "bounds", "pixelSampling"):
+    assert display_mask_meta["georeferencing"][key] == terrain_metadata["georeferencing"][key], f"Terrain/mask registration mismatch: {key}"
+encoding = display_mask_meta["encoding"]
+assert (encoding["format"], encoding["mode"], encoding["bitsPerPixel"]) == ("PNG", "L", 8)
+assert (encoding["ocean"], encoding["land"]) == (0, 255)
+assert display_mask_meta["processing"]["newGeometry"] is False
+assert display_mask_meta["processing"]["supersample"] == 2
+assert display_mask_meta["processing"]["rasterDimensions"] == [8192, 4096]
+assert (ROOT / display_mask_meta["processing"]["script"]).is_file()
+assert (terrain_dir / "LAND_MASK_ATTRIBUTION.txt").is_file()
+assert sum(display_mask_output[key] for key in ("landPixels", "oceanPixels", "edgePixels")) == 4096 * 2048
+assert all(display_mask_output[key] > 0 for key in ("landPixels", "oceanPixels", "edgePixels"))
+
 benchmarks = json.loads((ROOT / "assets/benchmarks.json").read_text())
 assert len(benchmarks["models"]) == 8
 assert len({model["id"] for model in benchmarks["models"]}) == 8
@@ -219,3 +257,4 @@ for forbidden in ("sources", ".tools", ".env", "node_modules"):
 print(f"Validated {len(pages)} pages, {references} local references, {len(data['map']['points']):,} map points, all trajectories, and 112 benchmark values.")
 print(f"Surface: {cell_count:,} cells; {counts[2]:,} originals, {counts[3]:,} interpolated, {counts[1]:,} unsupported land, {counts[0]:,} ocean. Decoding, source cross-checks, nodata, and land-source checksum passed.")
 print(f"Terrain: 4096 x 2048 WebP, {len(terrain_content):,} bytes; source provenance, world-file coordinates, image headers, and checksum verified.")
+print(f"Display coastline: 4096 x 2048 grayscale PNG, {len(display_mask_content):,} bytes; source polygon hash, image header, output checksum, and terrain registration verified.")

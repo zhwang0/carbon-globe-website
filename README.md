@@ -2,6 +2,8 @@
 
 A dedicated research website for **CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems** (NeurIPS 2025).
 
+**Build the forest layer of a digital Earth.** CarbonGlobe provides ML-ready data and benchmarks to train and evaluate AI ecosystem emulators across 40 annual forecast steps. The site presents a research foundation for ecosystem digital twins and future Earth-system modeling, alongside interactive views of the reference simulations.
+
 The original model implementations remain at [zhwang0/carbon-globe](https://github.com/zhwang0/carbon-globe). This repository contains only the website and compact presentation assets. IEEE Big Data Cup SSP126/SSP585 materials are outside its scope.
 
 ## Local preview
@@ -22,6 +24,7 @@ Open `http://localhost:8000`. Use an HTTP server rather than opening `index.html
 - `assets/data/ne_50m_land.geojson`: pinned public-domain Natural Earth polygons used to classify land independently of carbon values; source and checksum are recorded in the surface metadata.
 - `assets/textures/earth-terrain.webp`: local 4096 × 2048 Natural Earth I shaded-relief background. Its geographic colors supply context, not ED values.
 - `assets/textures/earth-terrain.attribution.json`, `ATTRIBUTION.txt`: terrain source, version, geographic extent, preparation details, and checksums.
+- `assets/textures/earth-land-mask.png`: antialiased 4096 × 2048 display coastline from the same Natural Earth polygons, with separate metadata and attribution; it does not change the scientific support mask.
 - `assets/vendor/`: locally hosted browser rendering code and its license; no package installation is needed to view the website.
 - `assets/benchmarks.json`: all RMSE and MAE values from the published paper's main Table 1.
 - `assets/paper.pdf`, `assets/citation.bib`: the verified published paper and official proceedings citation. The local source folder's template PDF was not used.
@@ -29,6 +32,7 @@ Open `http://localhost:8000`. Use an HTTP server rather than opening `index.html
 - `scripts/export_data.py`: regenerate the visualization export from locally available original datasets. NumPy is needed for regeneration, not for serving the website.
 - `scripts/export_globe_surface.py`: regenerate the full globe surface and validate the bounded interpolation against original ED cells and independent land geometry.
 - `scripts/prepare_terrain.py`: recreate the geographic texture from the official Natural Earth raster; requires Pillow only for regeneration.
+- `scripts/prepare_land_mask.py`: regenerate the display coastline from the bundled polygons using Pillow, without downloading new sources.
 - `scripts/validate_site.py`: check local page links and visualization asset integrity with Python's standard library.
 - `.github/workflows/pages.yml`: deploy the static website to GitHub Pages.
 
@@ -44,13 +48,15 @@ Do not add the raw `sources/` directory or development `.tools/` directory to th
 
 To regenerate the extracts in a standalone checkout, run `python scripts/export_data.py --source /path/to/original/datasets` and `python scripts/export_globe_surface.py --source /path/to/original/datasets` in an environment with NumPy installed. The surface exporter uses the included Natural Earth source; it downloads the pinned version only when the file is missing. Run `python scripts/validate_site.py` to check the static package before publishing.
 
-To regenerate the terrain with Pillow installed, run `python scripts/prepare_terrain.py --cache-dir ../carbonglobe-terrain-cache`. The approximately 41 MB source download stays in that separate cache; only the compact texture and provenance files belong in the website. Validation uses Python's standard library and checks WebP dimensions, hashes, geographic metadata, scientific exports, and local links.
+To regenerate the terrain with Pillow installed, run `python scripts/prepare_terrain.py --cache-dir ../carbonglobe-terrain-cache`, then `python scripts/prepare_land_mask.py` for its display coastline. The approximately 41 MB raster source download stays in that separate cache; only the compact textures and provenance files belong in the website. Validation uses Python's standard library and checks image dimensions, hashes, geographic metadata, scientific exports, and local links.
 
 ## Scientific interpretation
 
 The explorer shows modeled responses to supplied environmental drivers, not direct observations or independent future climate predictions. Site trajectories are individual grid cells, not regional averages. Initial forest age is a simulation seed condition. Annual benchmark states use the December slice of the supplied targets.
 
 The globe compares three display modes for AGB or canopy height at initial age 10, year 40. **Smooth surface** uses all 54,152 original ED sites plus 1,401 conservatively interpolated land gaps; 30,731 unsupported land cells retain no ED value and show geographic terrain imagery. Interpolation requires four surrounding original donors within 2 angular degrees and land-only connecting paths. It does not recursively fill large gaps. The surface quantizes values to 0.01 units, with maximum error 0.005, and identifies every cell as ocean, unsupported land, original, or interpolated. All original cells remain present, including 586 outside the independent coastline mask.
+
+Smooth mode blends data colors over terrain with a 0–100% opacity control: 0% shows terrain only; 100% is closest to the standalone color ramp. Lighting, atmospheric glow, and inward edge feathering are display effects. The high-resolution cartographic mask clips the smooth overlay to the coastline; it neither extends scientific coverage nor removes coastal source values from the exports. Original dots and columns retain their sampled coastal points.
 
 **3D columns** and **Original dots** use the same 13,546 original sampled cells, without adding interpolated values. Columns use an exaggerated linear display scale over a dark green source-data underlay, with terrain on unsupported and interpolated land beneath them. Original dots sit over geographic land imagery. Colors and column heights cap at 12 kg C m⁻² for AGB or 40 m for canopy height; these caps do not alter the downloaded physical values. Oceans are fixed blue in every mode. The explorer's raw trajectories remain unchanged.
 

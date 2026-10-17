@@ -20,6 +20,7 @@ function fallback(canvas) {
   });
   $('#globe-variable').value = 'agb'; $('#globe-variable').disabled = true;
   $('#globe-elevation-control').hidden = true; $('#globe-gap-key').hidden = true;
+  $('#globe-opacity-control').hidden = true;
   $('#globe-mode-note').textContent = 'Original dots are available in this browser. Smooth, 3D, and terrain views need WebGL 2.';
   canvas.dataset.renderer = 'canvas2d'; canvas.dataset.ocean = 'blue';
   return {...createPointGlobe(canvas), setSurface() {}, surfaceError() {}};
@@ -56,9 +57,13 @@ export function createGlobe(canvas) {
   const params = new URLSearchParams(location.search);
   let mode = ['surface', 'relief', 'points'].includes(params.get('globe')) ? params.get('globe') : 'surface';
   let variable = params.get('variable') === 'height' ? 'height' : 'agb';
+  const opacityParameter = params.get('opacity');
+  let opacity = opacityParameter !== null && /^\d{1,3}$/.test(opacityParameter)
+    ? Math.max(0, Math.min(100, Number(opacityParameter))) : 60;
   let emphasis = 50, longitude = -28 * radians, tilt = .16;
   let rawPoints = [], pointsMesh, columnsMesh, surfaceReady = false, failedSurface = false;
   let terrainReady = false, failedTerrain = false;
+  let coastlineReady = false, failedCoastline = false;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let paused = reducedMotion.matches, dragging = false, visible = true, dirty = true, lastPointer, lastFrame = 0;
 
@@ -67,6 +72,7 @@ export function createGlobe(canvas) {
   const uniforms = {
     fields: {value: empty}, classes: {value: empty}, hasSurface: {value: false},
     terrain: {value: empty}, hasTerrain: {value: false},
+    coastline: {value: empty}, hasCoastline: {value: false}, dataOpacity: {value: opacity / 100},
     variable: {value: 0}, viewMode: {value: 0}, oceanColor: {value: new THREE.Color(0x19465e)},
     lowColor: {value: ramp[0]}, midColor: {value: ramp[1]}, highColor: {value: ramp[2]},
     landColor: {value: new THREE.Color(terrainPlaceholder)}
@@ -78,33 +84,51 @@ export function createGlobe(canvas) {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: `precision highp float;
       varying vec3 localPosition; varying vec3 viewNormal;
-      uniform sampler2D fields; uniform sampler2D classes; uniform sampler2D terrain;
-      uniform bool hasSurface; uniform bool hasTerrain; uniform int variable; uniform int viewMode;
+      uniform sampler2D fields; uniform sampler2D classes; uniform sampler2D terrain; uniform sampler2D coastline;
+      uniform bool hasSurface; uniform bool hasTerrain; uniform bool hasCoastline; uniform int variable; uniform int viewMode;
+      uniform float dataOpacity;
       uniform vec3 oceanColor; uniform vec3 lowColor; uniform vec3 midColor; uniform vec3 highColor; uniform vec3 landColor;
       void main() {
         vec3 n = normalize(localPosition);
         vec2 uv = vec2(atan(n.x, n.z) / 6.28318530718 + .5, .5 - asin(clamp(n.y, -1., 1.)) / 3.14159265359);
         float kind = texture2D(classes, uv).r;
-        vec3 color = oceanColor;
-        if (hasSurface && kind > .1) {
-          // The geographic raster supplies context, never an ED value.
-          color = hasTerrain ? texture2D(terrain, uv).rgb : landColor;
-          if (viewMode != 2 && kind > .5 && (viewMode != 1 || kind < .9)) {
+        // Geographic edges are independent of the 0.5-degree simulation grid.
+        float land = hasCoastline ? texture2D(coastline, uv).r : (kind > .1 ? 1. : 0.);
+        vec3 ground = hasTerrain ? texture2D(terrain, uv).rgb : landColor;
+        if (hasSurface && viewMode != 2 && kind > .5 && (viewMode != 1 || kind < .9)) {
             vec4 data = texture2D(fields, uv);
             float value = (variable == 0 ? data.r : data.g) / max(data.b, .001);
-            color = value < .5 ? mix(lowColor, midColor, value * 2.) : mix(midColor, highColor, (value - .5) * 2.);
-            if (viewMode == 1) color = lowColor * .65;
-          }
+            vec3 dataColor = value < .5 ? mix(lowColor, midColor, value * 2.) : mix(midColor, highColor, (value - .5) * 2.);
+            // Feather only inside supported cells. No data colors extend into nodata.
+            float coverage = smoothstep(.5, 1., data.b);
+            float opacity = hasTerrain ? dataOpacity : 1.;
+            ground = viewMode == 1 ? lowColor * .65 : mix(ground, dataColor, opacity * coverage);
         }
+        vec3 color = mix(oceanColor, ground, land);
         vec3 normal = normalize(viewNormal);
-        float light = .55 + .45 * max(0., dot(normal, normalize(vec3(-.45, .6, 1.))));
+        vec3 lightDirection = normalize(vec3(-.45, .6, 1.));
+        float light = .55 + .45 * max(0., dot(normal, lightDirection));
         float rim = .78 + .22 * pow(max(normal.z, 0.), .35);
-        gl_FragColor = vec4(color * light * rim, 1.);
+        float oceanSheen = pow(max(0., dot(reflect(-lightDirection, normal), vec3(0., 0., 1.))), 48.) * .035;
+        gl_FragColor = vec4(color * light * rim + vec3(.22, .42, .58) * oceanSheen * (1. - land), 1.);
         #include <colorspace_fragment>
       }`
   });
   const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 96), surfaceMaterial);
   globe.add(sphere);
+  // A restrained atmospheric rim adds depth without obscuring the data surface.
+  const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(1.018, 96, 64), new THREE.ShaderMaterial({
+    side: THREE.BackSide, transparent: true, depthWrite: false,
+    vertexShader: `varying vec3 viewNormal;
+      void main() { viewNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `varying vec3 viewNormal;
+      void main() { float edge = pow(1. - abs(normalize(viewNormal).z), 3.);
+        gl_FragColor = vec4(.25, .55, .76, edge * .23);
+        #include <colorspace_fragment>
+      }`
+  }));
+  globe.add(atmosphere);
 
   // Subtle latitude / longitude lines, depth-tested against the globe.
   const gridPositions = [];
@@ -164,39 +188,58 @@ export function createGlobe(canvas) {
       button.disabled = failedSurface && button.dataset.globeMode === 'surface';
     });
     $('#globe-variable').value = variable;
+    const terrainOnly = mode === 'surface' && terrainReady && opacity === 0;
+    const displayOpacity = terrainReady ? opacity : 100;
+    $('#globe-opacity-control').hidden = mode !== 'surface';
+    $('#globe-opacity').disabled = !terrainReady;
+    $('#globe-opacity').value = displayOpacity;
+    $('#globe-opacity').style.setProperty('--progress', `${displayOpacity}%`);
+    $('#globe-opacity').setAttribute('aria-valuetext', `${displayOpacity}% data opacity${displayOpacity === 0 ? ', terrain only' : displayOpacity === 100 ? ', full data colors' : ', blended with terrain'}`);
+    $('#globe-opacity-value').value = `${displayOpacity}%`;
     $('#globe-elevation-control').hidden = mode !== 'relief';
     $('label[for="globe-elevation"]').textContent = variable === 'height' ? 'Height emphasis' : 'Column emphasis';
-    $('#globe-gap-key').hidden = !surfaceReady;
+    $('#globe-gap-key').hidden = !surfaceReady && !coastlineReady;
     $('#globe-gap-key').classList.toggle('terrain-unavailable', !terrainReady);
-    $('#globe-gap-label').textContent = terrainReady ? 'Terrain background' : 'Land background';
-    $('#globe-legend-title').textContent = labels[variable].toUpperCase();
+    $('#globe-gap-label').textContent = terrainReady ? (terrainOnly ? 'Natural Earth' : 'Terrain background') : 'Land background';
+    $('#globe-legend-title').textContent = terrainOnly ? 'GEOGRAPHIC TERRAIN' : labels[variable].toUpperCase();
+    $('#globe-color-ramp').hidden = terrainOnly;
+    $('.globe-legend-scale').hidden = terrainOnly;
+    $('.globe-legend small').hidden = terrainOnly;
     $('#globe-max').textContent = variable === 'height' ? '40 m' : '12+ kg C m⁻²';
     $('#globe-mode-note').textContent = mode === 'surface'
-      ? (surfaceReady ? 'Full 0.5° grid with nearby land gaps interpolated. Terrain shows through where simulation data is unavailable.' : 'Preparing the full grid and interpolated land surface…')
+      ? (surfaceReady ? (terrainOnly ? 'Terrain only. Increase data opacity to reveal the simulation layer.' : opacity === 100 || !terrainReady
+        ? 'Full data colors over a 0.5° simulation grid, with nearby land gaps interpolated.'
+        : 'Data colors blend with terrain. Set opacity to 100% for full data colors; source resolution stays 0.5°.') : 'Preparing the full grid and interpolated land surface…')
       : mode === 'relief' ? 'Original sampled cells. Column heights are exaggerated for comparison; they are not Earth-scale vegetation.'
       : 'Original 1° display sample over a geographic background, without gap filling.';
     if (failedSurface) $('#globe-mode-note').textContent += ' The smooth surface could not load; reload to try again.';
     if (failedTerrain) $('#globe-mode-note').textContent += ' Terrain imagery could not load; plain land is shown instead.';
-    $('#globe-terrain-note').hidden = !terrainReady || !surfaceReady;
-    canvas.setAttribute('aria-label', `${labels[variable]} globe, ${mode === 'surface' ? 'smooth surface with local land interpolation' : mode === 'relief' ? 'exaggerated 3D columns' : 'original sampled dots'}, midnight blue ocean${terrainReady && surfaceReady ? ' and a geographic terrain background' : ''}. Year 40, initial forest age 10 years. Drag or use arrow keys to rotate.`);
-    canvas.dataset.mode = mode; canvas.dataset.variable = variable; canvas.dataset.ocean = 'blue';
+    if (failedCoastline) $('#globe-mode-note').textContent += ' Detailed coastlines could not load; the original grid outlines are shown.';
+    $('#globe-terrain-note').hidden = !terrainReady || (!surfaceReady && !coastlineReady);
+    canvas.setAttribute('aria-label', `${labels[variable]} globe, ${mode === 'surface' ? (terrainOnly ? 'geographic terrain only' : `smooth surface with ${displayOpacity}% data opacity and local land interpolation`) : mode === 'relief' ? 'exaggerated 3D columns' : 'original sampled dots'}, midnight blue ocean${terrainReady && (surfaceReady || coastlineReady) ? ' and a geographic terrain background' : ''}. Year 40, initial forest age 10 years. Drag or use arrow keys to rotate.`);
+    canvas.dataset.mode = mode; canvas.dataset.variable = variable; canvas.dataset.ocean = 'blue'; canvas.dataset.opacity = displayOpacity;
     uniforms.variable.value = variable === 'height' ? 1 : 0;
     uniforms.viewMode.value = mode === 'points' ? 2 : mode === 'relief' ? 1 : 0;
+    uniforms.dataOpacity.value = opacity / 100;
     if (pointsMesh) pointsMesh.visible = mode === 'points' || (mode === 'surface' && !surfaceReady);
     if (columnsMesh) columnsMesh.visible = mode === 'relief';
     if (saveURL) {
       const url = new URL(location.href); url.searchParams.set('globe', mode); url.searchParams.set('variable', variable);
+      url.searchParams.set('opacity', opacity);
       history.replaceState(null, '', url);
     }
     resize(); dirty = true;
   }
   all('[data-globe-mode]').forEach(button => button.addEventListener('click', () => { mode = button.dataset.globeMode; syncUI(true); }));
   $('#globe-variable').addEventListener('change', event => { variable = event.target.value; updateDataGeometry(); syncUI(true); });
+  $('#globe-opacity').addEventListener('input', event => { opacity = Number(event.target.value); syncUI(); });
+  $('#globe-opacity').addEventListener('change', () => syncUI(true));
   $('#globe-elevation').addEventListener('input', event => {
     emphasis = Number(event.target.value); event.target.style.setProperty('--progress', `${emphasis}%`);
     event.target.setAttribute('aria-valuetext', `${emphasis}% visual height emphasis`); updateDataGeometry(); syncUI();
   });
   const toggle = $('#globe-toggle');
+  const renderedSize = new THREE.Vector2();
   function updateRotationButton() {
     toggle.setAttribute('aria-pressed', String(paused)); toggle.setAttribute('aria-label', paused ? 'Resume globe rotation' : 'Pause globe rotation');
     $('#globe-play-icon').textContent = paused ? '▶' : 'Ⅱ';
@@ -230,7 +273,9 @@ export function createGlobe(canvas) {
     const halfX = width / shortest / .814 * framing, halfY = height / shortest / .814 * framing;
     camera.left = -halfX; camera.right = halfX; camera.top = halfY; camera.bottom = -halfY; camera.updateProjectionMatrix();
     tiltGroup.position.y = rings.position.y = halfY * .04;
-    renderer.setSize(width, height, false); dirty = true;
+    renderer.getSize(renderedSize);
+    if (renderedSize.x !== width || renderedSize.y !== height) renderer.setSize(width, height, false);
+    dirty = true;
   }
   new ResizeObserver(resize).observe(canvas);
   new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; dirty = true; }).observe(canvas);
@@ -259,6 +304,15 @@ export function createGlobe(canvas) {
     terrainReady = true; canvas.dataset.terrainReady = 'true'; syncUI();
   }, undefined, () => {
     failedTerrain = true; canvas.dataset.terrainReady = 'false'; syncUI();
+  });
+  new THREE.TextureLoader().load('assets/textures/earth-land-mask.png', texture => {
+    texture.flipY = false; texture.colorSpace = THREE.NoColorSpace;
+    texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); texture.needsUpdate = true;
+    uniforms.coastline.value = texture; uniforms.hasCoastline.value = true;
+    coastlineReady = true; canvas.dataset.coastlineReady = 'true'; syncUI();
+  }, undefined, () => {
+    failedCoastline = true; canvas.dataset.coastlineReady = 'false'; syncUI();
   });
   return {
     setPoints(points) {
