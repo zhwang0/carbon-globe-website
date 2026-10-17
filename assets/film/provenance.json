@@ -1,0 +1,30 @@
+{
+  "duration": 20,
+  "width": 1280,
+  "height": 720,
+  "site": "congo",
+  "sourceIndex": 42864,
+  "age": 1,
+  "points": 83100,
+  "year0": {
+    "height": 3.883938,
+    "agb": 0.111274
+  },
+  "year40": {
+    "height": 26.900173,
+    "agb": 9.998889
+  },
+  "fps": 24,
+  "frames": 480,
+  "encodedDuration": 20.0,
+  "silent": true,
+  "geometry": "Original procedural illustration; not individual-tree measurements",
+  "network": "Conceptual architecture; no trained-model predictions",
+  "interpolation": "Linear between annual December states for motion only",
+  "source": "../data/carbon-globe.json",
+  "variables": {
+    "height": "m",
+    "agb": "kg C m^-2"
+  },
+  "sourceSha256": "c66adb56d3358522210a3b2303d8feb35d356b0e70a3430063972df058d4888f"
+}

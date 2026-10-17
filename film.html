@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f5ed">
+  <meta name="description" content="A short visual study of forest dynamics and AI ecosystem emulation, built from a real CarbonGlobe ED simulation trajectory.">
+  <meta property="og:title" content="CarbonGlobe — A forest. A model. Forty years.">
+  <meta property="og:description" content="From a changing forest to a learned ecosystem. A motion concept grounded in CarbonGlobe simulation data.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://zhwang0.github.io/carbon-globe-website/assets/film/poster.jpg">
+  <meta property="og:url" content="https://zhwang0.github.io/carbon-globe-website/film.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>CarbonGlobe — A forest. A model. Forty years.</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="film.css">
+  <script src="film.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="film-header">
+    <a class="brand" href="index.html" aria-label="CarbonGlobe home"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13"/><ellipse cx="16" cy="16" rx="6" ry="13"/><path d="M3 16h26M6 8.5c6 3 14 3 20 0M6 23.5c6-3 14-3 20 0"/></svg>CarbonGlobe<span class="brand-dot"></span></a>
+    <a class="back-link" href="index.html"><span aria-hidden="true">↖</span> Back to the project</a>
+  </header>
+  <main id="main">
+    <section class="film-intro" aria-labelledby="film-title">
+      <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> AN ECOSYSTEM, LEARNED <span class="concept-tag">MOTION CONCEPT</span></p>
+      <div class="intro-layout">
+        <h1 id="film-title">A forest. A model.<br><em>Forty years.</em></h1>
+        <div class="intro-aside"><p>Teach AI the dynamics<br>of a living planet.</p><a href="#the-film" class="watch-link">Watch the film <span aria-hidden="true">↓</span></a></div>
+      </div>
+      <figure class="film-player" id="the-film">
+        <video controls playsinline preload="metadata" poster="assets/film/poster.jpg" width="1280" height="720" aria-label="CarbonGlobe motion concept: forest growth, a conceptual AI emulator, and forty years of ecosystem change" aria-describedby="film-caption film-provenance">
+          <source src="assets/film/carbon-globe-emulation.mp4" type="video/mp4">
+          Your browser cannot play this video. <a href="assets/film/carbon-globe-emulation.mp4" download>Download the MP4</a> to watch it.
+        </video>
+        <figcaption id="film-caption"><span><span class="status-dot" aria-hidden="true"></span> FOREST → EMULATOR → LONG ROLLOUT</span><span>00:20 <span class="caption-divider">/</span> SILENT FILM</span></figcaption>
+      </figure>
+      <div class="film-below"><p id="film-provenance">Height and biomass use real annual ED values, interpolated between years for motion: Congo Basin (−0.75°, 22.75°), initial forest age 1, simulation years 0–40. Trees are illustrated; the network is conceptual, not a trained model prediction. <a href="assets/film/provenance.json">Source details ↗</a></p><a class="text-link" href="assets/film/carbon-globe-emulation.mp4" download>Download MP4 <span aria-hidden="true">↧</span></a></div>
+    </section>
+    <div class="story-heading"><span class="eyebrow">FROM ECOLOGY TO AI</span><span class="eyebrow">THREE IDEAS. ONE CONTINUOUS STORY.</span></div>
+    <section class="story-stage" aria-labelledby="forest-heading" data-reveal>
+      <div class="stage-image"><img src="assets/film/forest.jpg" alt="Illustrated forest geometry used to visualize change in an ED simulation." width="1280" height="720" loading="lazy" decoding="async"></div>
+      <div class="stage-copy"><span class="stage-index">01 / THE FOREST</span><h2 id="forest-heading">Change begins<br>with a <em>state.</em></h2><p>A starting forest, an environment, and the process-based ED model. Together, they produce a reference for how an ecosystem changes.</p><span class="stage-note">SIMULATED DYNAMICS · ILLUSTRATED STRUCTURE</span></div>
+    </section>
+    <section class="story-stage stage-reverse" aria-labelledby="emulator-heading" data-reveal>
+      <div class="stage-image"><img src="assets/film/network.jpg" alt="Conceptual neural network connecting forest state and environmental inputs to a future forest state." width="1280" height="720" loading="lazy" decoding="async"></div>
+      <div class="stage-copy"><span class="stage-index">02 / THE EMULATOR</span><h2 id="emulator-heading">Learn the<br><em>transition.</em></h2><p>Train an AI emulator to map the current forest and environmental drivers to the next state. CarbonGlobe supplies the ML-ready sequences.</p><span class="stage-note">FOREST + ENVIRONMENT → NEXT FOREST STATE</span></div>
+    </section>
+    <section class="story-stage" aria-labelledby="rollout-heading" data-reveal>
+      <div class="stage-image"><img src="assets/film/rollout.jpg" alt="Forty-year forest height reference trajectory from the CarbonGlobe ED dataset." width="1280" height="720" loading="lazy" decoding="async"></div>
+      <div class="stage-copy"><span class="stage-index">03 / THE LONG VIEW</span><h2 id="rollout-heading">One step.<br><em>Then forty.</em></h2><p>Feed each predicted state into the next step. Benchmark the full rollout against ED to test whether learned dynamics hold up over decades.</p><span class="stage-note">A FOUNDATION FOR ECOSYSTEM DIGITAL TWINS</span></div>
+    </section>
+    <section class="film-outro" aria-labelledby="outro-heading" data-reveal><span class="eyebrow">THE DATA BEHIND THE POSSIBILITY</span><h2 id="outro-heading">Learn a forest.<br><em>Think planetary.</em></h2><a class="button" href="index.html#explore">Explore CarbonGlobe <span aria-hidden="true">↗</span></a></section>
+  </main>
+  <footer class="film-footer"><a href="index.html">CarbonGlobe</a><span>ML-READY ECOSYSTEM SIMULATIONS &amp; BENCHMARKS</span><a href="#main">Back to top ↑</a></footer>
+</body>
+</html>

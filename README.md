@@ -34,6 +34,9 @@ Open `http://localhost:8000`. Use an HTTP server rather than opening `index.html
 - `scripts/prepare_terrain.py`: recreate the geographic texture from the official Natural Earth raster; requires Pillow only for regeneration.
 - `scripts/prepare_land_mask.py`: regenerate the display coastline from the bundled polygons using Pillow, without downloading new sources.
 - `scripts/validate_site.py`: check local page links and visualization asset integrity with Python's standard library.
+- `film.html`, `film.css`, `film.js`: separate cinematic concept preview with native video playback and progressive scroll reveals.
+- `assets/film/`: a 20-second silent H.264 film, original rendered chapter images, and machine-readable provenance.
+- `scripts/render_film.py`, `render_film.html`, `render_film_scene.js`: deterministic Three.js frame rendering and video encoding; requires Playwright with Chromium, Pillow, and imageio-ffmpeg only for regeneration.
 - `.github/workflows/pages.yml`: deploy the static website to GitHub Pages.
 
 ## Hosting
@@ -51,6 +54,8 @@ To regenerate the extracts in a standalone checkout, run `python scripts/export_
 To regenerate the terrain with Pillow installed, run `python scripts/prepare_terrain.py --cache-dir ../carbonglobe-terrain-cache`, then `python scripts/prepare_land_mask.py` for its display coastline. The approximately 41 MB raster source download stays in that separate cache; only the compact textures and provenance files belong in the website. Validation uses Python's standard library and checks image dimensions, hashes, geographic metadata, scientific exports, and local links.
 
 ## Scientific interpretation
+
+The separate motion concept uses the Congo Basin cell at 0.75°S, 22.75°E (source index 42864), initial forest age 1. Its height and biomass values come from the existing 41-state December trajectory. Original procedural tree geometry scales with canopy height; foliage opacity follows LAI. Tree positions and branches are illustrations, not measured structures or individual-tree predictions. The neural network is conceptual. The final curve shows the ED reference, not an emulator prediction. Values between annual states are interpolated only for motion. Run `python scripts/render_film.py` to recreate the MP4 and chapter images, or add `--stills-only` to render images without video encoding. This starts and stops its own local HTTP server. No generative video service, external footage, or reference-site assets are used.
 
 The explorer shows modeled responses to supplied environmental drivers, not direct observations or independent future climate predictions. Site trajectories are individual grid cells, not regional averages. Initial forest age is a simulation seed condition. Annual benchmark states use the December slice of the supplied targets.
 
