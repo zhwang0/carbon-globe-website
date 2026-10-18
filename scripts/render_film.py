@@ -64,7 +64,7 @@ def main():
             import imageio_ffmpeg
             path = os.path.join(OUT, 'carbonglobe-film.mp4')
             writer = imageio_ffmpeg.write_frames(path, (args.width, args.height), fps=args.fps, codec='libx264',
-                                                 output_params=['-crf', '22', '-preset', 'slow', '-movflags', '+faststart'],
+                                                 output_params=['-crf', '24', '-preset', 'slow', '-movflags', '+faststart'],
                                                  pix_fmt_out='yuv420p', macro_block_size=8)
             writer.send(None)
             n = int(KEYS[-1][0] * args.fps)
