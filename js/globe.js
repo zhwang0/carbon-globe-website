@@ -1,0 +1,294 @@
+// Shared globe: textures, data atlases and the luminous globe material.
+import * as THREE from '../assets/vendor/three.module.js';
+
+export const VARS = {
+  height: {label: 'Canopy height', short: 'Height', unit: 'm', ramp: ['#06231f', '#0c4d3b', '#168257', '#5cc46c', '#dcf7a4']},
+  agb: {label: 'Aboveground biomass', short: 'AGB', unit: 'kgC m⁻²', ramp: ['#091d1d', '#124842', '#22876a', '#7ccc6c', '#eefdc0']},
+  soil: {label: 'Soil carbon', short: 'Soil C', unit: 'kgC m⁻²', ramp: ['#24150a', '#6a3a12', '#b5671f', '#eaa94a', '#ffeab0']},
+  lai: {label: 'Leaf area index', short: 'LAI', unit: 'm² m⁻²', ramp: ['#0d2418', '#1f5a2c', '#3f9a3a', '#a6d94a', '#f4ffb0']},
+  gpp: {label: 'Gross primary production', short: 'GPP', unit: 'kgC m⁻² yr⁻¹', ramp: ['#081d2b', '#0d4b5c', '#139a8a', '#6fdc9a', '#e6ffc4']},
+  npp: {label: 'Net primary production', short: 'NPP', unit: 'kgC m⁻² yr⁻¹', ramp: ['#0a1830', '#163f7a', '#2b7fc0', '#5fd0d8', '#dcfff6']},
+  rh: {label: 'Heterotrophic respiration', short: 'Rh', unit: 'kgC m⁻² yr⁻¹', ramp: ['#200d22', '#5a1a4a', '#a8325e', '#f07a4a', '#ffe0a0']},
+};
+export const ZONE_COLORS = ['#000000', '#3b82f6', '#f59e0b', '#4ade80', '#a78bfa', '#cbd5e1'];
+export const ZONES = ['', 'Tropical', 'Arid', 'Temperate', 'Cold', 'Polar'];
+
+export const D2R = Math.PI / 180;
+
+// Matches THREE.SphereGeometry's UV layout: u = 0 at 180°W, u = 0.5 at the prime meridian (+X).
+export function latLonToVec3(lat, lon, r = 1, out = new THREE.Vector3()) {
+  const phi = (lon + 180) * D2R, theta = (90 - lat) * D2R;
+  return out.set(-Math.cos(phi) * Math.sin(theta) * r, Math.cos(theta) * r, Math.sin(phi) * Math.sin(theta) * r);
+}
+export function vec3ToLatLon(v) {
+  const n = v.clone().normalize();
+  const lat = 90 - Math.acos(THREE.MathUtils.clamp(n.y, -1, 1)) / D2R;
+  let lon = Math.atan2(n.z, -n.x) / D2R - 180;
+  if (lon < -180) lon += 360;
+  return {lat, lon};
+}
+// Euler (XYZ) that brings (lat, lon) to face +Z.
+export function facing(lat, lon) {
+  const p = latLonToVec3(0, lon);
+  return {x: lat * D2R, y: -Math.atan2(p.x, p.z)};
+}
+export function cellOf(lat, lon) {
+  return {row: Math.min(359, Math.max(0, Math.floor((90 - lat) / 0.5))), col: Math.min(719, Math.max(0, Math.floor((lon + 180) / 0.5)))};
+}
+export function fmtLat(lat) { return `${Math.abs(lat).toFixed(2)}°${lat < 0 ? 'S' : 'N'}`; }
+export function fmtLon(lon) { return `${Math.abs(lon).toFixed(2)}°${lon < 0 ? 'W' : 'E'}`; }
+
+const loader = new THREE.TextureLoader();
+export function loadTexture(url, {srgb = false, mips = true} = {}) {
+  return new Promise((resolve, reject) => loader.load(url, t => {
+    t.anisotropy = 4;
+    t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.generateMipmaps = mips;
+    t.minFilter = mips ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
+    t.wrapS = THREE.RepeatWrapping;
+    resolve(t);
+  }, undefined, reject));
+}
+
+async function decodePNG(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: ${res.status}`);
+  const blob = await res.blob();
+  const bmp = await createImageBitmap(blob, {colorSpaceConversion: 'none', premultiplyAlpha: 'none'});
+  const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bmp.width, bmp.height) : Object.assign(document.createElement('canvas'), {width: bmp.width, height: bmp.height});
+  const ctx = canvas.getContext('2d', {willReadFrequently: true});
+  ctx.drawImage(bmp, 0, 0);
+  const img = ctx.getImageData(0, 0, bmp.width, bmp.height);
+  bmp.close?.();
+  return img;
+}
+
+// A packed atlas (7 x 6 tiles of 720 x 360, one per year) -> raw bytes + RG8 array texture.
+// R holds the gamma-encoded value, G marks data coverage so filtering stays clean at coastlines.
+export async function loadAtlas(url, meta) {
+  const {width: W, height: H, cols, years} = meta.grid;
+  const img = await decodePNG(url);
+  const raw = new Uint8Array(W * H * years);
+  const rg = new Uint8Array(W * H * years * 2);
+  const src = img.data, stride = img.width * 4;
+  for (let y = 0; y < years; y++) {
+    const ox = (y % cols) * W, oy = Math.floor(y / cols) * H;
+    for (let r = 0; r < H; r++) {
+      let s = (oy + r) * stride + ox * 4;
+      let d = (y * H + r) * W;
+      for (let c = 0; c < W; c++, s += 4, d++) {
+        const b = src[s];
+        raw[d] = b;
+        if (b) { rg[d * 2] = Math.round((b - 1) * 255 / 254); rg[d * 2 + 1] = 255; }
+      }
+    }
+  }
+  const tex = new THREE.DataArrayTexture(rg, W, H, years);
+  tex.format = THREE.RGFormat;
+  tex.type = THREE.UnsignedByteType;
+  tex.minFilter = tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.unpackAlignment = 1;
+  tex.needsUpdate = true;
+  return {tex, raw, W, H, years};
+}
+// Physical value at (row, col, year) from raw atlas bytes.
+export function atlasValue(atlas, vmax, gamma, row, col, year) {
+  const b = atlas.raw[(year * atlas.H + row) * atlas.W + col];
+  if (!b) return null;
+  return vmax * Math.pow((b - 1) / 254, 1 / gamma);
+}
+
+export async function loadZones(url) {
+  const img = await decodePNG(url);
+  const n = img.width * img.height, z = new Uint8Array(n);
+  for (let i = 0; i < n; i++) z[i] = img.data[i * 4];
+  const tex = new THREE.DataTexture(z, img.width, img.height, THREE.RedFormat, THREE.UnsignedByteType);
+  tex.minFilter = tex.magFilter = THREE.NearestFilter;
+  tex.unpackAlignment = 1;
+  tex.needsUpdate = true;
+  return {tex, data: z, W: img.width, H: img.height};
+}
+
+const colorVec = hex => new THREE.Color(hex);
+export function rampUniform(name) { return VARS[name].ramp.map(colorVec); }
+
+const VERT = /* glsl */`
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vW;
+void main() {
+  vUv = uv;
+  vN = normalize(mat3(modelMatrix) * normal);
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vW = w.xyz;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+
+const FRAG = /* glsl */`
+precision highp float;
+precision highp sampler2DArray;
+uniform sampler2D uDay;
+uniform sampler2D uMask;
+uniform sampler2D uZones;
+uniform sampler2DArray uData;
+uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec;
+uniform vec3 uSun;
+uniform vec3 uRamp[5];
+uniform vec3 uZone[6];
+uniform vec2 uTarget;
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vW;
+
+vec3 ramp(float t) {
+  t = clamp(t, 0.0, 1.0) * 4.0;
+  float i = min(floor(t), 3.0);
+  float f = t - i;
+  vec3 a = uRamp[0], b = uRamp[1];
+  if (i > 2.5) { a = uRamp[3]; b = uRamp[4]; }
+  else if (i > 1.5) { a = uRamp[2]; b = uRamp[3]; }
+  else if (i > 0.5) { a = uRamp[1]; b = uRamp[2]; }
+  return mix(a, b, f);
+}
+
+void main() {
+  vec3 N = normalize(vN);
+  vec3 V = normalize(cameraPosition - vW);
+  vec3 L = normalize(uSun);
+  float ndl = dot(N, L);
+  float day = smoothstep(-0.2, 0.45, ndl);
+
+  vec3 base = texture2D(uDay, vUv).rgb;
+  float land = texture2D(uMask, vUv).r;
+  float lum = dot(base, vec3(0.299, 0.587, 0.114));
+  vec3 landCol = mix(vec3(lum), base, 0.5) * 0.62 * uBase;
+  vec3 oceanCol = vec3(0.012, 0.035, 0.06) + base * vec3(0.10, 0.20, 0.30);
+  vec3 col = mix(oceanCol, landCol, land);
+  col *= mix(0.07, 1.0, day);
+
+  vec3 H = normalize(L + V);
+  float spec = pow(max(dot(N, H), 0.0), 140.0) * (1.0 - land) * day;
+  col += vec3(0.55, 0.75, 0.95) * spec * uSpec;
+
+  vec2 duv = vec2(vUv.x, 1.0 - vUv.y);
+  if (uHasData > 0.5) {
+    float y0 = floor(uYear);
+    float y1 = min(y0 + 1.0, 40.0);
+    vec2 a = texture(uData, vec3(duv, y0)).rg;
+    vec2 b = texture(uData, vec3(duv, y1)).rg;
+    vec2 d = mix(a, b, uYear - y0);
+    float cov = smoothstep(0.2, 0.75, d.g) * smoothstep(0.25, 0.65, land);
+    float t = d.r / max(d.g, 1e-3);
+    vec3 dc = ramp(t);
+    vec3 dataCol = dc * mix(0.22, 1.0, day) * (0.82 + 0.3 * t) + dc * t * t * 0.22 * (1.0 - day);
+    col = mix(col, dataCol, cov * uDataMix * 0.94);
+  }
+
+  float z = texture2D(uZones, duv).r * 255.0;
+  int zi = int(z + 0.5);
+  vec3 zc = uZone[0];
+  if (zi == 1) zc = uZone[1]; else if (zi == 2) zc = uZone[2]; else if (zi == 3) zc = uZone[3]; else if (zi == 4) zc = uZone[4]; else if (zi == 5) zc = uZone[5];
+  float zcov = step(0.5, z) * smoothstep(0.25, 0.65, land);
+  col = mix(col, zc * mix(0.45, 1.0, day), zcov * uZoneMix * 0.85);
+
+  vec2 g = duv * vec2(720.0, 360.0);
+  vec2 gw = fwidth(g);
+  vec2 gf = abs(fract(g) - 0.5);
+  vec2 ll = smoothstep(0.5 - gw * 1.2, vec2(0.5), gf);
+  float line = max(ll.x, ll.y) * smoothstep(0.6, 0.12, max(gw.x, gw.y));
+  col += vec3(0.55, 1.0, 0.75) * line * uGridMix * 0.35 * smoothstep(0.2, 0.6, land);
+  vec2 cell = floor(g);
+  float isT = 1.0 - step(0.5, length(cell - uTarget));
+  float pulse = 0.7 + 0.3 * sin(uTime * 3.0);
+  col = mix(col, col * 1.6 + vec3(0.06, 0.12, 0.06), isT * uTargetMix * 0.5);
+  vec2 inner = smoothstep(0.5 - gw * 3.0, vec2(0.5), gf);
+  float edge = max(inner.x, inner.y) * isT;
+  col += vec3(0.85, 1.0, 0.7) * edge * uTargetMix * pulse;
+
+  float fr = pow(1.0 - max(dot(N, V), 0.0), 2.6);
+  col += vec3(0.22, 0.72, 0.95) * fr * (0.12 + 0.55 * day);
+  col *= uDim;
+  gl_FragColor = vec4(col, uOpacity);
+}`;
+
+const ATMO_VERT = /* glsl */`
+varying vec3 vN;
+varying vec3 vW;
+void main() {
+  vN = normalize(mat3(modelMatrix) * normal);
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vW = w.xyz;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+const ATMO_FRAG = /* glsl */`
+uniform vec3 uSun;
+uniform float uOpacity;
+uniform vec3 uCenter;
+varying vec3 vN;
+varying vec3 vW;
+void main() {
+  vec3 V = normalize(cameraPosition - vW);
+  vec3 N = normalize(vN);
+  // Back faces of a 1.16x shell: strongest at the planet's limb, fading outward.
+  float k = clamp(-dot(N, V) / 0.51, 0.0, 1.0);
+  float a = pow(k, 2.6);
+  float lit = 0.3 + 0.7 * smoothstep(-0.45, 0.8, dot(normalize(vW - uCenter), normalize(uSun)));
+  gl_FragColor = vec4(vec3(0.26, 0.8, 1.0) * lit * 1.25, a * uOpacity);
+}`;
+
+export function createGlobe({day, mask, zones, data = null, segments = 192}) {
+  const uniforms = {
+    uDay: {value: day}, uMask: {value: mask}, uZones: {value: zones},
+    uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
+    uHasData: {value: data ? 1 : 0},
+    uYear: {value: 40}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
+    uTime: {value: 0}, uGridMix: {value: 0}, uTargetMix: {value: 0}, uDim: {value: 1}, uBase: {value: 1}, uSpec: {value: 0.22},
+    uSun: {value: new THREE.Vector3(-0.85, 0.38, 0.55).normalize()},
+    uRamp: {value: rampUniform('height')},
+    uZone: {value: ZONE_COLORS.map(colorVec)},
+    uTarget: {value: new THREE.Vector2(-10, -10)},
+  };
+  if (!data) uniforms.uData.value.format = THREE.RGFormat;
+  const material = new THREE.ShaderMaterial({uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true});
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), material);
+  const atmoU = {uSun: uniforms.uSun, uOpacity: {value: 1}, uCenter: {value: new THREE.Vector3()}};
+  const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.16, 96, 48), new THREE.ShaderMaterial({
+    uniforms: atmoU, vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
+    side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  const group = new THREE.Group();
+  const spin = new THREE.Group();
+  spin.add(globe);
+  group.add(spin, atmo);
+  return {group, spin, globe, atmo, uniforms, atmoUniforms: atmoU,
+    setData(tex) { uniforms.uData.value = tex; uniforms.uHasData.value = tex ? 1 : 0; },
+    setRamp(name) { uniforms.uRamp.value = rampUniform(name); },
+  };
+}
+
+export function createStars(count = 2400, radius = 60) {
+  const pos = new Float32Array(count * 3), size = new Float32Array(count), tw = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+    pos.set([Math.cos(a) * s * radius, u * radius, Math.sin(a) * s * radius], i * 3);
+    size[i] = Math.pow(Math.random(), 6) * 2.4 + 0.6;
+    tw[i] = Math.random() * 6.28;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  geo.setAttribute('aTw', new THREE.BufferAttribute(tw, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {uTime: {value: 0}, uOpacity: {value: 1}, uPx: {value: 1}},
+    vertexShader: `attribute float aSize; attribute float aTw; uniform float uTime; uniform float uPx; varying float vA;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv;
+      vA = 0.55 + 0.45 * sin(uTime * 1.3 + aTw); gl_PointSize = aSize * uPx; }`,
+    fragmentShader: `uniform float uOpacity; varying float vA;
+      void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d);
+      gl_FragColor = vec4(vec3(0.8, 0.92, 1.0), a * vA * uOpacity * 0.85); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  return new THREE.Points(geo, mat);
+}

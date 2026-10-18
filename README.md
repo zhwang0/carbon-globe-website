@@ -1,86 +1,72 @@
 # CarbonGlobe website
 
-A dedicated research website for **CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems** (NeurIPS 2025).
+Project page for **CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems** (NeurIPS 2025, Datasets & Benchmarks).
 
-**Build the forest layer of a digital Earth.** CarbonGlobe provides ML-ready data and benchmarks to train and evaluate AI ecosystem emulators across 40 annual forecast steps. The site presents a research foundation for ecosystem digital twins and future Earth-system modeling, alongside interactive views of the reference simulations.
+The page opens with a scroll-driven film rendered live in WebGL from CarbonGlobe data: the Earth, a dive into one 0.5° Amazon cell, a forest growing year by year, fifteen starting ages, the whole planet across climate zones, a deep emulator learning the simulator, conditional rollouts, and the dataset in numbers. Below the film are the dataset pipeline, an interactive globe explorer, benchmarks, and the case for coupling ecosystem emulators with weather and climate models.
 
-The original model implementations remain at [zhwang0/carbon-globe](https://github.com/zhwang0/carbon-globe). This repository contains only the website and compact presentation assets. IEEE Big Data Cup SSP126/SSP585 materials are outside its scope.
+Public URL: `https://zhwang0.github.io/carbon-globe-website/`. The dataset and model code live at [zhwang0/carbon-globe](https://github.com/zhwang0/carbon-globe) and on [Kaggle](https://www.kaggle.com/datasets/zhihaow/carbonglobe).
 
-## Local preview
+## Preview locally
 
-No package installation or build step is required; the renderer is included locally. From this directory:
+No build step or package installation is needed:
 
 ```sh
-python -m http.server 8000 --bind 127.0.0.1
+python -m http.server 8000
 ```
 
-Open `http://localhost:8000`. Use an HTTP server rather than opening `index.html` directly, because the data explorer loads JSON with `fetch`.
+Then open `http://localhost:8000`. Use a server rather than opening `index.html` directly, because the page fetches its data files.
 
-## Contents
+## Layout
 
-- `index.html`, `styles.css`, `app.js`, `globe.js`: responsive website, interactive globe, simulation explorer, benchmark comparison, and citation tools.
-- `assets/data/carbon-globe.json`: compact export from the original ED simulation arrays. See [data provenance](DATA_NOTES.md).
-- `assets/data/globe-surface.json`: full 0.5-degree globe grid with original values, bounded land-only display interpolation, and an explicit provenance mask.
-- `assets/data/film-growth.json`: 3,373 original sites with 41 December states for initial age 1, plus three example cells at initial ages 1, 10, and 50 and annual forcing summaries; approximately 0.83 MB.
-- `assets/data/ne_50m_land.geojson`: pinned public-domain Natural Earth polygons used to classify land independently of carbon values; source and checksum are recorded in the surface metadata.
-- `assets/textures/earth-terrain.webp`: local 4096 × 2048 Natural Earth I shaded-relief background. Its geographic colors supply context, not ED values.
-- `assets/textures/earth-terrain.attribution.json`, `ATTRIBUTION.txt`: terrain source, version, geographic extent, preparation details, and checksums.
-- `assets/textures/earth-land-mask.png`: antialiased 4096 × 2048 display coastline from the same Natural Earth polygons, with separate metadata and attribution; it does not change the scientific support mask.
-- `assets/vendor/`: locally hosted browser rendering code and its license; no package installation is needed to view the website.
-- `assets/benchmarks.json`: all RMSE and MAE values from the published paper's main Table 1.
-- `assets/paper.pdf`, `assets/citation.bib`: the verified published paper and official proceedings citation. The local source folder's template PDF was not used.
-- `assets/fonts/`: locally hosted Manrope and DM Mono fonts with their SIL Open Font License files.
-- `scripts/export_data.py`: regenerate the visualization export from locally available original datasets. NumPy is needed for regeneration, not for serving the website.
-- `scripts/export_globe_surface.py`: regenerate the full globe surface and validate the bounded interpolation against original ED cells and independent land geometry.
-- `scripts/export_film_data.py`: regenerate the film's original global trajectories and age-group profiles using read-only NumPy memory maps.
-- `scripts/prepare_terrain.py`: recreate the geographic texture from the official Natural Earth raster; requires Pillow only for regeneration.
-- `scripts/prepare_land_mask.py`: regenerate the display coastline from the bundled polygons using Pillow, without downloading new sources.
-- `scripts/validate_site.py`: check local page links and visualization asset integrity with Python's standard library.
-- `film.html`, `film.css`, `film.js`: separate cinematic concept preview with native video playback and progressive scroll reveals.
-- `assets/film/`: a 48-second silent H.264 film, original rendered chapter images, and machine-readable provenance.
-- `scripts/render_film.py`, `render_film.html`, `render_film_scene.js`: deterministic Three.js frame rendering and video encoding; requires Playwright with Chromium, Pillow, and imageio-ffmpeg only for regeneration.
-- `.github/workflows/pages.yml`: deploy the static website to GitHub Pages.
+| Path | Contents |
+| --- | --- |
+| `index.html`, `css/main.css` | Page structure and styles |
+| `js/main.js` | Scroll timeline, reveals, "Play the film" autoplay, boot and lazy loading |
+| `js/stage.js` | The WebGL film: globe, dive, forest, network, streams and camera choreography |
+| `js/globe.js` | Shared globe shader, data-atlas decoding and geographic helpers |
+| `js/tree.js` | Procedural point-cloud trees grown from ED canopy height and LAI |
+| `js/forecast.js` | "What if?" rollout panel |
+| `js/explorer.js` | Interactive globe explorer with site trajectories |
+| `js/bench.js` | Benchmark heat map, bar chart and runtime comparison (Table 1 and Fig. 6 of the paper) |
+| `assets/data/` | Browser exports of the CarbonGlobe simulations (see below) |
+| `assets/tex/` | Earth imagery and land mask |
+| `assets/film/` | MP4 render of the film, for talks and social posts |
+| `assets/img/` | Paper figure, social card and no-WebGL poster |
+| `assets/vendor/` | Three.js 0.186.1 (MIT), served locally |
+| `scripts/` | Reproducible exporters, texture preparation, film renderer and site validator |
+
+## What the visualizations show
+
+All carbon values come from the CarbonGlobe ED reference simulations in the original dataset (`glob_Y{age}.npy`, `glob_X_fea.npy`, `mask2d.npy`). Nothing is fabricated or modelled for the page.
+
+- **Global grids** (`assets/data/grid/{var}_a{age}.png`): all 41 annual states (1981–2021) of the 7 targets for starting ages 1, 50 and 200 at every one of the 54,152 sites, packed as 7 × 6 tiles of the 720 × 360 grid. Stocks (height, AGB, soil C) use the December state. LAI, GPP, NPP and Rh use the mean of the 12 monthly values. Values are stored as 8-bit on a square-root scale (`value = vmax · ((byte − 1)/254)²`, byte 0 = no data) and are for display only. Download the dataset for full precision.
+- **Story trajectories** (`assets/data/meta.json`): exact annual series for six sites (central Amazon, Congo Basin, Zambian miombo, eastern United States, boreal Finland, central Siberia) at all 15 starting ages. Each site is the 90th-percentile canopy height cell (starting age 1, year 40) inside a regional box.
+- **Climate zones** (`assets/data/climate.png`): approximate Köppen–Geiger main groups (Peel et al., 2007 thresholds) computed from the dataset's own 40-year monthly temperature and precipitation. These approximate the zones the paper uses; they are not the official Beck et al. (2018) map.
+- **Dataset layers** (`assets/data/layers/`): mean air temperature, annual precipitation, 2020 CO₂ and saturated soil water content from the inputs; year-40 height, AGB, soil C and GPP at starting age 200 from the outputs.
+- **Film illustrations**: tree shapes, the cohort layout and the neural network are illustrations. Tree height, crown density and the HUD numbers follow the ED trajectories of the central Amazon site (3.25°S, 63.75°W). The future-forcing chart shows the dataset's mean CO₂ for 1981–2020, then two illustrative CMIP6 branches to 2100. Only the SSP5-8.5 endpoint (≈1,135 ppm, Meinshausen et al., 2020) is a published value. No emulator predictions or future simulations are shown.
+- **Benchmarks**: all values from Table 1 of the paper; emulator run times are read from Fig. 6.
+
+## Regenerate
+
+With NumPy and Pillow installed, from this directory:
+
+```sh
+python scripts/export_v2_data.py --source /path/to/CarbonGlobe/datasets     # grids, climate zones, meta.json
+python scripts/export_v2_layers.py --source /path/to/CarbonGlobe/datasets   # dataset-section map layers
+python scripts/prepare_textures.py                                          # Blue Marble + Natural Earth land mask
+python scripts/render_film.py                                               # MP4, poster and social card (Playwright + imageio-ffmpeg)
+python scripts/validate_site.py                                             # link, module and data checks
+```
+
+The exporters read the multi-gigabyte arrays with memory maps and take about two minutes. `prepare_textures.py` caches its downloads outside the website directory.
 
 ## Hosting
 
-The dedicated repository is `zhwang0/carbon-globe-website`, with public URL `https://zhwang0.github.io/carbon-globe-website/`.
+GitHub Pages publishes the site with GitHub Actions on every push to `main` (`.github/workflows/pages.yml`). The workflow runs `scripts/validate_site.py` first. All asset paths are relative, so the site works from a project sub-path. If the repository name changes, update the Open Graph URLs in `index.html`, `sitemap.xml` and `robots.txt`.
 
-GitHub Pages uses **GitHub Actions** as its publishing source. The included workflow publishes on pushes to `main` and can also be run manually. All runtime asset paths are relative, so project-subdirectory hosting works.
+## Credits
 
-If the repository name or hosting destination changes, update the absolute Open Graph URL and image URL in `index.html` and the URLs in `sitemap.xml` and `robots.txt`.
-
-Do not add the raw `sources/` directory or development `.tools/` directory to this repository. Only the contents of this `website/` directory belong here.
-
-To regenerate the extracts in a standalone checkout, run `python scripts/export_data.py --source /path/to/original/datasets` and `python scripts/export_globe_surface.py --source /path/to/original/datasets` in an environment with NumPy installed. The surface exporter uses the included Natural Earth source; it downloads the pinned version only when the file is missing. Run `python scripts/validate_site.py` to check the static package before publishing.
-
-For the film data, run `python scripts/export_film_data.py --source /path/to/original/datasets`, then `python scripts/render_film.py` to recreate the MP4 and chapter images. Add `--stills-only` to render chapter images without encoding video. The renderer starts and stops its own local HTTP server. Regeneration needs the original dataset; serving and standard-library validation do not. Validation checks all film coordinates against the separate full-grid export, overlapping Congo trajectories against the explorer data, and fingerprints of the source-verified numeric payloads. Deliberate scientific-data changes require fresh source verification before updating those fingerprints.
-
-To regenerate the terrain with Pillow installed, run `python scripts/prepare_terrain.py --cache-dir ../carbonglobe-terrain-cache`, then `python scripts/prepare_land_mask.py` for its display coastline. The approximately 41 MB raster source download stays in that separate cache; only the compact textures and provenance files belong in the website. Validation uses Python's standard library and checks image dimensions, hashes, geographic metadata, scientific exports, and local links.
-
-## Scientific interpretation
-
-The 48-second motion concept progresses from a Congo Basin forest illustration through different initial-age groups, global growth, an Earth-to-emulator workflow, and conditional forecasting as a research direction. The Congo cell is at 0.75°S, 22.75°E (source index 42864). Age groups use separate ED simulations initialized at ages 1, 10, and 50; they do not reconstruct detailed ED cohorts or measured individual trees. Procedural tree height follows canopy height, and foliage opacity follows the Congo December LAI. Tree positions and branches remain illustrations.
-
-Global growth uses 3,373 original cells, sampled every fourth row and column of the 0.5-degree grid, at initial age 1. Each cell retains all 41 December states spanning 40 transitions, with no spatial interpolation or averaging. Height and AGB are quantized to 0.01 units (maximum error 0.005). The film's global height colors use a fixed 0–35 m ramp. Example curves for the Congo Basin, eastern United States, and central Finland show ED reference trajectories. Annual temperature, precipitation, and CO₂ summaries provide context from the paired input arrays; regional differences do not establish isolated climate effects. Forcing indices 1–40 label transitions, without asserting independently verified calendar dates.
-
-The neural network and future-scenario workflow are conceptual. No trained-model predictions, SSP scenarios, or numerical counterfactual forecasts are shown. Values between annual states are interpolated only for motion. No generative video service, external footage, or reference-site assets are used. The explorer's original trajectories remain unchanged.
-
-The explorer shows modeled responses to supplied environmental drivers, not direct observations or independent future climate predictions. Site trajectories are individual grid cells, not regional averages. Initial forest age is a simulation seed condition. Annual benchmark states use the December slice of the supplied targets.
-
-The globe compares three display modes for AGB or canopy height at initial age 10, year 40. **Smooth surface** uses all 54,152 original ED sites plus 1,401 conservatively interpolated land gaps; 30,731 unsupported land cells retain no ED value and show geographic terrain imagery. Interpolation requires four surrounding original donors within 2 angular degrees and land-only connecting paths. It does not recursively fill large gaps. The surface quantizes values to 0.01 units, with maximum error 0.005, and identifies every cell as ocean, unsupported land, original, or interpolated. All original cells remain present, including 586 outside the independent coastline mask.
-
-Smooth mode blends data colors over terrain with a 0–100% opacity control: 0% shows terrain only; 100% is closest to the standalone color ramp. Lighting, atmospheric glow, and inward edge feathering are display effects. The high-resolution cartographic mask clips the smooth overlay to the coastline; it neither extends scientific coverage nor removes coastal source values from the exports. Original dots and columns retain their sampled coastal points.
-
-**3D columns** and **Original dots** use the same 13,546 original sampled cells, without adding interpolated values. Columns use an exaggerated linear display scale over a dark green source-data underlay, with terrain on unsupported and interpolated land beneath them. Original dots sit over geographic land imagery. Colors and column heights cap at 12 kg C m⁻² for AGB or 40 m for canopy height; these caps do not alter the downloaded physical values. Oceans are fixed blue in every mode. The explorer's raw trajectories remain unchanged.
-
-The geographic background is Natural Earth I with Shaded Relief, 1:50 million, version 3.2.0, served locally as a north-up 4096 × 2048 WebP. Its ice, desert, and relief colors are geographic context, not ED estimates, categorical land-cover predictions, or current weather. The image does not fill missing scientific values. If it fails to load, the renderer uses a flat sand background with an explanatory note. Browsers without WebGL 2 receive original dots over a blue sphere without terrain.
-
-The benchmark comparison uses the main paper's overall evaluation with input perturbations during training. It does not represent a live leaderboard. Cross-variable error magnitudes have different units; compare models within a selected variable.
-
-## Attribution
-
-Research materials and dataset excerpts remain subject to the authors' and original datasets' terms and citation requirements. Source links and extraction details are recorded in the data notes and benchmark metadata. Fonts are distributed under the included SIL Open Font Licenses.
-
-Land geometry is made with [Natural Earth](https://www.naturalearthdata.com/downloads/50m-physical-vectors/50m-land/), whose map data is public domain. The official website links its author-maintained GitHub repository. The pinned source and license links are included in [NATURAL_EARTH_ATTRIBUTION.txt](assets/data/NATURAL_EARTH_ATTRIBUTION.txt).
-
-The separate terrain raster derives from the official [Natural Earth I shaded-relief archive](https://naturalearth.s3.amazonaws.com/50m_raster/NE1_50M_SR.zip), also public domain. RGB conversion, Lanczos downsampling, WebP compression, and any uniform display adjustment are recorded in the [raster attribution](assets/textures/ATTRIBUTION.txt) and [detailed metadata](assets/textures/earth-terrain.attribution.json) accompanying the local texture.
+- Earth imagery: NASA Earth Observatory, Blue Marble Next Generation (Reto Stöckli), July 2004, topography and bathymetry. Public domain.
+- Land mask: Natural Earth 1:50m land polygons, public domain, pinned to commit `ca96624a56bd078437bca8184e78163e5039ad19` (SHA-256 checked).
+- Three.js (MIT). Fonts: Inter, Instrument Serif and JetBrains Mono via Google Fonts (SIL Open Font License).
+- Simulations: Ecosystem Demography (ED) model, University of Maryland.

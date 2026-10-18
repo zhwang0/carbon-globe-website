@@ -1,81 +1,91 @@
-"""Render original 3D frames and encode a silent H.264 research concept film.
+"""Render the scroll film to an MP4, a poster frame and a social card.
 
-Requires Pillow, playwright (Chromium installed), and imageio-ffmpeg.
-Run from any directory: python scripts/render_film.py [--stills-only]
-Uses the existing exported ED reference trajectory; never alters source data.
+Steps the page's deterministic render mode (index.html?render) frame by frame in headless
+Chromium, so the video shows exactly what the website draws.
+Requires: playwright (with Chromium), Pillow, imageio-ffmpeg.
+Usage: python scripts/render_film.py [--fps 30] [--width 1280 --height 720] [--stills-only]
 """
-import argparse
-import base64
-from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-import io
-import json
-import hashlib
-from pathlib import Path
-import threading
-
-import imageio_ffmpeg
+import argparse, functools, http.server, io, os, threading, time
 from PIL import Image
-from playwright.sync_api import sync_playwright
 
-ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "assets/film"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+OUT = os.path.join(ROOT, 'assets', 'film')
+IMG = os.path.join(ROOT, 'assets', 'img')
+
+# (seconds, film position u). Linear in between; holds give captions time to be read.
+KEYS = [
+    (0, 0), (3.0, 0.05), (8.0, 1.95), (8.6, 2.15), (15.0, 3.45), (16.2, 3.95), (22.0, 4.95),
+    (23.5, 5.3), (25.0, 5.85), (27.5, 6.05), (30.0, 6.55), (31.0, 6.75), (36.0, 7.85), (37.0, 8.15),
+    (40.5, 8.6), (43.5, 8.95), (46.5, 9.2), (48.0, 9.6), (53.0, 10.0),
+]
 
 
-class QuietHandler(SimpleHTTPRequestHandler):
-    def log_message(self, *_):
+def u_at(t):
+    for (t0, u0), (t1, u1) in zip(KEYS, KEYS[1:]):
+        if t <= t1:
+            return u0 + (u1 - u0) * (t - t0) / (t1 - t0)
+    return KEYS[-1][1]
+
+
+class Quiet(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *args):
         pass
 
 
+def serve():
+    httpd = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=ROOT))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--stills-only", action="store_true")
-    args = parser.parse_args()
-    OUTPUT.mkdir(exist_ok=True)
-    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(QuietHandler, directory=ROOT))
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    errors = []
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--enable-unsafe-swiftshader"])
-            page = browser.new_page(viewport={"width": 1280, "height": 720})
-            page.on("pageerror", lambda error: errors.append(str(error)))
-            page.add_init_script("window.filmErrors=[]; addEventListener('error', e => window.filmErrors.push(e.message)); addEventListener('unhandledrejection', e => window.filmErrors.push(String(e.reason)));")
-            page.goto(f"http://127.0.0.1:{server.server_port}/scripts/render_film.html")
-            page.wait_for_function("window.filmReady || window.filmErrors.length", timeout=60000)
-            assert not page.evaluate("window.filmErrors"), page.evaluate("window.filmErrors")
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--fps', type=int, default=30)
+    ap.add_argument('--width', type=int, default=1280)
+    ap.add_argument('--height', type=int, default=720)
+    ap.add_argument('--stills-only', action='store_true')
+    args = ap.parse_args()
+    from playwright.sync_api import sync_playwright
+    os.makedirs(OUT, exist_ok=True)
+    httpd = serve()
+    url = f'http://127.0.0.1:{httpd.server_address[1]}/index.html?render'
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'])
+        page = browser.new_page(viewport={'width': args.width, 'height': args.height}, device_scale_factor=1)
+        page.goto(url, wait_until='networkidle')
+        page.wait_for_function('window.__cg !== undefined', timeout=180000)
+        page.wait_for_timeout(1500)
 
-            def frame(t):
-                encoded = page.evaluate("t => { window.renderFrame(t); return document.querySelector('canvas').toDataURL('image/png').split(',')[1]; }", t)
-                return Image.open(io.BytesIO(base64.b64decode(encoded))).convert("RGB")
+        def shot(t):
+            page.evaluate(f'window.__cg.frame({u_at(t):.5f}, {t:.4f})')
+            return Image.open(io.BytesIO(page.screenshot(type='png'))).convert('RGB')
 
-            meta = page.evaluate("window.filmMetadata")
-            for name, time in meta["stills"].items():
-                frame(time).save(OUTPUT / f"{name}.jpg", quality=94, subsampling=0)
-            print("Rendered chapter stills", meta, flush=True)
-            if not args.stills_only:
-                fps = 24
-                writer = imageio_ffmpeg.write_frames(str(OUTPUT / "carbon-globe-emulation.mp4"), (1280, 720), fps=fps, codec="libx264", pix_fmt_out="yuv420p", quality=None, output_params=["-crf", "23", "-movflags", "+faststart", "-preset", "slow"], macro_block_size=16)
-                writer.send(None)
-                try:
-                    for i in range(meta["duration"] * fps):
-                        writer.send(frame(i / fps).tobytes())
-                        if i % fps == 0:
-                            print(f"Encoded {i // fps}/{meta['duration']} seconds", flush=True)
-                finally:
-                    writer.close()
-                count, duration = imageio_ffmpeg.count_frames_and_secs(str(OUTPUT / "carbon-globe-emulation.mp4"))
-                assert count == fps * meta["duration"], (count, duration)
-                meta.update(fps=fps, frames=count, encodedDuration=duration, silent=True)
-            assert not errors, errors
-            meta.update(interpolation="Linear between annual December states for motion only", source="../data/film-growth.json", sourceSha256=hashlib.sha256((ROOT / 'assets/data/film-growth.json').read_bytes()).hexdigest(), variables={"height":"m", "agb":"kg C m^-2"})
-            (OUTPUT / "provenance.json").write_text(json.dumps(meta, indent=2) + "\n")
-            browser.close()
-    finally:
-        server.shutdown()
-        server.server_close()
+        if not args.stills_only:
+            import imageio_ffmpeg
+            path = os.path.join(OUT, 'carbonglobe-film.mp4')
+            writer = imageio_ffmpeg.write_frames(path, (args.width, args.height), fps=args.fps, codec='libx264',
+                                                 output_params=['-crf', '22', '-preset', 'slow', '-movflags', '+faststart'],
+                                                 pix_fmt_out='yuv420p', macro_block_size=8)
+            writer.send(None)
+            n = int(KEYS[-1][0] * args.fps)
+            t0 = time.time()
+            for i in range(n + 1):
+                writer.send(shot(i / args.fps).tobytes())
+                if i % 60 == 0:
+                    print(f'frame {i}/{n}  {time.time() - t0:.0f}s', flush=True)
+            writer.close()
+            print(path, os.path.getsize(path) // 1024, 'KB')
+
+        # stills: social card (hero with title), video poster, and a text-free fallback image
+        page.set_viewport_size({'width': 1600, 'height': 900})
+        hero = shot(1.2)
+        hero.resize((1200, 675), Image.LANCZOS).crop((0, 22, 1200, 652)).save(os.path.join(IMG, 'social.jpg'), quality=88)
+        hero.resize((1280, 720), Image.LANCZOS).save(os.path.join(OUT, 'carbonglobe-film.jpg'), quality=86)
+        page.add_style_tag(content='[data-u], .cell-label { visibility: hidden !important; }')
+        shot(1.25).save(os.path.join(IMG, 'poster.jpg'), quality=84)
+        browser.close()
+    httpd.shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
