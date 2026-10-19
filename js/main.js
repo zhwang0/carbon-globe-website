@@ -201,7 +201,8 @@ async function boot() {
   canvas.classList.add('ready');
   addEventListener('resize', () => stage.resize());
   if (RENDER) {
-    // Deterministic frame stepping for scripts/render_film.py.
+    // Deterministic frame stepping for scripts/render_film.py, once the tree has grown.
+    await stage.ready;
     window.__cg = {
       frame(u, t) {
         const {vh, top} = filmMetrics();

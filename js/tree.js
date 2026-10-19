@@ -1,14 +1,8 @@
 // Procedural point-cloud trees whose growth is driven by CarbonGlobe canopy height.
 import * as THREE from '../assets/vendor/three.module.js';
+import {mulberry32} from './random.js';
 
-export function mulberry32(a) {
-  return () => {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
+export {mulberry32};
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const MAX_DEPTH = 3;
@@ -184,16 +178,17 @@ export function createGround(px) {
   const geo = new THREE.PlaneGeometry(120, 120, 1, 1);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.ShaderMaterial({
-    uniforms: {uOpacity: {value: 1}, uTime: {value: 0}},
+    uniforms: {uOpacity: {value: 1}, uTime: {value: 0}, uShade: {value: 0}},
     vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: `uniform float uOpacity; varying vec3 vW;
+    fragmentShader: `uniform float uOpacity, uShade; varying vec3 vW;
       float grid(vec2 p, float s){ vec2 g = p / s; vec2 w = fwidth(g); vec2 f = abs(fract(g - 0.5) - 0.5) / w; return 1.0 - min(min(f.x, f.y), 1.0); }
       void main(){
         float r = length(vW.xz);
         float fade = smoothstep(42.0, 4.0, r);
         float g = grid(vW.xz, 1.0) * 0.12 + grid(vW.xz, 5.0) * 0.22;
         vec3 base = mix(vec3(0.02, 0.07, 0.06), vec3(0.01, 0.025, 0.03), smoothstep(0.0, 30.0, r));
-        vec3 col = base + vec3(0.25, 0.9, 0.6) * g * fade;
+        float sh = uShade > 0.0 ? smoothstep(uShade, uShade * 0.2, r) : 0.0;  // shade under a crown of radius uShade
+        vec3 col = base * (1.0 - 0.45 * sh) + vec3(0.25, 0.9, 0.6) * g * fade * (1.0 - 0.7 * sh);
         gl_FragColor = vec4(col, uOpacity * (0.25 + 0.75 * fade));
       }`,
     transparent: true, depthWrite: false,

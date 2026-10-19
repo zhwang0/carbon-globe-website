@@ -2,6 +2,7 @@
 import * as THREE from '../assets/vendor/three.module.js';
 import {createGlobe, createStars, facing, cellOf, latLonToVec3} from './globe.js';
 import {treeGeometry, treeMaterial, setTreeHeight, createGround, createMotes, mulberry32} from './tree.js';
+import {createHeroTree, PRE_TAU} from './hero-tree.js';
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -197,9 +198,20 @@ export function createStage({canvas, meta, tex, dom, mobile, reduced = false}) {
   const motes = createMotes(mobile ? 400 : 900, px);
   fScene.add(motes);
 
-  const mainGeo = treeGeometry(1, mobile ? 26000 : 46000);
-  const main = new THREE.Points(mainGeo, treeMaterial(px));
-  fScene.add(main);
+  // Chapter one's tree, grown from ED's canopy-height series; it stays on as the cohort chapter's
+  // 1-year-old stand at the centre.
+  const {tree: hero, ready} = createHeroTree(story.ages['1'].height, {px, leaf: mobile ? 8 : 12});
+  let heroReady = false;
+  // where shaders can compile in parallel, prepare the forest now rather than on the dive's first frame
+  ready.then(() => {
+    heroReady = true;
+    if (renderer.extensions.has('KHR_parallel_shader_compile')) return renderer.compileAsync(fScene, fCam);
+  }).catch(() => {});
+  hero.scale.setScalar(0.1);
+  hero.rotation.y = 0.4;
+  fScene.add(hero);
+  const laiMax = story.ages['1'].lai.map((_, i, a) => Math.max(...a.slice(Math.max(0, i - 5), i + 1)));
+
   const cohortGeos = [2, 3, 4, 5, 6, 7].map(s => treeGeometry(s, mobile ? 4200 : 7500));
   const cohorts = [];
   const rng = mulberry32(5);
@@ -219,7 +231,6 @@ export function createStage({canvas, meta, tex, dom, mobile, reduced = false}) {
     }
     cohorts.push({age, cx, cz, trees, label: null});
   });
-  main.rotation.y = 0.4;
 
   // cohort bars + labels (DOM)
   dom.bars.innerHTML = AGES.map(a => `<div><i></i><span>${a}</span></div>`).join('');
@@ -356,7 +367,7 @@ export function createStage({canvas, meta, tex, dom, mobile, reduced = false}) {
     const fA = ss(1.9, 2.06, u) * (1 - ss(5.08, 5.26, u));
     const year = forestYear(u);
     const hMain = at(amazon['1'].height, year), lai = at(amazon['1'].lai, year);
-    const Hm = setTreeHeight(main, hMain, lai);
+    const Hm = hMain / 10;
     const cohortA = ss(3.85, 4.1, u);
     cohorts.forEach((c, gi) => {
       const h = at(amazon[String(c.age)].height, year), l = at(amazon[String(c.age)].lai, year);
@@ -369,20 +380,31 @@ export function createStage({canvas, meta, tex, dom, mobile, reduced = false}) {
     });
     const sharedT = fScene.children;
     for (const o of sharedT) if (o.material?.uniforms?.uTime) o.material.uniforms.uTime.value = time;
-    main.material.uniforms.uOpacity.value = fA;
+    // the hero tree: sprouts during the dive, then follows the simulated years
+    const HU = hero.material.uniforms;
+    HU.uT.value = u < 2.15 ? lerp(PRE_TAU, 0, ss(1.9, 2.15, u)) : year / 40;
+    HU.uTop.value = Math.max(0.5, u < 2.15 ? hMain * ss(1.9, 2.15, u) : hMain);
+    const leafR = lai / at(laiMax, year);
+    HU.uLeaf.value = clamp(leafR * leafR, 0.35, 1);
+    HU.uStress.value = clamp((1 - leafR) * 3.5);
+    HU.uOpacity.value = fA;
+    hero.visible = heroReady && fA > 0.002;
     ground.material.uniforms.uOpacity.value = fA;
+    ground.material.uniforms.uShade.value = Math.max(0.2, hMain * 0.034);
     motes.material.uniforms.uOpacity.value = fA;
     bg.material.uniforms.uOpacity.value = fA;
 
     // forest camera
     const az = 0.5 + (u - 1.9) * 0.42;
-    const rA = 1.3 + Hm * 2.4, cyA = 0.25 + Hm * 0.42, tyA = Hm * 0.5;
+    // on phones, pull back so the tree fits between the caption above and the readout below
+    const rA = L.narrow ? 1.6 + Hm * 4.6 : 1.3 + Hm * 2.4, cyA = 0.25 + Hm * 0.42, tyA = Hm * 0.5 + (L.narrow ? rA * 0.035 : 0);
     const b = ease(ss(3.85, 4.4, u)), c = ease(ss(4.85, 5.25, u));
     const r = lerp(lerp(rA, mobile ? 27 : 22, b), 3, c);
     const cy = lerp(lerp(cyA, 8, b), 48, c);
     const ty = lerp(lerp(tyA, 1.5, b), 0, c);
     fCam.position.set(Math.cos(az) * r, cy, Math.sin(az) * r);
     fCam.lookAt(0, ty, 0);
+    HU.uLight.value.set(-Math.sin(az) * 0.55 + Math.cos(az) * 0.4, 0.75, Math.cos(az) * 0.55 + Math.sin(az) * 0.4).normalize();
     if (!L.narrow) {
       // slide camera and target sideways so the subject sits right of the caption
       const shift = Math.hypot(r, cy - ty) * Math.tan(THREE.MathUtils.degToRad(fCam.fov) / 2) * aspect * 0.15 * (1 - c);
@@ -435,5 +457,5 @@ export function createStage({canvas, meta, tex, dom, mobile, reduced = false}) {
     }
   }
 
-  return {render, resize, renderer, dispose() { renderer.dispose(); }};
+  return {render, resize, renderer, ready, dispose() { renderer.dispose(); }};
 }

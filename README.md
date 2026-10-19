@@ -24,7 +24,10 @@ Then open `http://localhost:8000`. Use a server rather than opening `index.html`
 | `js/main.js` | Scroll timeline, reveals, "Play the film" autoplay, boot and lazy loading |
 | `js/stage.js` | The WebGL film: globe, dive, forest, network, streams and camera choreography |
 | `js/globe.js` | Shared globe shader, data-atlas decoding and geographic helpers |
-| `js/tree.js` | Procedural point-cloud trees grown from ED canopy height and LAI |
+| `js/tree.js` | Procedural point-cloud trees for the fifteen-age forest, grown from ED canopy height and LAI |
+| `js/hero-grow.js` | Chapter one's tree: space-colonisation growth driven by the Amazon site's ED canopy height, with self-shading, crown lift and pipe-model wood |
+| `js/hero-tree.js`, `js/hero-worker.js` | Lit point-cloud rendering of that tree; the growth runs in a module worker |
+| `js/random.js` | Seeded random numbers shared by the procedural scenes |
 | `js/forecast.js` | "What if?" rollout panel |
 | `js/explorer.js` | Interactive globe explorer with site trajectories |
 | `js/bench.js` | Benchmark heat map, bar chart and runtime comparison (Table 1 and Fig. 6 of the paper) |
@@ -43,7 +46,7 @@ All carbon values come from the CarbonGlobe ED reference simulations in the orig
 - **Story trajectories** (`assets/data/meta.json`): exact annual series for six sites (central Amazon, Congo Basin, Zambian miombo, eastern United States, boreal Finland, central Siberia) at all 15 starting ages. Each site is the 90th-percentile canopy height cell (starting age 1, year 40) inside a regional box.
 - **Climate zones** (`assets/data/climate.png`): approximate Köppen–Geiger main groups (Peel et al., 2007 thresholds) computed from the dataset's own 40-year monthly temperature and precipitation. These approximate the zones the paper uses; they are not the official Beck et al. (2018) map.
 - **Dataset layers** (`assets/data/layers/`): mean air temperature, annual precipitation, 2020 CO₂ and saturated soil water content from the inputs; year-40 height, AGB, soil C and GPP at starting age 200 from the outputs.
-- **Film illustrations**: tree shapes, the cohort layout and the neural network are illustrations. Tree height, crown density and the HUD numbers follow the ED trajectories of the central Amazon site (3.25°S, 63.75°W). The future-forcing chart shows the dataset's mean CO₂ for 1981–2020, then two illustrative CMIP6 branches to 2100. Only the SSP5-8.5 endpoint (≈1,135 ppm, Meinshausen et al., 2020) is a published value. No emulator predictions or future simulations are shown.
+- **Film illustrations**: tree shapes, the cohort layout and the neural network are illustrations. Tree height, crown density and the HUD numbers follow the ED trajectories of the central Amazon site (3.25°S, 63.75°W): chapter one's tree is grown to the site's canopy-height series, and its crown thins and yellows when ED's leaf area index drops below its recent maximum (the 2015–16 drought years). The future-forcing chart shows the dataset's mean CO₂ for 1981–2020, then two illustrative CMIP6 branches to 2100. Only the SSP5-8.5 endpoint (≈1,135 ppm, Meinshausen et al., 2020) is a published value. No emulator predictions or future simulations are shown.
 - **Benchmarks**: all values from Table 1 of the paper; emulator run times are read from Fig. 6.
 
 ## Regenerate

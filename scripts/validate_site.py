@@ -44,7 +44,7 @@ for ref in re.findall(r'url\("?([^")]+)"?\)', css):
 js_dir = os.path.join(ROOT, 'js')
 for name in sorted(os.listdir(js_dir)):
     src = open(os.path.join(js_dir, name), encoding='utf-8').read()
-    for ref in re.findall(r"""(?:from\s+|import\()\s*['"]([^'"]+)['"]""", src):
+    for ref in re.findall(r"""(?:from\s+|import\(|new URL\()\s*['"]([^'"]+)['"]""", src):
         exists(os.path.normpath(os.path.join('js', ref)), name)
     for ref in re.findall(r"""['"`](assets/[^'"`$]+)['"`]""", src):
         exists(ref, name)
