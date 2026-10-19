@@ -89,7 +89,7 @@ b { font-weight: 650; }
 @media (max-width: 860px) { .topbar nav { display: none; } }
 
 /* ------------------------------------------------------------------ film */
-.film { position: relative; height: 1200vh; background: var(--bg); }
+.film { position: relative; height: 1345vh; background: var(--bg); }
 .stage { position: sticky; top: 0; height: 100vh; height: 100lvh; overflow: hidden; isolation: isolate; }
 #stage-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; touch-action: pan-y; }
 .stage-fallback { display: none; }
@@ -177,6 +177,31 @@ html.no-webgl .stage-fallback {
 .bars > div i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, var(--g1), #1fa060); box-shadow: 0 0 12px rgba(185,244,107,.25); }
 .bars > div span { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 9px; color: var(--dim); }
 .hud-cohort .hud-note { margin-top: 26px; }
+
+/* chapter 2: four views of the same start under different forcing */
+.cap-forcing { width: min(600px, calc(100vw - 48px)); }
+.cap-forcing h2 { font-size: clamp(28px, 3.1vw, 46px); margin-bottom: 10px; }
+.panels { position: absolute; inset: 0; z-index: 3; pointer-events: none; font-family: var(--mono); }
+.panels > div { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
+.panel { border: 1px solid rgba(185, 244, 107, .16); border-radius: 14px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
+.panel p { margin: 0; position: absolute; left: 14px; right: 14px; }
+.p-head { top: 12px; }
+.p-head b { display: block; color: var(--pc, var(--g1)); font-size: 11.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
+.p-head span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.p-head i { display: inline-block; margin-left: 8px; padding: 1px 6px; border: 1px solid rgba(255, 179, 107, .5); border-radius: 99px; color: #ffb36b; font-style: normal; font-size: 9.5px; letter-spacing: .1em; vertical-align: 1px; }
+.p-stats { bottom: 12px; display: flex; gap: 18px; }
+.p-stats small { display: block; color: var(--dim); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.p-stats b { color: var(--text); font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.p-note { bottom: 58px; color: var(--pc, var(--g1)); font-size: 11px; line-height: 1.45; opacity: 0; transition: opacity .35s; }
+.p-note.on { opacity: 1; }
+.panels.compact .panel p { left: 10px; right: 10px; }
+.panels.compact .p-stats { bottom: 9px; gap: 10px; white-space: nowrap; }
+.panels.compact .p-stats small { display: none; }
+.panels.compact .p-stats b { font-size: 13px; }
+.panels.compact .p-stats span { font-size: 10px; color: var(--muted); }
+.panels.compact .p-note { bottom: 30px; font-size: 10px; }
+.panels-year small { display: block; color: var(--dim); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; text-align: right; }
+.panels-year b { display: block; color: var(--text); font: 650 clamp(34px, 3.6vw, 52px)/1.05 var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .hud-globe { left: max(24px, 6vw); right: max(24px, 6vw); bottom: 7vh; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
 .zones { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: var(--muted); transition: opacity .4s; }
 .zones span { display: inline-flex; align-items: center; gap: 7px; }
@@ -192,7 +217,12 @@ html.no-webgl .stage-fallback {
 .labels { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .labels > span { position: absolute; left: 0; top: 0; opacity: 0; font: 11px/1.35 var(--mono); color: var(--muted); white-space: nowrap; will-change: transform, opacity; }
 #cohort-labels > span { transform: translate(-50%, -100%); color: var(--text); padding: 2px 7px; border-radius: 99px; background: rgba(5,10,12,.55); border: 1px solid var(--line-2); font-size: 10.5px; }
-#net-labels > span { max-width: 260px; white-space: normal; }
+#net-labels > span { max-width: 230px; white-space: normal; text-align: center; }
+#net-labels sub { font-size: .78em; line-height: 0; text-transform: none; }
+#net-labels .net-title { max-width: 340px; color: var(--text); }
+#net-labels .net-title b { color: var(--g2); font-size: 12.5px; }
+#net-labels [data-k="forcing"] b { color: #35c6f4; }
+#net-labels [data-k="loop"] { max-width: 300px; }
 #net-labels b { display: block; margin-bottom: 4px; color: var(--g1); font-weight: 500; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; }
 
 /* forecast */
@@ -484,7 +514,14 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
   .num-grid span { font-size: 12.5px; }
   .numbers .btn { display: none; }
   .chapters { display: none; }
-  #net-labels { display: none; }
+  #net-labels > span { max-width: 150px; font-size: 9.5px; }
+  #net-labels b { font-size: 9.5px; }
+  #net-labels [data-k="enc"], #net-labels [data-k="core"], #net-labels [data-k="heads"], #net-labels [data-k="tree"], #net-labels [data-k="next"], #net-labels [data-k="forcing"] { display: none; }
+  .cap-forcing p:not(.kicker) { display: none; }
+  .p-head span { display: none; }
+  .p-head { top: 9px; }
+  .p-note { font-size: 9.5px; }
+  .panels-year b { font-size: 30px; }
 }
 @media (max-width: 760px) and (max-height: 760px) { .hud-tree .hud-row small { font-size: 9.5px; } .cap p { display: none; } }
 

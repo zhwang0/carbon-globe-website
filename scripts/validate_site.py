@@ -69,6 +69,10 @@ for key in ['amazon', 'congo', 'savanna', 'appalachia', 'boreal', 'siberia']:
         for var in meta['vars']:
             if len(s['ages'][str(age)][var]) != g['years']:
                 errors.append(f'story {key}/{age}/{var}: expected {g["years"]} values')
+scen = json.load(open(os.path.join(ROOT, 'assets', 'data', 'scenarios.json')))
+for var in ('height', 'agb', 'lai'):
+    if len(scen['drought']['age1'][var]) != g['years']:
+        errors.append(f'scenarios.json drought/{var}: expected {g["years"]} values')
 if png_size('assets/data/climate.png') != (720, 360):
     errors.append('climate.png: unexpected size')
 

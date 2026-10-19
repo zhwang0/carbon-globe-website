@@ -11,7 +11,7 @@ const RENDER = new URLSearchParams(location.search).has('render');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (RENDER) document.documentElement.classList.add('render');
 const mobile = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
-const U_END = 10;
+const U_END = 11.45;
 
 function webgl2() {
   try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
@@ -19,6 +19,7 @@ function webgl2() {
 
 // ------------------------------------------------------------------ data
 const metaP = fetch('assets/data/meta.json').then(r => r.json());
+const scenP = fetch('assets/data/scenarios.json').then(r => r.json());
 // Decoded 41-year grids are ~30 MB each: keep the film's grid plus the few most recently used.
 const atlases = new Map();
 const KEEP = 'height_a1', MAX_ATLASES = 3;
@@ -90,7 +91,7 @@ function applyFades(u) {
     const e = 1 - Math.pow(1 - k, 3);
     counters[i].forEach(({el, n}) => { el.textContent = fmtN(Math.round(n * e)); });
   });
-  const marks = [0, 2.0, 3.8, 5.3, 6.7, 8.1, 9.4];
+  const marks = [0, 2.0, 3.55, 5.25, 6.75, 8.2, 9.55, 10.85];
   let cur = 0;
   marks.forEach((m, i) => { if (u >= m - 0.05) cur = i; });
   chapterBtns.forEach((b, i) => b.classList.toggle('on', i === cur));
@@ -188,20 +189,21 @@ async function boot() {
     $('#ex-loading').textContent = 'The interactive globe needs WebGL 2.';
     return;
   }
-  const [{createStage}, tex, height] = await Promise.all([import('./stage.js'), textures(), getAtlas('height', 1)]);
+  const [{createStage}, tex, height, scen] = await Promise.all([import('./stage.js'), textures(), getAtlas('height', 1), scenP]);
   stage = createStage({
-    canvas, meta, mobile, reduced,
+    canvas, meta, scen, mobile, reduced,
     tex: {...tex, height},
     dom: {
       flash: $('#flash'), bars: $('#cohort-bars'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'),
       treeYear: $('#tree-year'), cohortYear: $('#cohort-year'), treeH: $('#tree-h'), treeAgb: $('#tree-agb'), treeLai: $('#tree-lai'),
-      globeYear: $('#globe-year'), zoneLegend: $('#zone-legend'), globeGrowth: $('#globe-growth'),
+      globeYear: $('#globe-year'), zoneLegend: $('#zone-legend'), globeGrowth: $('#globe-growth'), panels: $('#panels'),
+      forcingCap: $('.cap-forcing'),
     },
   });
   canvas.classList.add('ready');
   addEventListener('resize', () => stage.resize());
   if (RENDER) {
-    // Deterministic frame stepping for scripts/render_film.py, once the tree has grown.
+    // Deterministic frame stepping for scripts/render_film.py, once the trees have grown.
     await stage.ready;
     window.__cg = {
       frame(u, t) {

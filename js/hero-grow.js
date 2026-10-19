@@ -12,6 +12,14 @@ const DI = 6;                    // influence radius of attraction points, in no
 const ATTR = 0.08;               // attraction points per cubic node spacing
 const ITER = 4;                  // colonisation iterations per growth step
 const SHADOW_B = 1.6, SHADOW_MAX = 12;
+// Growth habits: how steeply laterals may climb, how far above their stem attachment they may reach,
+// and how strongly they bend upward, each as [sapling, mature].
+// Conifers also grow on a finer node spacing, since their narrow cone would otherwise be colonised
+// by the leader alone, and keep their needles in deeper shade.
+const FORMS = {
+  broadleaf: {capY: [0.55, 0.72], down: -0.2, climb: [0.18, 0.75], up: [0.16, 0.04], spacing: 1, shade: 1},
+  conifer: {capY: [0.1, 0.1], down: -0.35, climb: [0.06, 0.06], up: [0, 0], spacing: 0.42, shade: 1.8},
+};
 
 // Crown of a tree H metres tall. A young tree has one ellipsoid; with maturity it opens into several
 // lobes, one per major limb, which gives the broad, clumpy crown of an Amazon canopy tree.
@@ -29,7 +37,12 @@ function makeLobes(rng) {
   }
   return lobes;
 }
-function crownAt(H, Hmax, lobes) {
+function crownAt(H, Hmax, lobes, form = 'broadleaf') {
+  if (form === 'conifer') {
+    // a narrow cone with its widest whorls low down and the leader at the tip
+    const cb = H * 0.16, cr = H * 0.27;
+    return {H, m: 0, cb, cr, dep: H - cb, L: [], R: cr, y0: cb, y1: H, cone: true};
+  }
   const m = clamp((H - 5) / (Hmax - 9));
   const cb = H * lerp(0.28, 0.58, m), cr = H * lerp(0.27, 0.34, m), dep = H - cb;
   const L = lobes.map(l => {
@@ -42,6 +55,12 @@ function crownAt(H, Hmax, lobes) {
 }
 // Squared, normalised distance to the nearest lobe (< 1 inside the crown).
 function crownF(c, x, y, z) {
+  if (c.cone) {
+    const t = (y - c.cb) / c.dep;
+    if (t <= 0 || t >= 1) return 9;
+    const R = c.cr * Math.pow(1 - t, 0.9) * Math.min(1, t / 0.08);
+    return (x * x + z * z) / (R * R);
+  }
   let f = 1e9;
   for (const l of c.L) {
     const v = ((x - l.x) ** 2 + (z - l.z) ** 2) / (l.a * l.a) + (y - l.y) ** 2 / (l.b * l.b);
@@ -70,7 +89,8 @@ class Grid {
 
 // Grow the tree. heights: annual canopy height (m). Returns per-node arrays on a growth clock
 // tau = year index / (years - 1); the seedling grows during PRE_TAU..0.
-export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8} = {}) {
+// coarse > 1 grows a sparser tree (wider node spacing) for distant views.
+export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8, coarse = 1, form = 'broadleaf'} = {}) {
   const rng = mulberry32(seed);
   const years = heights.length - 1, T = years * sub, Hmax = Math.max(...heights);
   const hAt = k => {
@@ -79,7 +99,8 @@ export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8} = {}) {
     return lerp(heights[i], heights[i + 1], y - i);
   };
   const tauAt = k => (k < 0 ? PRE_TAU * -k / pre : k / T);
-  const dAt = H => Math.max(0.08, 0.5 * Math.pow(H / Hmax, 0.62));   // node spacing scales with the tree
+  const F = FORMS[form];
+  const dAt = H => coarse * F.spacing * Math.max(0.08, 0.5 * Math.pow(H / Hmax, 0.62));   // node spacing scales with the tree
   const lobes = makeLobes(rng);
 
   const CAP = 40000;
@@ -104,11 +125,11 @@ export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8} = {}) {
   let prev = null;
   const acc = new Float32Array(CAP * 3), touched = [];
   for (let k = -pre; k <= T; k++) {
-    const tau = tauAt(k), tNext = tauAt(k + 1), H = hAt(k), c = crownAt(H, Hmax, lobes);
+    const tau = tauAt(k), tNext = tauAt(k + 1), H = hAt(k), c = crownAt(H, Hmax, lobes, form);
     const D = dAt(H), di = DI * D, dk = 1.9 * D;
     // a lateral may only claim space this far above the point where it leaves the stem, so the
     // upper crown is built from new laterals and old low ones can be shed
-    const climb = lerp(0.18, 0.75, c.m) * c.dep;
+    const climb = lerp(F.climb[0], F.climb[1], c.m) * c.dep;
     const reach = (j, ya) => attach[j] < 0 || ya - attach[j] <= climb;
     // a new node removes the attraction points it reaches and becomes the nearest for others
     const claim = n => attrGrid.near(nx[n], ny[n], nz[n], di, i => {
@@ -147,7 +168,7 @@ export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8} = {}) {
     // points the rising crown base has left behind no longer attract growth
     for (const i of act) if (ay[i] < c.cb - D) alive[i] = 0;
 
-    const up = lerp(0.16, 0.04, c.m), capY = lerp(0.55, 0.72, c.m);
+    const up = lerp(F.up[0], F.up[1], c.m), capY = lerp(F.capY[0], F.capY[1], c.m);
     for (let it = 0; it < ITER; it++) {
       act = act.filter(i => alive[i]);
       touched.length = 0;
@@ -166,9 +187,9 @@ export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8} = {}) {
         const mo = lead[j] ? 0.15 : 0.55;
         gx = gx / gl + dx[j] * mo; gy = gy / gl + dy[j] * mo + up; gz = gz / gl + dz[j] * mo;
         const l = Math.hypot(gx, gy, gz); gx /= l; gy /= l; gz /= l;
-        if (!lead[j] && (gy > capY || gy < -0.2)) {
+        if (!lead[j] && (gy > capY || gy < F.down)) {
           // laterals spread rather than chase the rising crown straight up, or curl down
-          const cy = gy > capY ? capY : -0.2, hl = Math.hypot(gx, gz);
+          const cy = gy > capY ? capY : F.down, hl = Math.hypot(gx, gz);
           if (hl < 1e-3) { const a = rng() * 6.283; gx = Math.cos(a); gz = Math.sin(a); }
           const s2 = Math.sqrt(1 - cy * cy) / (hl < 1e-3 ? 1 : hl);
           gx *= s2; gz *= s2; gy = cy;
@@ -183,7 +204,7 @@ export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8} = {}) {
 
   // ---- lifetimes
   const steps = [];
-  for (let k = -pre; k <= T; k++) steps.push({tau: tauAt(k), c: crownAt(hAt(k), Hmax, lobes)});
+  for (let k = -pre; k <= T; k++) steps.push({tau: tauAt(k), c: crownAt(hAt(k), Hmax, lobes, form)});
   const leafDeath = new Float32Array(N).fill(9);
   // the stand shades out whatever the rising crown base leaves behind
   for (let i = 0; i < N; i++) {
@@ -206,7 +227,7 @@ export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8} = {}) {
         }
       }
     }
-    for (const i of live) if (grid[cy(i) * gx * gx + cz(i) * gx + cx(i)] - 1 > SHADOW_MAX) leafDeath[i] = tau;
+    for (const i of live) if (grid[cy(i) * gx * gx + cz(i) * gx + cx(i)] - 1 > SHADOW_MAX * F.shade) leafDeath[i] = tau;
   }
   // a branch dies a little after its last leaf; the stem never does
   const woodDeath = new Float32Array(N), last = leafDeath.slice();
@@ -238,25 +259,31 @@ export function growHeroTree(heights, {seed = 7, sub = 2, pre = 8} = {}) {
       nx[i] = 0.5 * nx[i] + 0.25 * (nx[p] + nx[c]); ny[i] = 0.5 * ny[i] + 0.25 * (ny[p] + ny[c]); nz[i] = 0.5 * nz[i] + 0.25 * (nz[p] + nz[c]);
     }
   }
-  const crown = tau => crownAt(hAt(tau < 0 ? -tau / PRE_TAU * pre : tau * T), Hmax, lobes);
-  return {N, x: nx, y: ny, z: nz, dx, dy, dz, d: nd, par, lead, birth: nb, leafDeath, woodDeath, rad, radT, crown};
+  const crown = tau => crownAt(hAt(tau < 0 ? -tau / PRE_TAU * pre : tau * T), Hmax, lobes, form);
+  return {N, x: nx, y: ny, z: nz, dx, dy, dz, d: nd, par, lead, birth: nb, leafDeath, woodDeath, rad, radT, crown, form};
 }
 
 // Point attributes: bark points on each segment's cylinder, leaves in flattened clumps around nodes.
 // position, normal (bark: radial; leaves: shading normal), a = (birth, death, kind 0/1, random),
-// b = (bark radius, time it is reached, point size, 1 on the stem) — all in metres and growth time.
-export function heroTreeArrays(s, {leaf = 12} = {}) {
+// b = (bark radius, time it is reached, point size, flags: 1 on the stem + 2 if burnt) — metres and
+// growth time. Times map to the film's clock as t0 + span * tau; `burn` kills the whole tree by fire
+// at that (film) time, leaving the stem standing as a snag for a while.
+export function heroTreeArrays(s, {leaf = 12, t0 = 0, span = 1, burn = null} = {}) {
   const {N, x, y, z, d, par, lead, birth, leafDeath, woodDeath, rad, radT} = s;
-  const nBark = new Int32Array(N);
+  const nBark = new Int32Array(N), nLeaf = s.form === 'conifer' ? Math.round(leaf * 1.5) : leaf;
   let total = 0;
   for (let i = 1; i < N; i++) {
     const p = par[i], len = Math.hypot(x[i] - x[p], y[i] - y[p], z[i] - z[p]), size = Math.max(0.3 * d[i], 0.5 * rad[i]);
     // enough points to close the bark: along the segment, and around it once it is wider than a point
     const around = Math.max(1, Math.round(2 * Math.PI * rad[i] * 1.15 / size)), along = Math.max(1, Math.round(len / (0.55 * size)));
     nBark[i] = around * along * (lead[i] && y[i] < 4 ? 4 : 1);
-    total += nBark[i] + (leafDeath[i] > birth[i] + 0.012 ? leaf : 0);
+    total += nBark[i] + (leafDeath[i] > birth[i] + 0.012 ? nLeaf : 0);
   }
   const pos = new Float32Array(total * 3), nrm = new Float32Array(total * 3), A = new Float32Array(total * 4), B = new Float32Array(total * 4);
+  const conifer = s.form === 'conifer', rng = mulberry32(99);
+  const T = t => (t > 8 ? t : t0 + span * t);
+  const fire = (t, stem) => (burn === null ? T(t) : Math.min(T(t), burn + (stem ? 0.14 : 0.004 + 0.012 * rng())));
+  const flag = stem => stem + (burn === null ? 0 : 2);
   let o = 0;
   const put = (px, py, pz, qx, qy, qz, a0, a1, a2, a3, b0, b1, b2, b3) => {
     pos[o * 3] = px; pos[o * 3 + 1] = py; pos[o * 3 + 2] = pz;
@@ -265,7 +292,6 @@ export function heroTreeArrays(s, {leaf = 12} = {}) {
     B[o * 4] = b0; B[o * 4 + 1] = b1; B[o * 4 + 2] = b2; B[o * 4 + 3] = b3;
     o++;
   };
-  const rng = mulberry32(99);
   for (let i = 1; i < N; i++) {
     const p = par[i];
     let ax = x[i] - x[p], ay = y[i] - y[p], az = z[i] - z[p];
@@ -281,8 +307,8 @@ export function heroTreeArrays(s, {leaf = 12} = {}) {
       const f = rng(), th = rng() * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th);
       put(x[p] + (x[i] - x[p]) * f, y[p] + (y[i] - y[p]) * f, z[p] + (z[i] - z[p]) * f,
         ux * c + vx * sn, uy * c + vy * sn, uz * c + vz * sn,
-        lerp(birth[p], birth[i], f), woodDeath[i], 0, rng(),
-        lead[i] ? lerp(rad[p], rad[i], f) : rad[i], rT, d[i] * 0.3, lead[i]);
+        T(lerp(birth[p], birth[i], f)), fire(woodDeath[i], lead[i]), 0, rng(),
+        lead[i] ? lerp(rad[p], rad[i], f) : rad[i], T(rT), d[i] * 0.3, flag(lead[i]));
     }
   }
   for (let i = 1; i < N; i++) {
@@ -292,16 +318,29 @@ export function heroTreeArrays(s, {leaf = 12} = {}) {
     // crown-scale normal, away from the crown centre, so the lit side of the crown reads as a volume
     let wx = x[i], wy = (y[i] - cy) * 1.4, wz = z[i];
     const wl = Math.hypot(wx, wy, wz) || 1; wx /= wl; wy /= wl; wz /= wl;
-    const rr = d[i] * 1.05;
-    for (let k = 0; k < leaf; k++) {
+    const rr = d[i] * (conifer ? 1.1 : 1.05), flat = conifer ? 0.4 : 0.5;
+    for (let k = 0; k < nLeaf; k++) {
       const uu = rng() * 2 - 1, a = rng() * Math.PI * 2, sq = Math.sqrt(1 - uu * uu), q = Math.cbrt(rng());
-      const tx = Math.cos(a) * sq, ty = uu * 0.5, tz = Math.sin(a) * sq, tl = Math.hypot(tx, ty, tz);
+      const tx = Math.cos(a) * sq, ty = uu * flat, tz = Math.sin(a) * sq, tl = Math.hypot(tx, ty, tz);
       let qx = tx / tl * 0.45 + wx * 0.75, qy = ty / tl * 0.45 + wy * 0.75, qz = tz / tl * 0.45 + wz * 0.75;
       const ql = Math.hypot(qx, qy, qz); qx /= ql; qy /= ql; qz /= ql;
       put(ox + tx * rr * q, oy + ty * rr * q, oz + tz * rr * q, qx, qy, qz,
-        birth[i] + 0.004 + rng() * 0.012, leafDeath[i] + rng() * 0.02, 1, rng(),
-        0, 0, d[i] * (0.38 + 0.3 * rng()), 0);
+        T(birth[i] + 0.004 + rng() * 0.012), fire(leafDeath[i] + rng() * 0.02, 0), 1, rng(),
+        0, 0, d[i] * (conifer ? 0.3 : 0.38 + 0.3 * rng()), flag(0));
     }
   }
   return {position: pos, normal: nrm, a: A, b: B};
+}
+
+// Grow every part of one geometry and concatenate their points.
+export function growTreeArrays(parts) {
+  const list = parts.map(p => heroTreeArrays(growHeroTree(p.heights, p), p));
+  if (list.length === 1) return list[0];
+  const cat = k => {
+    const out = new Float32Array(list.reduce((n, a) => n + a[k].length, 0));
+    let o = 0;
+    for (const a of list) { out.set(a[k], o); o += a[k].length; }
+    return out;
+  };
+  return {position: cat('position'), normal: cat('normal'), a: cat('a'), b: cat('b')};
 }

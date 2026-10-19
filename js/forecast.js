@@ -99,8 +99,8 @@ export function createForecast({svg, tabs, caption, meta}) {
   let shown = -1;
 
   function update(u) {
-    const phase = u < 8.62 ? 0 : u < 8.98 ? 1 : 2;
-    const wA = 1 - ss(8.55, 8.68, u), wB = ss(8.55, 8.68, u) * (1 - ss(8.92, 9.04, u)), wC = ss(8.92, 9.04, u);
+    const phase = u < 10.07 ? 0 : u < 10.43 ? 1 : 2;
+    const wA = 1 - ss(10, 10.13, u), wB = ss(10, 10.13, u) * (1 - ss(10.37, 10.49, u)), wC = ss(10.37, 10.49, u);
     gA.setAttribute('opacity', wA.toFixed(3));
     gB.setAttribute('opacity', wB.toFixed(3));
     gC.setAttribute('opacity', wC.toFixed(3));
@@ -109,7 +109,7 @@ export function createForecast({svg, tabs, caption, meta}) {
       tabs.forEach((t, i) => t.classList.toggle('on', i === phase));
       caption.textContent = CAPS[phase];
     }
-    const pA = clamp((u - 8.18) / 0.36);
+    const pA = clamp((u - 9.63) / 0.36);
     linesA.forEach(({p, len, dot, lab, series}) => {
       p.style.strokeDashoffset = (len * (1 - pA)).toFixed(1);
       const y = pA * 40, i = Math.floor(y), f = y - i;
@@ -125,14 +125,14 @@ export function createForecast({svg, tabs, caption, meta}) {
       for (let i = 1; i < ys.length; i++) if (ys[i].y - ys[i - 1].y < 13) ys[i].y = ys[i - 1].y + 13;
       ys.forEach(({l, y}) => l.lab.setAttribute('y', y.toFixed(1)));
     }
-    const pB = clamp((u - 8.66) / 0.26);
+    const pB = clamp((u - 10.11) / 0.26);
     linesB.forEach(({p, len}) => { p.style.strokeDashoffset = (len * (1 - pB)).toFixed(1); });
     labB1.setAttribute('x', X1 + 6); labB1.setAttribute('y', (Y0 - linesB[14].series[40] / 24 * (Y0 - Y1) + 4).toFixed(1));
     labB2.setAttribute('x', X1 + 6); labB2.setAttribute('y', (Y0 - linesB[0].series[40] / 24 * (Y0 - Y1) + 4).toFixed(1));
     labB1.setAttribute('opacity', ss(0.8, 1, pB)); labB2.setAttribute('opacity', ss(0.8, 1, pB));
-    const pC = clamp((u - 8.98) / 0.2);
+    const pC = clamp((u - 10.43) / 0.2);
     hist.style.strokeDashoffset = (histLen * (1 - pC)).toFixed(1);
-    const pC2 = ss(9.08, 9.2, u);
+    const pC2 = ss(10.53, 10.65, u);
     [hi, lo, tHi, tLo, tHist].forEach(e => e.setAttribute('opacity', (e === tHist ? ss(0.6, 1, pC) : pC2).toFixed(2)));
   }
   return {update};

@@ -2,7 +2,7 @@
 
 Project page for **CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems** (NeurIPS 2025, Datasets & Benchmarks).
 
-The page opens with a scroll-driven film rendered live in WebGL from CarbonGlobe data: the Earth, a dive into one 0.5° Amazon cell, a forest growing year by year, fifteen starting ages, the whole planet across climate zones, a deep emulator learning the simulator, conditional rollouts, and the dataset in numbers. Below the film are the dataset pipeline, an interactive globe explorer, benchmarks, and the case for coupling ecosystem emulators with weather and climate models.
+The page opens with a scroll-driven film rendered live in WebGL from CarbonGlobe data: the Earth, a dive into one 0.5° Amazon cell, a forest growing year by year, the same start under four forcings (warm and wet, drought, fire, cold), fifteen starting ages, the whole planet across climate zones, an annotated deep emulator that takes climate forcing and forest state in and rolls next year's forest out, conditional rollouts, and the dataset in numbers. Below the film are the dataset pipeline, an interactive globe explorer, benchmarks, and the case for coupling ecosystem emulators with weather and climate models.
 
 Public URL: `https://zhwang0.github.io/carbon-globe-website/`. The dataset and model code live at [zhwang0/carbon-globe](https://github.com/zhwang0/carbon-globe) and on [Kaggle](https://www.kaggle.com/datasets/zhihaow/carbonglobe).
 
@@ -22,11 +22,12 @@ Then open `http://localhost:8000`. Use a server rather than opening `index.html`
 | --- | --- |
 | `index.html`, `css/main.css` | Page structure and styles |
 | `js/main.js` | Scroll timeline, reveals, "Play the film" autoplay, boot and lazy loading |
-| `js/stage.js` | The WebGL film: globe, dive, forest, network, streams and camera choreography |
+| `js/stage.js` | The WebGL film: globe, dive, forests, the four-forcing split view, streams and camera choreography |
+| `js/network.js` | The annotated emulator: forcing and forest-state inputs, encoder, sequence model, heads and the autoregressive loop |
 | `js/globe.js` | Shared globe shader, data-atlas decoding and geographic helpers |
-| `js/tree.js` | Procedural point-cloud trees for the fifteen-age forest, grown from ED canopy height and LAI |
-| `js/hero-grow.js` | Chapter one's tree: space-colonisation growth driven by the Amazon site's ED canopy height, with self-shading, crown lift and pipe-model wood |
-| `js/hero-tree.js`, `js/hero-worker.js` | Lit point-cloud rendering of that tree; the growth runs in a module worker |
+| `js/hero-grow.js` | Tree growth: space colonisation driven by an ED canopy-height series, with self-shading, crown lift, pipe-model wood, broadleaf and conifer forms, and fire |
+| `js/hero-tree.js`, `js/hero-worker.js` | Lit point-cloud rendering of the trees and their flames; growth runs in a module worker |
+| `js/forest.js` | Ground grid and drifting motes of the forest scenes |
 | `js/random.js` | Seeded random numbers shared by the procedural scenes |
 | `js/forecast.js` | "What if?" rollout panel |
 | `js/explorer.js` | Interactive globe explorer with site trajectories |
@@ -44,9 +45,10 @@ All carbon values come from the CarbonGlobe ED reference simulations in the orig
 
 - **Global grids** (`assets/data/grid/{var}_a{age}.png`): all 41 annual states (1981–2021) of the 7 targets for starting ages 1, 50 and 200 at every one of the 54,152 sites, packed as 7 × 6 tiles of the 720 × 360 grid. Stocks (height, AGB, soil C) use the December state. LAI, GPP, NPP and Rh use the mean of the 12 monthly values. Values are stored as 8-bit on a square-root scale (`value = vmax · ((byte − 1)/254)²`, byte 0 = no data) and are for display only. Download the dataset for full precision.
 - **Story trajectories** (`assets/data/meta.json`): exact annual series for six sites (central Amazon, Congo Basin, Zambian miombo, eastern United States, boreal Finland, central Siberia) at all 15 starting ages. Each site is the 90th-percentile canopy height cell (starting age 1, year 40) inside a regional box.
+- **Drought site** (`assets/data/scenarios.json`): the age-1 series of the Amazon-basin cell whose ED run loses the largest share of aboveground biomass from 2015 to 2016 (0.75°S, 63.25°W: 2015 rain 30% of its 40-year mean, LAI 5.1 → 0.5, AGB −21%), with its annual precipitation anomaly.
 - **Climate zones** (`assets/data/climate.png`): approximate Köppen–Geiger main groups (Peel et al., 2007 thresholds) computed from the dataset's own 40-year monthly temperature and precipitation. These approximate the zones the paper uses; they are not the official Beck et al. (2018) map.
 - **Dataset layers** (`assets/data/layers/`): mean air temperature, annual precipitation, 2020 CO₂ and saturated soil water content from the inputs; year-40 height, AGB, soil C and GPP at starting age 200 from the outputs.
-- **Film illustrations**: tree shapes, the cohort layout and the neural network are illustrations. Tree height, crown density and the HUD numbers follow the ED trajectories of the central Amazon site (3.25°S, 63.75°W): chapter one's tree is grown to the site's canopy-height series, and its crown thins and yellows when ED's leaf area index drops below its recent maximum (the 2015–16 drought years). The future-forcing chart shows the dataset's mean CO₂ for 1981–2020, then two illustrative CMIP6 branches to 2100. Only the SSP5-8.5 endpoint (≈1,135 ppm, Meinshausen et al., 2020) is a published value. No emulator predictions or future simulations are shown.
+- **Film illustrations**: tree shapes, the cohort layout and the neural network are illustrations. Every tree is grown to an ED canopy-height series, and its crown thins and yellows when ED's leaf area index drops below its recent maximum; the HUD numbers are the ED values. Chapter one and the "warm and wet" view use the central Amazon site (3.25°S, 63.75°W), the drought view the drought site above, the cold view boreal Finland, and the fifteen-age forest the Amazon site's fifteen starting ages. The fire view is a sketch: CarbonGlobe's disturbance-rate input is constant (0.144 per year at every site), so no run contains a fire; it replays the Amazon age-1 run, burnt in 2003 and restarted at age 1. The emulator diagram shows the benchmarked setup (136 monthly drivers plus the forest state in, next year's state out, rolled out for 40 years), not a specific architecture. The future-forcing chart shows the dataset's mean CO₂ for 1981–2020, then two illustrative CMIP6 branches to 2100. Only the SSP5-8.5 endpoint (≈1,135 ppm, Meinshausen et al., 2020) is a published value. No emulator predictions or future simulations are shown.
 - **Benchmarks**: all values from Table 1 of the paper; emulator run times are read from Fig. 6.
 
 ## Regenerate
@@ -56,6 +58,7 @@ With NumPy and Pillow installed, from this directory:
 ```sh
 python scripts/export_v2_data.py --source /path/to/CarbonGlobe/datasets     # grids, climate zones, meta.json
 python scripts/export_v2_layers.py --source /path/to/CarbonGlobe/datasets   # dataset-section map layers
+python scripts/export_scenarios.py --source /path/to/CarbonGlobe/datasets   # drought site for the four-forcing view
 python scripts/prepare_textures.py                                          # Blue Marble + Natural Earth land mask
 python scripts/render_film.py                                               # MP4, poster and social card (Playwright + imageio-ffmpeg)
 python scripts/validate_site.py                                             # link, module and data checks

@@ -68,12 +68,12 @@
     <div class="cell-label" data-u="1.35,1.55,1.8,1.95" aria-hidden="true"><b>One grid cell</b>0.5° × 0.5° · central Amazon</div>
 
     <!-- chapter 1 -->
-    <article class="cap cap-left" data-u="1.95,2.2,3.45,3.7">
+    <article class="cap cap-left" data-u="1.95,2.2,3.4,3.58">
       <p class="kicker"><span>01</span> One forest</p>
       <h2>A forest, simulated <em>year by year</em>.</h2>
       <p>1981, central Amazon: a young stand begins to grow. The Ecosystem Demography (ED) model, used in NASA's Carbon Monitoring System and the Global Carbon Budget, simulates its growth, mortality and reproduction from monthly climate, CO₂ and soil.</p>
     </article>
-    <div class="hud hud-tree" data-u="2.0,2.25,3.5,3.75" aria-hidden="true">
+    <div class="hud hud-tree" data-u="2.0,2.25,3.42,3.58" aria-hidden="true">
       <div class="hud-year"><small>Year</small><b id="tree-year">1981</b></div>
       <div class="hud-row"><small>Canopy height</small><b><span id="tree-h">3.8</span> m</b></div>
       <div class="hud-row"><small>Aboveground biomass</small><b><span id="tree-agb">0.1</span> kgC m⁻²</b></div>
@@ -81,28 +81,36 @@
       <p class="hud-note">ED reference simulation · 3.25°S, 63.75°W</p>
     </div>
 
-    <div class="rewind" data-u="3.5,3.58,3.86,3.96" aria-hidden="true"><span>↺</span> Back to 1981, now with every starting age</div>
-
     <!-- chapter 2 -->
-    <article class="cap cap-left" data-u="3.75,4.0,5.0,5.2">
-      <p class="kicker"><span>02</span> Fifteen starting ages</p>
+    <article class="cap cap-top cap-forcing" data-u="3.62,3.85,4.95,5.15">
+      <p class="kicker"><span>02</span> Four forcings</p>
+      <h2>Same start, <em>four forcings</em>.</h2>
+      <p>Four ED runs from a 1-year-old stand: warm and wet, the 2015 drought, boreal cold, and a sketched fire that restarts the clock.</p>
+    </article>
+    <div class="panels" id="panels" aria-hidden="true"></div>
+
+    <div class="rewind" data-u="5.0,5.08,5.32,5.42" aria-hidden="true"><span>↺</span> Back to 1981, now with every starting age</div>
+
+    <!-- chapter 3 -->
+    <article class="cap cap-left" data-u="5.2,5.45,6.45,6.65">
+      <p class="kicker"><span>03</span> Fifteen starting ages</p>
       <h2>Every site is seeded with <em>fifteen</em> forest ages.</h2>
       <p>From 1-year saplings to 500-year-old stands, each grown in the same climate. Young forests race upward while old ones hold their carbon. An emulator has to learn both.</p>
     </article>
-    <div class="hud hud-cohort" data-u="3.8,4.05,5.0,5.2" aria-hidden="true">
+    <div class="hud hud-cohort" data-u="5.25,5.5,6.45,6.65" aria-hidden="true">
       <div class="hud-year"><small>Year</small><b id="cohort-year">1981</b></div>
       <div class="bars" id="cohort-bars"></div>
       <p class="hud-note">Canopy height by starting age (years) · same site</p>
     </div>
     <div class="labels" id="cohort-labels" aria-hidden="true"></div>
 
-    <!-- chapter 3 -->
-    <article class="cap cap-left" data-u="5.3,5.55,6.45,6.7">
-      <p class="kicker"><span>03</span> The planet</p>
+    <!-- chapter 4 -->
+    <article class="cap cap-left" data-u="6.75,7.0,7.9,8.15">
+      <p class="kicker"><span>04</span> The planet</p>
       <h2><b class="count" data-count="54152">54,152</b> forests. <em>One planet.</em></h2>
       <p>Repeated at every 0.5° land cell, across tropical, arid, temperate, cold and polar climates. Generating it took ED about <b>812 CPU-days</b> on an HPC cluster.</p>
     </article>
-    <div class="hud hud-globe" data-u="5.35,5.6,6.5,6.7" aria-hidden="true">
+    <div class="hud hud-globe" data-u="6.8,7.05,7.95,8.15" aria-hidden="true">
       <div class="zones" id="zone-legend">
         <span style="--c:#3b82f6">Tropical</span><span style="--c:#f59e0b">Arid</span><span style="--c:#4ade80">Temperate</span><span style="--c:#a78bfa">Cold</span><span style="--c:#cbd5e1">Polar</span>
       </div>
@@ -112,33 +120,39 @@
       </div>
     </div>
 
-    <!-- chapter 4 -->
-    <article class="cap cap-top" data-u="6.75,7.0,7.85,8.05">
-      <p class="kicker"><span>04</span> The emulator</p>
+    <!-- chapter 5 -->
+    <article class="cap cap-top" data-u="8.2,8.45,9.3,9.5">
+      <p class="kicker"><span>05</span> The emulator</p>
       <h2>Now teach a network <em>the simulator</em>.</h2>
       <p>Every step is a training pair: 136 monthly drivers plus the current forest state in, next year's forest out. CarbonGlobe delivers it ML-ready, with tensors, splits, metrics and eight baselines.</p>
     </article>
     <div class="labels" id="net-labels" aria-hidden="true">
-      <span data-k="in"><b>Inputs</b>136 drivers × 12 months<br>+ forest state · year t</span>
-      <span data-k="mid"><b>Deep emulator</b>LSTM · Transformer · DeepED …</span>
-      <span data-k="out"><b>Outputs</b>forest state · year t + 1<br>height · AGB · soil C · LAI · GPP · NPP · Rh</span>
+      <span data-k="title" class="net-title"><b>Deep-learning emulator</b>learns ED's yearly step: (X<sub>t</sub>, v<sub>t</sub>) → v<sub>t+1</sub></span>
+      <span data-k="forcing"><b>Climate forcing · X<sub>t</sub></b>136 drivers × 12 months: weather, CO₂, soil</span>
+      <span data-k="tree"><b>Initial forest</b>any of 15 starting ages</span>
+      <span data-k="state"><b>Forest state · v<sub>t</sub></b>height · AGB · soil C · LAI · GPP · NPP · Rh</span>
+      <span data-k="enc"><b>Encoder</b>embeds both inputs</span>
+      <span data-k="core"><b>Sequence model</b>attention or LSTM across the months</span>
+      <span data-k="heads"><b>Heads</b>one per target</span>
+      <span data-k="next"><b>Next year · v<sub>t+1</sub></b>predicted forest state</span>
+      <span data-k="loop"><b>↺ Autoregressive rollout</b>each prediction becomes the next input, 40 years running</span>
     </div>
 
-    <!-- chapter 5 -->
-    <article class="cap cap-top" data-u="8.1,8.3,9.15,9.35">
-      <p class="kicker"><span>05</span> What if?</p>
+    <!-- chapter 6 -->
+    <article class="cap cap-top" data-u="9.55,9.75,10.6,10.8">
+      <p class="kicker"><span>06</span> What if?</p>
       <h2>Forty years ahead, <em>in about an hour</em>.</h2>
       <p>Rolled out year after year, an emulator answers what-if questions: a different climate, a different starting forest. A global run that took ED 40 days of wall time takes about one GPU-hour.</p>
     </article>
-    <figure class="forecast" id="forecast" data-u="8.15,8.4,9.15,9.35" aria-hidden="true">
+    <figure class="forecast" id="forecast" data-u="9.6,9.85,10.6,10.8" aria-hidden="true">
       <div class="fc-tabs"><span id="fc-tab-a" class="on">Climates</span><span id="fc-tab-b">Starting forests</span><span id="fc-tab-c">Future forcing</span></div>
       <svg id="fc-svg" viewBox="0 0 560 330" preserveAspectRatio="xMidYMid meet"></svg>
       <figcaption id="fc-cap">Aboveground biomass (kgC m⁻²) of ED reference rollouts from a 1-year-old forest, 1981–2021.</figcaption>
     </figure>
 
-    <!-- chapter 6 -->
-    <div class="numbers" data-u="9.4,9.6,11,11">
-      <p class="kicker"><span>06</span> CarbonGlobe in numbers</p>
+    <!-- chapter 7 -->
+    <div class="numbers" data-u="10.85,11.05,12.45,12.45">
+      <p class="kicker"><span>07</span> CarbonGlobe in numbers</p>
       <div class="num-grid">
         <div><b class="count" data-count="54152">54,152</b><span>land sites on a 0.5° global grid</span></div>
         <div><b class="count" data-count="40">40</b><span>years of annual steps, 1981–2021</span></div>
@@ -154,11 +168,12 @@
     <nav class="chapters" id="chapters" aria-label="Film chapters">
       <button type="button" data-goto="0" aria-label="Start"><i></i><span>Start</span></button>
       <button type="button" data-goto="2.6" aria-label="One forest"><i></i><span>One forest</span></button>
-      <button type="button" data-goto="4.5" aria-label="Fifteen ages"><i></i><span>Fifteen ages</span></button>
-      <button type="button" data-goto="6.1" aria-label="The planet"><i></i><span>The planet</span></button>
-      <button type="button" data-goto="7.5" aria-label="The emulator"><i></i><span>The emulator</span></button>
-      <button type="button" data-goto="8.8" aria-label="What if?"><i></i><span>What if?</span></button>
-      <button type="button" data-goto="9.9" aria-label="In numbers"><i></i><span>Numbers</span></button>
+      <button type="button" data-goto="4.4" aria-label="Four forcings"><i></i><span>Four forcings</span></button>
+      <button type="button" data-goto="5.95" aria-label="Fifteen ages"><i></i><span>Fifteen ages</span></button>
+      <button type="button" data-goto="7.55" aria-label="The planet"><i></i><span>The planet</span></button>
+      <button type="button" data-goto="8.95" aria-label="The emulator"><i></i><span>The emulator</span></button>
+      <button type="button" data-goto="10.25" aria-label="What if?"><i></i><span>What if?</span></button>
+      <button type="button" data-goto="11.35" aria-label="In numbers"><i></i><span>Numbers</span></button>
     </nav>
     <div class="film-bar" aria-hidden="true"><i id="film-progress"></i></div>
     <button class="film-pause" id="film-pause" type="button" hidden>Pause</button>
