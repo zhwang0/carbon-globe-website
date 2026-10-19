@@ -121,14 +121,14 @@
     </div>
 
     <!-- chapter 5 -->
-    <article class="cap cap-top" data-u="8.2,8.45,9.3,9.5">
+    <article class="cap cap-top cap-net" data-u="8.2,8.45,9.3,9.5">
       <p class="kicker"><span>05</span> The emulator</p>
       <h2>Now teach a network <em>the simulator</em>.</h2>
-      <p>Every step is a training pair: 136 monthly drivers plus the current forest state in, next year's forest out. CarbonGlobe delivers it ML-ready, with tensors, splits, metrics and eight baselines.</p>
+      <p>Every step is a training pair: a year of gridded monthly climate, the same kind of reanalysis fields as ERA5 in WeatherBench 2, plus the current forest in; next year's forest out. CarbonGlobe ships it ML-ready, with splits, metrics and eight baselines.</p>
     </article>
     <div class="labels" id="net-labels" aria-hidden="true">
       <span data-k="title" class="net-title"><b>Deep-learning emulator</b>learns ED's yearly step: (X<sub>t</sub>, v<sub>t</sub>) → v<sub>t+1</sub></span>
-      <span data-k="forcing"><b>Climate forcing · X<sub>t</sub></b>136 drivers × 12 months: weather, CO₂, soil</span>
+      <span data-k="forcing"><b>Climate forcing · X<sub>t</sub></b><span class="net-d">gridded monthly reanalysis (MERRA&#8209;2), like ERA5 in WeatherBench&nbsp;2</span><i class="net-var">Air temperature · Jan 2015</i></span>
       <span data-k="tree"><b>Initial forest</b>any of 15 starting ages</span>
       <span data-k="state"><b>Forest state · v<sub>t</sub></b>height · AGB · soil C · LAI · GPP · NPP · Rh</span>
       <span data-k="enc"><b>Encoder</b>embeds both inputs</span>
@@ -445,7 +445,7 @@
     <a class="film-card reveal" href="assets/film/carbonglobe-film.mp4" target="_blank" rel="noopener">
       <img src="assets/film/carbonglobe-film.jpg" alt="Opening frame of the CarbonGlobe film" loading="lazy">
       <span class="film-play" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg></span>
-      <span class="film-meta"><b>The film, as a video</b><small>53 s · 1280 × 720 · MP4, silent. Rendered from this page, ready for talks and posts.</small></span>
+      <span class="film-meta"><b>The film, as a video</b><small>64 s · 1280 × 720 · MP4, silent. Rendered from this page, ready for talks and posts.</small></span>
     </a>
     <div class="bibtex reveal">
       <div class="bib-head"><span>BibTeX</span><button class="btn btn-small" id="copy-bib" type="button">Copy</button></div>

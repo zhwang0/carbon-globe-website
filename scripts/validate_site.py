@@ -73,6 +73,16 @@ scen = json.load(open(os.path.join(ROOT, 'assets', 'data', 'scenarios.json')))
 for var in ('height', 'agb', 'lai'):
     if len(scen['drought']['age1'][var]) != g['years']:
         errors.append(f'scenarios.json drought/{var}: expected {g["years"]} values')
+for key in ('amazon', 'drought', 'boreal'):
+    for var in ('precip_mm', 'temp_c'):
+        if len(scen['climate'][key][var]) != g['years'] - 1:
+            errors.append(f'scenarios.json climate/{key}/{var}: expected {g["years"] - 1} values')
+M = scen['maps']
+exists(M['file'], 'scenarios.json')
+if os.path.exists(os.path.join(ROOT, M['file'])) and png_size(M['file']) != (M['tile'][0] * M['cols'], M['tile'][1] * 2 * len(M['vars'])):
+    errors.append(f'{M["file"]}: unexpected size')
+for key in ('wet', 'drought', 'fire', 'cold'):
+    exists(scen['regions'][key]['file'], 'scenarios.json')
 if png_size('assets/data/climate.png') != (720, 360):
     errors.append('climate.png: unexpected size')
 

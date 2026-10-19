@@ -1,5 +1,5 @@
 // CarbonGlobe site bootstrap: scroll film, reveals, explorer, benchmarks.
-import {loadTexture, loadAtlas, loadZones} from './globe.js';
+import {loadTexture, loadAtlas, loadZones, loadTiles} from './globe.js';
 import {createForecast} from './forecast.js';
 import {createBench} from './bench.js';
 
@@ -190,21 +190,24 @@ async function boot() {
     return;
   }
   const [{createStage}, tex, height, scen] = await Promise.all([import('./stage.js'), textures(), getAtlas('height', 1), scenP]);
+  // the emulator's forcing maps: six drivers x twelve months, needed only from chapter five on
+  const M = scen.maps, nv = M.vars.length;
+  const maps = loadTiles(M.file, M.tile[0], M.tile[1], nv * 12, i => [i % 12 % M.cols, 2 * Math.floor(i / 12) + Math.floor(i % 12 / M.cols)]);
   stage = createStage({
-    canvas, meta, scen, mobile, reduced,
+    canvas, meta, scen, maps, mobile, reduced,
     tex: {...tex, height},
     dom: {
       flash: $('#flash'), bars: $('#cohort-bars'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'),
       treeYear: $('#tree-year'), cohortYear: $('#cohort-year'), treeH: $('#tree-h'), treeAgb: $('#tree-agb'), treeLai: $('#tree-lai'),
       globeYear: $('#globe-year'), zoneLegend: $('#zone-legend'), globeGrowth: $('#globe-growth'), panels: $('#panels'),
-      forcingCap: $('.cap-forcing'),
+      forcingCap: $('.cap-forcing'), netCap: $('.cap-net'),
     },
   });
   canvas.classList.add('ready');
   addEventListener('resize', () => stage.resize());
   if (RENDER) {
     // Deterministic frame stepping for scripts/render_film.py, once the trees have grown.
-    await stage.ready;
+    await Promise.all([stage.ready, maps]);
     window.__cg = {
       frame(u, t) {
         const {vh, top} = filmMetrics();

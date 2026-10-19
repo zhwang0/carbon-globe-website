@@ -183,23 +183,61 @@ html.no-webgl .stage-fallback {
 .cap-forcing h2 { font-size: clamp(28px, 3.1vw, 46px); margin-bottom: 10px; }
 .panels { position: absolute; inset: 0; z-index: 3; pointer-events: none; font-family: var(--mono); }
 .panels > div { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
-.panel { border: 1px solid rgba(185, 244, 107, .16); border-radius: 14px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
-.panel p { margin: 0; position: absolute; left: 14px; right: 14px; }
-.p-head { top: 12px; }
-.p-head b { display: block; color: var(--pc, var(--g1)); font-size: 11.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
-.p-head span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.45; }
-.p-head i { display: inline-block; margin-left: 8px; padding: 1px 6px; border: 1px solid rgba(255, 179, 107, .5); border-radius: 99px; color: #ffb36b; font-style: normal; font-size: 9.5px; letter-spacing: .1em; vertical-align: 1px; }
+.panel { border: 1px solid color-mix(in srgb, var(--pc) 26%, transparent); border-radius: 14px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
+.panel > p { margin: 0; position: absolute; left: 14px; right: 14px; }
+.panel.p-wet { z-index: 1; }
+.p-top { position: absolute; left: 12px; right: 12px; top: 11px; text-shadow: 0 1px 6px rgba(0, 0, 0, .75); display: grid; grid-template-columns: minmax(0, 1fr) clamp(96px, 36%, 150px); grid-template-areas: "head map" "clim map"; column-gap: 10px; row-gap: 9px; align-items: start; }
+.p-head { grid-area: head; display: flex; gap: 8px; align-items: flex-start; min-width: 0; }
+.p-icon { flex: none; width: 22px; height: 22px; margin-top: -3px; fill: none; stroke: var(--pc); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: filter .4s; }
+.p-icon.on { filter: drop-shadow(0 0 4px var(--pc)) drop-shadow(0 0 10px var(--pc)); }
+.p-title { margin: 0; min-width: 0; }
+.p-title b { display: block; color: var(--pc); font-size: 11.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
+.p-title i { display: inline-block; margin-left: 8px; padding: 1px 6px; border: 1px solid rgba(255, 179, 107, .5); border-radius: 99px; color: #ffb36b; font-style: normal; font-size: 9.5px; letter-spacing: .1em; vertical-align: 1px; }
+.p-title span { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p-clim { grid-area: clim; display: flex; gap: 6px; height: 25px; }
+.p-key { display: flex; flex-direction: column; justify-content: space-between; padding: 2px 0 0; color: var(--dim); font-size: 8.5px; font-style: normal; line-height: 1; letter-spacing: .06em; }
+.p-key i { font-style: normal; }
+.p-strip { position: relative; flex: 1; min-width: 0; }
+.p-strip svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.p-strip .p-all { opacity: .22; }
+.p-strip .ev { fill: color-mix(in srgb, var(--pc) 50%, transparent); }
+.p-cur { position: absolute; top: -4px; bottom: -4px; left: 0; width: 1.5px; margin-left: -.75px; background: var(--text); box-shadow: 0 0 6px var(--pc); }
+.p-map { grid-area: map; min-width: 0; margin: 0; }
+.p-map > span { position: relative; display: block; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, .13), 0 8px 22px rgba(0, 0, 0, .4); }
+.p-map img { display: block; width: 100%; height: auto; }
+.pin { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px var(--pc), 0 0 9px var(--pc); }
+.pin::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid var(--pc); animation: pin 2s ease-out infinite; }
+@keyframes pin { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.p-map > span b { position: absolute; left: 6px; top: 4px; color: #fff; font-size: 8px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; text-shadow: 0 1px 4px #000, 0 0 2px #000; }
+.p-map figcaption { display: grid; grid-template-columns: auto 1fr auto; gap: 0 4px; margin-top: 5px; color: var(--dim); font-size: 8.5px; line-height: 1.3; white-space: nowrap; }
+.p-map figcaption small { font-size: inherit; }
+.p-map figcaption small:nth-of-type(2) { text-align: center; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.p-map figcaption i { grid-column: 1 / -1; height: 4px; margin-bottom: 3px; border-radius: 2px; }
 .p-stats { bottom: 12px; display: flex; gap: 18px; }
 .p-stats small { display: block; color: var(--dim); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
 .p-stats b { color: var(--text); font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.p-note { bottom: 58px; color: var(--pc, var(--g1)); font-size: 11px; line-height: 1.45; opacity: 0; transition: opacity .35s; }
+.p-note { bottom: 58px; color: var(--pc, var(--g1)); font-size: 11px; line-height: 1.45; opacity: 0; transition: opacity .35s; text-shadow: 0 1px 10px rgba(0, 0, 0, .8); }
 .p-note.on { opacity: 1; }
-.panels.compact .panel p { left: 10px; right: 10px; }
+.panels.compact .panel > p { left: 10px; right: 10px; }
 .panels.compact .p-stats { bottom: 9px; gap: 10px; white-space: nowrap; }
 .panels.compact .p-stats small { display: none; }
 .panels.compact .p-stats b { font-size: 13px; }
 .panels.compact .p-stats span { font-size: 10px; color: var(--muted); }
 .panels.compact .p-note { bottom: 30px; font-size: 10px; }
+.panels.nomap .p-top { left: 10px; right: 10px; top: 9px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "clim"; row-gap: 7px; }
+.panels.nomap .p-map, .panels.nomap .p-key { display: none; }
+.panels.nomap .p-clim { height: 18px; }
+@media (min-width: 1600px) {
+  .p-top { left: 16px; right: 16px; top: 15px; grid-template-columns: minmax(0, 1fr) clamp(96px, 36%, 184px); column-gap: 14px; row-gap: 12px; }
+  .p-icon { width: 26px; height: 26px; }
+  .p-title b { font-size: 13px; }
+  .p-title span { font-size: 11.5px; margin-top: 4px; }
+  .p-clim { height: 31px; }
+  .p-key { font-size: 9.5px; }
+  .p-map > span b { font-size: 9px; left: 8px; top: 6px; }
+  .p-map figcaption { font-size: 9.5px; }
+  .p-note { font-size: 12.5px; }
+}
 .panels-year small { display: block; color: var(--dim); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; text-align: right; }
 .panels-year b { display: block; color: var(--text); font: 650 clamp(34px, 3.6vw, 52px)/1.05 var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .hud-globe { left: max(24px, 6vw); right: max(24px, 6vw); bottom: 7vh; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
@@ -223,6 +261,14 @@ html.no-webgl .stage-fallback {
 #net-labels .net-title b { color: var(--g2); font-size: 12.5px; }
 #net-labels [data-k="forcing"] b { color: #35c6f4; }
 #net-labels [data-k="loop"] { max-width: 300px; }
+#net-labels.few [data-k="enc"], #net-labels.few [data-k="core"], #net-labels.few [data-k="heads"], #net-labels.few [data-k="tree"], #net-labels.few [data-k="next"] { display: none; }
+#net-labels.few > span { font-size: 10px; }
+#net-labels.few .net-d { display: none; }
+#net-labels.few .net-title { max-width: 210px; }
+#net-labels.tiny .net-title { display: none; }
+#net-labels [data-k="forcing"] { max-width: 250px; }
+#net-labels .net-d { display: block; }
+#net-labels .net-var { display: inline-block; margin-top: 7px; padding: 2px 9px; border: 1px solid currentColor; border-radius: 99px; background: rgba(5, 10, 12, .6); font-style: normal; white-space: nowrap; transition: color .3s; }
 #net-labels b { display: block; margin-bottom: 4px; color: var(--g1); font-weight: 500; letter-spacing: .12em; text-transform: uppercase; font-size: 11px; }
 
 /* forecast */
@@ -518,8 +564,8 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
   #net-labels b { font-size: 9.5px; }
   #net-labels [data-k="enc"], #net-labels [data-k="core"], #net-labels [data-k="heads"], #net-labels [data-k="tree"], #net-labels [data-k="next"], #net-labels [data-k="forcing"] { display: none; }
   .cap-forcing p:not(.kicker) { display: none; }
-  .p-head span { display: none; }
-  .p-head { top: 9px; }
+  .p-title span { display: none; }
+  .p-icon { width: 18px; height: 18px; }
   .p-note { font-size: 9.5px; }
   .panels-year b { font-size: 30px; }
 }

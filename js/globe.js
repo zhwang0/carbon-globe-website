@@ -93,6 +93,32 @@ export async function loadAtlas(url, meta) {
   tex.needsUpdate = true;
   return {tex, raw, W, H, years};
 }
+// Tiles of an 8-bit atlas (byte 0 = no data) -> RG8 array texture, one layer per tile, with R the
+// value and G the data coverage. where(i) gives the column and row of tile i in the atlas.
+export async function loadTiles(url, W, H, n, where) {
+  const img = await decodePNG(url);
+  const rg = new Uint8Array(W * H * n * 2), src = img.data, stride = img.width * 4;
+  for (let i = 0; i < n; i++) {
+    const [tc, tr] = where(i);
+    for (let r = 0; r < H; r++) {
+      let s = (tr * H + r) * stride + tc * W * 4, d = (i * H + r) * W;
+      for (let c = 0; c < W; c++, s += 4, d++) {
+        const b = src[s];
+        if (b) { rg[d * 2] = Math.round((b - 1) * 255 / 254); rg[d * 2 + 1] = 255; }
+      }
+    }
+  }
+  const tex = new THREE.DataArrayTexture(rg, W, H, n);
+  tex.format = THREE.RGFormat;
+  tex.type = THREE.UnsignedByteType;
+  tex.minFilter = tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.unpackAlignment = 1;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 // Physical value at (row, col, year) from raw atlas bytes.
 export function atlasValue(atlas, vmax, gamma, row, col, year) {
   const b = atlas.raw[(year * atlas.H + row) * atlas.W + col];

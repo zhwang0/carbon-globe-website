@@ -1,7 +1,7 @@
 // The scroll-driven film: hero globe -> one forest -> four forcings -> fifteen ages -> planet -> emulator -> what if -> numbers.
 import * as THREE from '../assets/vendor/three.module.js';
 import {createGlobe, createStars, facing, cellOf, latLonToVec3} from './globe.js';
-import {createGround, createMotes} from './forest.js';
+import {createGround, createMotes, createWeather, createSky} from './forest.js';
 import {mulberry32} from './random.js';
 import {growTrees, treePoints, createFlames, PRE_TAU} from './hero-tree.js';
 import {createEmulator, NET} from './network.js';
@@ -33,18 +33,18 @@ function forestYear(u) {
 // Split of the forest view into four: 0 = one view, 1 = four.
 const splitK = u => ease(ss(3.5, 3.8, u)) * (1 - ease(ss(5.0, 5.25, u)));
 
-// Particles flowing from land cells on the globe into the emulator's forcing input.
-function createStreams(zones, inputs, px, count) {
+// Particles flowing from land cells on the globe to the same place on the emulator's front map.
+function createStreams(zones, net, px, count) {
   const cells = [];
   for (let i = 0; i < zones.data.length; i += 7) if (zones.data[i]) cells.push(i);
   const rng = mulberry32(11), v = new THREE.Vector3();
   const dir = new Float32Array(count * 3), end = new Float32Array(count * 3), ph = new Float32Array(count), rnd = new Float32Array(count);
   for (let i = 0; i < count; i++) {
-    const c = cells[Math.floor(rng() * cells.length)], row = Math.floor(c / 720), col = c % 720;
-    latLonToVec3(89.75 - row * 0.5, -179.75 + col * 0.5, 1, v);
+    const c = cells[Math.floor(rng() * cells.length)], lat = 89.75 - Math.floor(c / 720) * 0.5, lon = -179.75 + (c % 720) * 0.5;
+    latLonToVec3(lat, lon, 1, v);
     dir.set([v.x, v.y, v.z], i * 3);
-    const e = inputs[Math.floor(rng() * inputs.length)];
-    end.set([e.x, e.y, e.z], i * 3);
+    net.mapPoint(lat, lon, v);
+    end.set([v.x, v.y, v.z], i * 3);
     ph[i] = rng(); rnd[i] = rng();
   }
   const geo = new THREE.BufferGeometry();
@@ -78,7 +78,7 @@ function createStreams(zones, inputs, px, count) {
 }
 
 // ------------------------------------------------------------------ stage
-export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = false}) {
+export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced = false}) {
   const renderer = new THREE.WebGLRenderer({canvas, antialias: true, powerPreference: 'high-performance'});
   renderer.setClearColor(0x050a0c, 1);
   renderer.autoClear = false;
@@ -98,31 +98,27 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
   const stars = createStars(mobile ? 1400 : 2800);
   stars.material.uniforms.uPx.value = px;
   gScene.add(stars, G.group);
-  const net = createEmulator(px);
+  const net = createEmulator(px, scen.maps, tex.mask);
   gScene.add(net.group);
-  const streams = createStreams(tex.zones, net.inputs, px, mobile ? 700 : 1400);
+  maps?.then(t => net.setMaps(t)).catch(() => {});
+  const streams = createStreams(tex.zones, net, px, mobile ? 700 : 1400);
   streams.renderOrder = 3;
   gScene.add(streams);
 
   // forest scene
   const fScene = new THREE.Scene();
   const fCam = new THREE.PerspectiveCamera(40, 1, 0.05, 400);
-  const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-    uniforms: {uOpacity: {value: 0}},
-    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
-    fragmentShader: `uniform float uOpacity; varying vec2 vUv;
-      void main(){ vec3 top = vec3(0.03, 0.09, 0.09), bot = vec3(0.012, 0.03, 0.035);
-      vec3 c = mix(bot, top, smoothstep(0.1, 0.95, vUv.y)) + vec3(0.04, 0.12, 0.08) * exp(-pow((vUv.y - 0.42) * 4.0, 2.0)) * 0.5;
-      gl_FragColor = vec4(c, uOpacity); }`,
-    depthTest: false, depthWrite: false, transparent: true,
-  }));
-  bg.frustumCulled = false; bg.renderOrder = -10;
+  const bg = createSky();
   fScene.add(bg);
   const ground = createGround(px);
   ground.renderOrder = -5;
   fScene.add(ground);
   const motes = createMotes(mobile ? 400 : 900, px);
   fScene.add(motes);
+  // the four-forcing views' weather, shown only inside their viewports
+  const weather = {rain: createWeather('rain', mobile ? 400 : 700, px), snow: createWeather('snow', mobile ? 400 : 700, px),
+    dust: createWeather('dust', mobile ? 160 : 260, px), ash: createWeather('ash', mobile ? 260 : 420, px)};
+  Object.values(weather).forEach(w => fScene.add(w));
 
   // Trees, grown in a worker, in the order they appear: chapter one's tree from ED's canopy-height
   // series (it stays on as the cohort chapter's 1-year-old stand at the centre); the three other
@@ -197,21 +193,71 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
   const dryLoss = Math.round(100 * (1 - dry.agb[35] / dry.agb[34]));
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const where = s => `${Math.abs(s.lat).toFixed(2)}°${s.lat < 0 ? 'S' : 'N'}`;
+  const degC = t => `${t >= 10 ? Math.round(t) : t.toFixed(1)} °C`;
+  // Each view's climate, from its site's forcing: annual rain relative to the site's mean and the
+  // temperature anomaly, on the trees' clock (the 40 forcing years, 1981-2020, then held for 2021).
+  const series = Object.fromEntries(Object.entries(scen.climate).map(([k, c]) => {
+    const pm = c.precip_mm.reduce((a, b) => a + b) / 40, tm = c.temp_c.reduce((a, b) => a + b) / 40;
+    const pad = a => [...a, a[a.length - 1]];
+    return [k, {rain: pad(c.precip_mm.map(p => p / pm)), anom: pad(c.temp_c.map(t => t - tm)), pm, tm}];
+  }));
+  // an event that lingers: the largest f(k) e^-(y-k)/tau over the years k up to y
+  const lingering = (f, y, tau) => {
+    let m = f(y);
+    for (let k = 0; k <= Math.min(40, y); k++) m = Math.max(m, f(k) * Math.exp(-(y - k) / tau));
+    return m;
+  };
+  const rainRate = p => clamp(0.1 + 0.6 * (p - 0.4) / 0.8);
+  const dryness = (key, y) => lingering(k => clamp((0.85 - at(series[key].rain, k)) / 0.45), y, 1.6);
+  // skies: gradient top and bottom, horizon glow, sun (u, v, size) and its colour, cloud cover and colour
+  const SKY = {
+    base: {top: [0.03, 0.09, 0.09], bot: [0.012, 0.03, 0.035], band: [0.02, 0.06, 0.04], sun: [0.7, 0.8, 0], sunCol: [0, 0, 0], cloud: 0, cloudCol: [0.06, 0.1, 0.11]},
+    wet: {top: [0.03, 0.085, 0.1], bot: [0.012, 0.035, 0.04], band: [0.03, 0.085, 0.07], sun: [0.7, 0.8, 0], sunCol: [0, 0, 0], cloud: 0.8, cloudCol: [0.075, 0.11, 0.12]},
+    dry: {top: [0.21, 0.125, 0.05], bot: [0.075, 0.042, 0.018], band: [0.3, 0.17, 0.05], sun: [0.7, 0.8, 0.24], sunCol: [1, 0.68, 0.3], cloud: 0, cloudCol: [0.2, 0.13, 0.06]},
+    fire: {top: [0.16, 0.045, 0.02], bot: [0.05, 0.016, 0.01], band: [0.55, 0.15, 0.03], sun: [0.5, 0.2, 0.3], sunCol: [0.5, 0.12, 0.02], cloud: 0.9, cloudCol: [0.12, 0.06, 0.04]},
+    smoke: {top: [0.085, 0.072, 0.065], bot: [0.032, 0.028, 0.025], band: [0.08, 0.05, 0.03], sun: [0.7, 0.8, 0], sunCol: [0, 0, 0], cloud: 0.85, cloudCol: [0.14, 0.12, 0.105]},
+    cold: {top: [0.04, 0.065, 0.13], bot: [0.02, 0.032, 0.06], band: [0.05, 0.085, 0.15], sun: [0.26, 0.5, 0.09], sunCol: [0.26, 0.34, 0.5], cloud: 0.55, cloudCol: [0.13, 0.15, 0.2]},
+  };
+  const GRID = {base: [0.25, 0.9, 0.6], dry: [0.8, 0.52, 0.18], cold: [0.55, 0.78, 1]};
+  const mix3 = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const mixSky = (a, b, t) => ({top: mix3(a.top, b.top, t), bot: mix3(a.bot, b.bot, t), band: mix3(a.band, b.band, t), sun: mix3(a.sun, b.sun, t),
+    sunCol: mix3(a.sunCol, b.sunCol, t), cloud: lerp(a.cloud, b.cloud, t), cloudCol: mix3(a.cloudCol, b.cloudCol, t)});
+  const CALM = {sky: SKY.base, rain: 0, snow: 0, dust: 0, ash: 0, dry: 0, frost: 0, char: 0, grid: GRID.base, on: false};
+  const boreal = meta.story.boreal;
   const panels = [
-    {title: 'Warm & wet', color: '#b9f46b', sub: `${story.label} · ${story.temp_c} °C · ${fmt(story.precip_mm)} mm`,
-      tree: hero, h: y => at(h1, y), agb: y => at(agb1, y)},
-    {title: 'Drought', color: '#f5b544', sub: `${scen.drought.label}, ${where(scen.drought)} · ${scen.drought.temp_c} °C · ${fmt(scen.drought.precip_mm)} mm`,
+    {key: 'wet', title: 'Warm & wet', color: '#b9f46b', site: story, cl: 'amazon',
+      lines: [`Amazon, ${where(story)}`, `${degC(story.temp_c)} · ${fmt(story.precip_mm)} mm/yr`],
+      tree: hero, h: y => at(h1, y), agb: y => at(agb1, y),
+      clim: y => ({...CALM, sky: SKY.wet, rain: rainRate(at(series.amazon.rain, y))})},
+    {key: 'drought', title: 'Drought', color: '#f5b544', site: scen.drought, cl: 'drought', event: 34,
+      lines: [`Amazon, ${where(scen.drought)}`, `${degC(scen.drought.temp_c)} · ${fmt(scen.drought.precip_mm)} mm/yr`],
       h: y => at(dry.height, y), agb: y => at(dry.agb, y), leaf: y => leafRatio(dry.lai, y), min: 0.04,
-      note: y => (y >= 34.6 ? `2015 rain ${Math.round(scen.drought.precip_pct[34])}% of normal: the canopy sheds its leaves, biomass −${dryLoss}%` : '')},
-    {title: 'Fire', tag: 'sketch', color: '#ff7a45', sub: `${story.label} run, burnt in ${1981 + FIRE} and restarted at age 1`,
+      note: y => (y >= 34.6 ? `2015 rain ${Math.round(scen.drought.precip_pct[34])}% of normal: the canopy sheds its leaves, biomass −${dryLoss}%` : ''),
+      clim: y => {
+        const d = dryness('drought', y);
+        return {...CALM, sky: mixSky(SKY.wet, SKY.dry, d), rain: rainRate(at(series.drought.rain, y)) * (1 - d), dust: d, dry: d,
+          grid: mix3(GRID.base, GRID.dry, d), on: d > 0.35};
+      }},
+    {key: 'fire', title: 'Fire', tag: 'sketch', color: '#ff7a45', site: story, cl: 'amazon', event: FIRE,
+      lines: [`Amazon, ${where(story)}`, `burnt in ${1981 + FIRE}`],
       h: y => (y > FIRE && y < FIRE + 1 ? 0 : afterFire(h1, y)), agb: y => (y > FIRE && y < FIRE + 1 ? 0 : afterFire(agb1, y)),
       leaf: y => leafRatio(lai1, y <= FIRE ? y : Math.max(0, y - FIRE - 1)), min: 0.35, burn: (FIRE + 0.3) / 40,
-      note: y => (y > FIRE ? 'A fire resets the clock: the stand starts again at age 1' : '')},
-    {title: 'Cold', color: '#8fc7ff', sub: `${meta.story.boreal.label} · ${meta.story.boreal.temp_c} °C · ${fmt(meta.story.boreal.precip_mm)} mm`,
-      h: y => at(cold.height, y), agb: y => at(cold.agb, y), tint: [0.6, 0.92, 0.86]},
+      note: y => (y > FIRE ? 'A fire resets the clock: the stand starts again at age 1' : ''),
+      clim: y => {
+        const t = y - (FIRE + 0.3);
+        const blaze = t > -0.15 ? ss(-0.15, 0.02, t) * Math.exp(-Math.max(0, t) / 0.45) : 0;
+        const smoke = t > 0 ? ss(0, 0.25, t) * Math.exp(-t / 2.2) : 0;
+        return {...CALM, sky: mixSky(mixSky(SKY.wet, SKY.smoke, smoke), SKY.fire, blaze), rain: rainRate(at(series.amazon.rain, y)) * (1 - Math.max(smoke, blaze)),
+          ash: Math.max(smoke, blaze * 0.7), char: t > 0 ? ss(0, 0.1, t) * Math.exp(-t / 3.5) : 0, on: blaze + smoke > 0.3};
+      }},
+    {key: 'cold', title: 'Cold', color: '#8fc7ff', site: boreal, cl: 'boreal',
+      lines: [`Finland, ${where(boreal)}`, `${degC(boreal.temp_c)} · ${fmt(boreal.precip_mm)} mm/yr`],
+      h: y => at(cold.height, y), agb: y => at(cold.agb, y), tint: [0.6, 0.92, 0.86],
+      clim: y => ({...CALM, sky: SKY.cold, snow: clamp(0.6 - 0.14 * at(series.boreal.anom, y), 0.3, 0.95), frost: 0.85, grid: GRID.cold})},
   ];
   panels.forEach((P, i) => {
     P.cam = new THREE.PerspectiveCamera(40, 1, 0.05, 400);
+    P.state = CALM;
     if (i === 0) return;
     P.tree = treePoints(grown.geos[i], px, {glow: true});
     P.tree.scale.setScalar(0.1);
@@ -226,14 +272,61 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
     P.tree.visible = false;
     fScene.add(P.tree);
   });
-  dom.panels.innerHTML = '<div class="panels-year"><small>Year</small><b>1981</b></div>' + panels.map(P => `<div class="panel" style="--pc:${P.color}">
-    <p class="p-head"><b>${P.title}${P.tag ? `<i>${P.tag}</i>` : ''}</b><span>${P.sub}</span></p><p class="p-note"></p>
+
+  // Each view's header: an icon, the site, a regional climate map with the site pinned, and a strip of
+  // its forcing year by year (rain bars, temperature-anomaly stripes) that fills in as the years pass.
+  const ICONS = {
+    wet: '<path d="M6.8 15.2h9.9a3.7 3.7 0 0 0 .4-7.4 5.3 5.3 0 0 0-10.2-1.1 4.3 4.3 0 0 0-.1 8.5z"/><path d="M8.6 18 7.7 20.3M12.4 18l-.9 2.3M16.2 18l-.9 2.3"/>',
+    drought: '<circle cx="12" cy="9.2" r="3.3"/><path d="M12 2.6v1.5M12 14.3v1.5M5.4 9.2H3.9M20.1 9.2h-1.5M7.3 4.5l1.1 1.1M16.7 4.5l-1.1 1.1M7.3 13.9l1.1-1.1M16.7 13.9l-1.1-1.1"/><path d="M3 19.6h18M6.8 19.6l1.7-1.5 1 1.1 1.6-1.6M14.6 19.6l1.3-1.2 1 .9"/>',
+    fire: '<path d="M12 2.8c.7 3.3 5 5.3 5 10.1a5 5 0 0 1-10 0c0-2.3 1.1-3.9 2.3-5.1.2 1.6.9 2.6 2 3.1-.6-2.6-.1-5.5.7-8.1z"/><path d="M12 20.5a2.1 2.1 0 0 1-2.1-2.1c0-1.3 1.1-2.1 2.1-3.4 1 1.3 2.1 2.1 2.1 3.4a2.1 2.1 0 0 1-2.1 2.1z"/>',
+    cold: [0, 60, 120, 180, 240, 300].map(a => {
+      const r = Math.PI * a / 180, u = [Math.sin(r), -Math.cos(r)], v = [Math.cos(r), Math.sin(r)];
+      const P2 = (d, w) => `${(12 + u[0] * d + v[0] * w).toFixed(2)} ${(12 + u[1] * d + v[1] * w).toFixed(2)}`;
+      return `M12 12L${P2(9, 0)}M${P2(4.6, -2.4)}L${P2(6.6, 0)}L${P2(4.6, 2.4)}`;
+    }).reduce((d, x) => d + x, '<path d="') + '"/><circle cx="12" cy="12" r="1.2"/>',
+  };
+  const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const rampCss = (stops, t) => {
+    const x = clamp(t) * (stops.length - 1), i = Math.min(Math.floor(x), stops.length - 2), f = x - i;
+    const a = hexRgb(stops[i]), b = hexRgb(stops[i + 1]);
+    return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(',')})`;
+  };
+  const ANOM = ['#2b5fc9', '#7fa9e0', '#59636a', '#e89a6a', '#d23f33'];   // -2 .. +2 °C
+  function strip(P) {
+    const c = scen.climate[P.cl], S = series[P.cl];
+    const bars = c.precip_mm.map((p, i) => {
+      const h = Math.max(1.2, 17 * Math.min(1, p / 3000));
+      return `<rect x="${i * 10 + 1.5}" y="${(18 - h).toFixed(1)}" width="7" height="${h.toFixed(1)}" fill="${p < 0.75 * S.pm ? '#f2a33a' : '#56d0e0'}"/>`;
+    }).join('');
+    const stripes = c.temp_c.map((t, i) => `<rect x="${i * 10}" y="21" width="10.6" height="8" fill="${rampCss(ANOM, (t - S.tm + 2) / 4)}"/>`).join('');
+    const ev = P.event === undefined ? '' : `<rect class="ev" x="${P.event * 10 - 2}" y="0" width="14" height="29"/>`;
+    const svg = cls => `<svg class="${cls}" viewBox="0 0 400 29" preserveAspectRatio="none">${ev}${bars}${stripes}</svg>`;
+    // a faint copy for the years to come, and a bright one revealed up to the current year
+    return svg('p-all') + svg('p-past');
+  }
+  function map(P) {
+    const R = scen.regions[P.key], [la0, la1, lo0, lo1] = R.box;
+    const x = (P.site.lon - lo0) / (lo1 - lo0) * 100, y = (la1 - P.site.lat) / (la1 - la0) * 100;
+    const end = v => (P.key === 'drought' ? `${v}%` : fmt(v));
+    return `<figure class="p-map"><span><img src="${R.file}" alt="" width="300" height="200" decoding="async"><i class="pin" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%"></i><b>${R.title}</b></span>
+      <figcaption><i style="background:linear-gradient(90deg,${R.ramp.join(',')})"></i><small>${end(R.lo)}</small><small>${R.unit}</small><small>${end(R.hi)}</small></figcaption></figure>`;
+  }
+  dom.panels.innerHTML = '<div class="panels-year"><small>Year</small><b>1981</b></div>' + panels.map(P => `<div class="panel p-${P.key}" style="--pc:${P.color}">
+    <div class="p-top"><div class="p-head"><svg class="p-icon" viewBox="0 0 24 24">${ICONS[P.key]}</svg>
+      <p class="p-title"><b>${P.title}${P.tag ? `<i>${P.tag}</i>` : ''}</b><span>${P.lines[0]}</span><span>${P.lines[1]}</span></p></div>
+      <div class="p-clim"><span class="p-key"><i>rain</i><i>temp</i></span><span class="p-strip">${strip(P)}<i class="p-cur"></i></span></div>
+      ${map(P)}</div>
+    <p class="p-note"></p>
     <p class="p-stats"><span><small>Canopy height</small><b>0</b> m</span><span><small>Biomass</small><b>0</b> kgC m⁻²</span></p></div>`).join('');
   const panelYear = dom.panels.firstElementChild;
   panels.forEach((P, i) => {
     P.el = dom.panels.children[i + 1];
     [P.hEl, P.agbEl] = P.el.querySelectorAll('.p-stats b');
     P.noteEl = P.el.querySelector('.p-note');
+    P.iconEl = P.el.querySelector('.p-icon');
+    P.curEl = P.el.querySelector('.p-cur');
+    P.pastEl = P.el.querySelector('.p-past');
+    P.cur = -1;
   });
   // where each view sits: one shrinks out of the full screen, the others slide in after it
   function panelRects(k) {
@@ -256,6 +349,7 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
   dom.cohortLabels.innerHTML = AGES.map(a => `<span>${a} yr</span>`).join('');
   const labelEls = [...dom.cohortLabels.children];
   const netLabelEls = Object.fromEntries([...dom.netLabels.children].map(el => [el.dataset.k, el]));
+  const netVar = dom.netLabels.querySelector('.net-var');
   const BELOW = new Set(['state', 'heads', 'loop']);
 
   // interaction: drag the hero globe
@@ -299,27 +393,64 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
     // emulator: globe left, network right
     const dn = 4.4, nh = dn * t, nw = nh * aspect;
     L.net = narrow
-      ? {gx: 0, gy: nh * 0.08, gs: nw * 0.42, nx: nw * 0.06, ny: -nh * 0.5, ns: nw * 0.56, d: dn}
+      ? {gx: 0, gy: nh * 0.08, gs: nw * 0.42, nx: nw * 0.07, ny: -nh * 0.5, ns: nw * 0.52, d: dn}
       : {gx: -nw * 0.62, gy: -nh * 0.3, gs: Math.min(nh * 0.4, nw * 0.25), nx: nw * 0.5, ny: -nh * 0.1, ns: nw * 0.29, d: dn};
+    L.netPx = L.net.ns * H * 0.5 / nh;
+    if (!narrow && dom.netCap) {
+      // fit the network and its labels into the space right of the chapter's caption
+      const pxw = H * 0.5 / nh, NB = {l: -1.95, r: 1.62, t: 1.3, b: -1.3};   // pixels per world unit; bounds in network units
+      const x0 = dom.netCap.offsetLeft + dom.netCap.offsetWidth + 14, x1 = W - 14, y0 = 64, y1 = H - 18;
+      const sc = Math.min(L.netPx, (x1 - x0) / (NB.r - NB.l), (y1 - y0) / (NB.t - NB.b));
+      const cx = x0 + (x1 - x0 - sc * (NB.r - NB.l)) / 2 - NB.l * sc, cy = y0 + (y1 - y0 - sc * (NB.t - NB.b)) / 2 + NB.t * sc;
+      Object.assign(L.net, {nx: (cx - W / 2) / pxw, ny: (H / 2 - cy) / pxw, ns: sc / pxw});
+      L.netPx = sc;
+    }
+    // a small network keeps only its main annotations
+    dom.netLabels.classList.toggle('few', L.netPx < 150);
+    dom.netLabels.classList.toggle('tiny', L.netPx < 115);
     L.fc = narrow ? {gx: 0, gy: nh * 0.1, gs: nw * 0.6} : {gx: -nw * 0.62, gy: -nh * 0.62, gs: nh * 0.62};
     L.narrow = narrow;
     const cap = dom.forcingCap;
     L.capBottom = cap ? cap.offsetTop + cap.offsetHeight : 0;
-    // narrow views get a one-line readout
-    dom.panels.classList.toggle('compact', narrow || (W * 0.94 - 42) / 4 < 300);
+    // narrow views get a one-line readout, and the narrowest drop their maps
+    const pw = panelRects(1)[0].w;
+    dom.panels.classList.toggle('compact', narrow || pw < 300);
+    dom.panels.classList.toggle('nomap', pw < 236);
   }
   resize();
 
   const tmp = new THREE.Vector3(), mainTgt = new THREE.Vector3();
-  const PANEL_VIEW = 4.2;   // world units (10 m) of height each forcing view shows
+  const PANEL_VIEW = 4.8;   // world units (10 m) of height each forcing view shows
+  const PANEL_TGT = 2.2;    // height the views look at, leaving room for the headers above the crowns
   // key light from the upper left of a camera at azimuth az, slightly in front of the subject
   const keyLight = (v, az) => v.set(-Math.sin(az) * 0.55 + Math.cos(az) * 0.4, 0.75, Math.cos(az) * 0.55 + Math.sin(az) * 0.4).normalize();
-  // Draw each forcing view into its own viewport, with only its tree visible.
+  // Set the sky, ground and weather of a view: its climate state st, blended in by k.
+  const SU = bg.material.uniforms, GU = ground.material.uniforms;
+  function applyClimate(st, k, aspect, proj, opacity) {
+    const sky = mixSky(SKY.base, st.sky, k);
+    SU.uTop.value.setRGB(...sky.top); SU.uBot.value.setRGB(...sky.bot); SU.uBand.value.setRGB(...sky.band);
+    SU.uSun.value.set(...sky.sun); SU.uSunCol.value.setRGB(...sky.sunCol);
+    SU.uCloud.value = sky.cloud; SU.uCloudCol.value.setRGB(...sky.cloudCol);
+    SU.uAspect.value = aspect;
+    GU.uDry.value = st.dry * k; GU.uSnow.value = st.frost * k; GU.uChar.value = st.char * k;
+    GU.uGrid.value.setRGB(...mix3(GRID.base, st.grid, k));
+    for (const [kind, w] of Object.entries(weather)) {
+      const rate = (kind === 'snow' ? st.snow : st[kind]) * k;
+      w.visible = rate > 0.01 && opacity > 0.01;
+      w.material.uniforms.uRate.value = rate;
+      w.material.uniforms.uOpacity.value = opacity * Math.min(1, 0.4 + rate);
+      w.material.uniforms.uProj.value = proj;
+    }
+  }
+  // Draw each forcing view into its own viewport, with only its tree visible. Chapter one's view goes
+  // last, so as it shrinks into the first panel it uncovers the others, and covers them as it grows back.
+  const DRAW_ORDER = [1, 2, 3, 0];
   function drawPanels(rects) {
     const full = H * 0.5 / Math.tan(THREE.MathUtils.degToRad(fCam.fov) / 2);
     const trees = panels.map(P => P.tree), opacity = bg.material.uniforms.uOpacity.value;
     renderer.setScissorTest(true);
-    rects.forEach((R, i) => {
+    DRAW_ORDER.forEach(i => {
+      const R = rects[i];
       if (R.k < 0.002 || R.x >= W || R.w < 2) return;
       const P = panels[i];
       renderer.setViewport(R.x, H - R.y - R.h, R.w, R.h);
@@ -334,6 +465,7 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
       if (P.flames) P.flames.material.uniforms.uProj.value = proj;
       ground.material.uniforms.uShade.value = Math.max(0.2, P.h(forestYear(u)) * 0.034);
       bg.material.uniforms.uOpacity.value = opacity * (i === 0 ? 1 : R.k);
+      applyClimate(P.state, R.k, R.w / R.h, proj, opacity);
       renderer.render(fScene, P.cam);
     });
     renderer.setScissorTest(false);
@@ -341,6 +473,7 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
     hero.material.uniforms.uProj.value = full;
     motes.material.uniforms.uProj.value = full;
     bg.material.uniforms.uOpacity.value = opacity;
+    applyClimate(CALM, 0, aspect, full, 0);
     trees.forEach(t => { t.visible = false; });
   }
   function project(v, cam) {
@@ -448,6 +581,7 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
     });
     const sharedT = fScene.children;
     for (const o of sharedT) if (o.material?.uniforms?.uTime) o.material.uniforms.uTime.value = time;
+    panels.forEach(P => { P.state = P.clim(forestYear(u)); });
     // the hero tree: sprouts during the dive, then follows the simulated years
     const HU = hero.material.uniforms;
     HU.uT.value = u < 2.15 ? lerp(PRE_TAU, 0, ss(1.9, 2.15, u)) : year / 40;
@@ -502,8 +636,8 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
       }
       if (!rects) return;
       const dist = PANEL_VIEW / (2 * Math.tan(THREE.MathUtils.degToRad(P.cam.fov) / 2));
-      P.cam.position.set(Math.cos(pa) * dist, 1.0, Math.sin(pa) * dist);
-      tmp.set(0, 1.9, 0);
+      P.cam.position.set(Math.cos(pa) * dist, 1.15, Math.sin(pa) * dist);
+      tmp.set(0, PANEL_TGT, 0);
       if (i === 0) {
         // the first view keeps chapter one's camera until the split completes
         P.cam.position.lerpVectors(fCam.position, P.cam.position, kS);
@@ -530,12 +664,17 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
       panelYear.lastChild.textContent = 1981 + yr;
       panels.forEach((P, i) => {
         const R = rects[i], el = P.el;
-        el.style.opacity = (ss(0.55, 1, i === 0 ? kS : R.k) * fA).toFixed(3);
+        // headers show only once the views have settled, so they never overlap as views move
+        el.style.opacity = (ss(0.9, 1, kS) * ss(0.55, 1, i === 0 ? kS : R.k) * fA).toFixed(3);
         el.style.transform = `translate(${R.x.toFixed(1)}px, ${R.y.toFixed(1)}px)`;
         el.style.width = `${R.w.toFixed(1)}px`;
         el.style.height = `${R.h.toFixed(1)}px`;
         P.hEl.textContent = P.h(year).toFixed(1);
         P.agbEl.textContent = P.agb(year).toFixed(1);
+        // the climate strip fills in up to the current year
+        const cur = Math.round(clamp(year / 40) * 1000) / 10;
+        if (cur !== P.cur) { P.cur = cur; P.curEl.style.left = `${cur}%`; P.pastEl.style.clipPath = `inset(-2px ${(100 - cur).toFixed(1)}% -2px 0)`; }
+        P.iconEl.classList.toggle('on', P.state.on);
         if (P.note) {
           const n = P.note(year);
           if (n && P.noteEl.textContent !== n) P.noteEl.textContent = n;
@@ -564,12 +703,16 @@ export function createStage({canvas, meta, scen, tex, dom, mobile, reduced = fal
       el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`;
     });
 
-    // annotations appear with the parts they name
+    // annotations appear with the parts they name; the forcing's names the map at the front of the deck
     const nlA = ss(8.4, 8.65, u) * (1 - ss(9.3, 9.5, u));
+    if (nlA > 0.01 && netVar) {
+      const t = net.frontLabel();
+      if (t !== netVar.textContent) { netVar.textContent = t; netVar.style.color = scen.maps.vars[net.deck.front].ramp[3]; }
+    }
     for (const [k, el] of Object.entries(netLabelEls)) {
       const st = net.stages[k] ?? 0, o = nlA * ss(st, st + 0.12, build);
       if (o < 0.01) { el.style.opacity = 0; continue; }
-      const p = project(net.group.localToWorld(tmp.copy(net.anchors[k])), gCam);
+      const p = project(net.group.localToWorld(tmp.copy(net.anchors[k === 'title' && L.netPx < 150 ? 'titleFew' : k])), gCam);
       el.style.opacity = o.toFixed(3);
       el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, ${BELOW.has(k) ? '0%' : '-100%'})`;
     }
