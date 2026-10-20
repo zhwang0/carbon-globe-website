@@ -12,11 +12,12 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 OUT = os.path.join(ROOT, 'assets', 'film')
 IMG = os.path.join(ROOT, 'assets', 'img')
 
-# (seconds, film position u). Linear in between; holds give captions time to be read.
+# (seconds, film position u). Linear in between; holds give captions time to be read. The first
+# seconds hold on the hero while the sun rises over the globe; the last hold on the end card.
 KEYS = [
-    (0, 0), (3.0, 0.05), (8.0, 1.95), (8.6, 2.15), (15.0, 3.45), (17.0, 3.9), (23.5, 4.9), (26.0, 5.4),
-    (31.8, 6.4), (33.3, 6.75), (34.8, 7.3), (37.3, 7.5), (39.8, 8.0), (40.8, 8.2), (47.0, 9.3), (48.0, 9.6),
-    (51.5, 10.05), (54.5, 10.4), (57.5, 10.65), (59.0, 11.05), (64.0, 11.45),
+    (0, 0), (4.6, 0.05), (9.6, 1.95), (10.2, 2.15), (16.6, 3.45), (18.6, 3.9), (25.1, 4.9), (27.6, 5.4),
+    (33.4, 6.4), (34.9, 6.75), (36.4, 7.3), (38.9, 7.5), (41.4, 8.0), (42.4, 8.2), (48.6, 9.3), (49.6, 9.6),
+    (53.1, 10.05), (56.1, 10.4), (59.1, 10.65), (60.6, 11.05), (64.1, 11.4), (66.6, 12.3), (72.0, 12.6),
 ]
 
 
@@ -76,13 +77,13 @@ def main():
             writer.close()
             print(path, os.path.getsize(path) // 1024, 'KB')
 
-        # stills: social card (hero with title), video poster, and a text-free fallback image
+        # stills: social card (the end card), video poster (the hero once the sun is up), and a
+        # text-free fallback image
         page.set_viewport_size({'width': 1600, 'height': 900})
-        hero = shot(1.2)
-        hero.resize((1200, 675), Image.LANCZOS).crop((0, 22, 1200, 652)).save(os.path.join(IMG, 'social.jpg'), quality=88)
-        hero.resize((1280, 720), Image.LANCZOS).save(os.path.join(OUT, 'carbonglobe-film.jpg'), quality=86)
+        shot(71.0).resize((1200, 675), Image.LANCZOS).crop((0, 22, 1200, 652)).save(os.path.join(IMG, 'social.jpg'), quality=88)
+        shot(4.4).resize((1280, 720), Image.LANCZOS).save(os.path.join(OUT, 'carbonglobe-film.jpg'), quality=86)
         page.add_style_tag(content='[data-u], .cell-label { visibility: hidden !important; }')
-        shot(1.25).save(os.path.join(IMG, 'poster.jpg'), quality=84)
+        shot(4.45).save(os.path.join(IMG, 'poster.jpg'), quality=84)
         browser.close()
     httpd.shutdown()
 

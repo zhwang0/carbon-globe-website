@@ -7,21 +7,112 @@
   <meta name="description" content="CarbonGlobe (NeurIPS 2025) is the first global, ML-ready dataset and benchmark of process-based forest carbon simulations: 54,152 sites, 40 years, 136 drivers and 7 carbon targets for training AI ecosystem emulators.">
   <meta name="theme-color" content="#050a0c">
   <meta property="og:title" content="CarbonGlobe · Teaching AI how the world's forests grow">
-  <meta property="og:description" content="The first global, ML-ready dataset and benchmark of forest carbon simulations, for training AI ecosystem emulators. NeurIPS 2025 Datasets & Benchmarks.">
+  <meta property="og:description" content="The first global, ML-ready dataset and benchmark of forest carbon simulations, for training AI ecosystem emulators. NeurIPS 2025 Datasets & Benchmarks, and now an IEEE BigData Cup 2026 challenge.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://zhwang0.github.io/carbon-globe-website/assets/img/social.jpg">
   <meta property="og:url" content="https://zhwang0.github.io/carbon-globe-website/">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "Dataset",
+ "name": "CarbonGlobe",
+ "alternateName": "CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems",
+ "description": "The first global, machine-learning-ready dataset and benchmark of process-based forest carbon simulations. Ecosystem Demography (ED v3.0) runs at 54,152 land sites on a 0.5° grid for 1981–2021, from 15 starting forest ages (812,280 sequences), with 136 monthly drivers (MERRA-2 meteorology, NOAA CarbonTracker CO2, ROSETTA soils) and 7 carbon targets, plus splits, evaluation scenarios, problem-driven metrics and eight baseline emulators.",
+ "url": "https://zhwang0.github.io/carbon-globe-website/",
+ "sameAs": [
+  "https://www.kaggle.com/datasets/zhihaow/carbonglobe",
+  "https://huggingface.co/datasets/zhwang1/CarbonGlobe"
+ ],
+ "license": "https://creativecommons.org/licenses/by/4.0/",
+ "isAccessibleForFree": true,
+ "keywords": [
+  "forest carbon",
+  "ecosystem modeling",
+  "AI emulator",
+  "machine learning",
+  "benchmark",
+  "time-series forecasting",
+  "Ecosystem Demography",
+  "climate"
+ ],
+ "creator": [
+  {
+   "@type": "Person",
+   "name": "Zhihao Wang"
+  },
+  {
+   "@type": "Person",
+   "name": "Lei Ma"
+  },
+  {
+   "@type": "Person",
+   "name": "George Hurtt"
+  },
+  {
+   "@type": "Person",
+   "name": "Xiaowei Jia"
+  },
+  {
+   "@type": "Person",
+   "name": "Yanhua Li"
+  },
+  {
+   "@type": "Person",
+   "name": "Ruohan Li"
+  },
+  {
+   "@type": "Person",
+   "name": "Zhili Li"
+  },
+  {
+   "@type": "Person",
+   "name": "Shuo Xu"
+  },
+  {
+   "@type": "Person",
+   "name": "Yiqun Xie"
+  }
+ ],
+ "temporalCoverage": "1981/2021",
+ "spatialCoverage": {
+  "@type": "Place",
+  "name": "Global land at 0.5°, excluding Antarctica"
+ },
+ "variableMeasured": [
+  "Canopy height",
+  "Aboveground biomass",
+  "Soil carbon",
+  "Leaf area index",
+  "Gross primary production",
+  "Net primary production",
+  "Heterotrophic respiration"
+ ],
+ "distribution": [
+  {
+   "@type": "DataDownload",
+   "contentUrl": "https://www.kaggle.com/datasets/zhihaow/carbonglobe",
+   "encodingFormat": "application/x-npy"
+  },
+  {
+   "@type": "DataDownload",
+   "contentUrl": "https://huggingface.co/datasets/zhwang1/CarbonGlobe",
+   "encodingFormat": "application/x-npy"
+  }
+ ],
+ "citation": "Wang, Z., Ma, L., Hurtt, G., Jia, X., Li, Y., Li, R., Li, Z., Xu, S. and Xie, Y. CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems. Advances in Neural Information Processing Systems 38 (NeurIPS 2025), Datasets and Benchmarks Track. doi:10.52202/085713-0261"
+}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/main.css">
   <link rel="modulepreload" href="assets/vendor/three.module.js">
-  <script>document.documentElement.classList.remove('no-js');</script>
+  <script>(function (d) { d.classList.remove('no-js'); if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { d.classList.add('intro'); setTimeout(function () { d.classList.remove('intro'); }, 5000); } })(document.documentElement);</script>
 </head>
 <body>
-<a class="skip" href="#overview">Skip the film</a>
+<a class="skip" href="#why">Skip the film</a>
 
 <header class="topbar" id="topbar">
   <a class="brand" href="#top" aria-label="CarbonGlobe home">
@@ -29,14 +120,17 @@
     <span>CarbonGlobe</span>
   </a>
   <nav aria-label="Sections">
-    <a href="#top">Film</a>
+    <a href="#why">Why</a>
     <a href="#dataset">Dataset</a>
     <a href="#explore">Explore</a>
     <a href="#benchmarks">Benchmarks</a>
-    <a href="#impact">Impact</a>
-    <a href="#cite">Cite</a>
+    <a href="#challenge">Challenge</a>
+    <a href="#team">Team</a>
   </nav>
-  <a class="btn btn-small" href="https://proceedings.neurips.cc/paper_files/paper/2025/file/0b82662b6c32e887bb252a74d8cb2d5e-Paper-Datasets_and_Benchmarks_Track.pdf" target="_blank" rel="noopener">Paper <span aria-hidden="true">↗</span></a>
+  <div class="top-cta">
+    <a class="btn btn-small btn-quiet" href="https://proceedings.neurips.cc/paper_files/paper/2025/file/0b82662b6c32e887bb252a74d8cb2d5e-Paper-Datasets_and_Benchmarks_Track.pdf" target="_blank" rel="noopener">Paper <span aria-hidden="true">↗</span></a>
+    <a class="btn btn-small btn-primary" href="#start">Get the data</a>
+  </div>
 </header>
 
 <main>
@@ -50,18 +144,21 @@
 
     <!-- hero -->
     <div class="hero" data-u="-1,-1,0.18,0.62">
-      <a class="venue" href="https://neurips.cc/virtual/2025/loc/san-diego/poster/121701" target="_blank" rel="noopener"><span class="dot"></span><b>NeurIPS 2025</b> · Datasets &amp; Benchmarks</a>
-      <h1>Carbon<span class="grad">Globe</span></h1>
-      <p class="lede">Teaching AI how the world's forests <em>grow</em>.</p>
-      <p class="sub">The first global, ML-ready dataset of process-based forest carbon simulations, with benchmarks for training AI emulators of the land.</p>
-      <p class="authors">Zhihao Wang, Lei Ma, George Hurtt, Xiaowei Jia, Yanhua Li, Ruohan Li, Zhili Li, Shuo Xu, Yiqun Xie</p>
-      <p class="affil">University of Maryland · University of Pittsburgh · Worcester Polytechnic Institute</p>
-      <div class="buttons">
-        <button class="btn btn-primary" id="play-film" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg>Play the film</button>
-        <a class="btn" href="https://proceedings.neurips.cc/paper_files/paper/2025/file/0b82662b6c32e887bb252a74d8cb2d5e-Paper-Datasets_and_Benchmarks_Track.pdf" target="_blank" rel="noopener"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5H5z M12 2.5V6h3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Paper</a>
-        <a class="btn" href="https://www.kaggle.com/datasets/zhihaow/carbonglobe" target="_blank" rel="noopener"><svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="5" rx="6" ry="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 5v10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V5M4 10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Dataset</a>
-        <a class="btn" href="https://github.com/zhwang0/carbon-globe" target="_blank" rel="noopener"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6 3 10l4 4M13 6l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Code</a>
+      <div class="pills" style="--d:.1">
+        <a class="venue" href="https://neurips.cc/virtual/2025/loc/san-diego/poster/121701" target="_blank" rel="noopener"><span class="dot"></span><b>NeurIPS 2025</b> · Datasets &amp; Benchmarks</a>
+        <a class="pill-new" href="#challenge"><b>New</b>IEEE BigData Cup 2026 challenge<i aria-hidden="true">→</i></a>
       </div>
+      <h1 data-text="CarbonGlobe" style="--d:.28">Carbon<span class="grad">Globe</span></h1>
+      <p class="lede" style="--d:.5">Teaching AI how the world's forests <em>grow</em>.</p>
+      <p class="sub" style="--d:.66">The first global, ML-ready dataset of process-based forest carbon simulations, with benchmarks for training AI emulators of the land.</p>
+      <div class="buttons" style="--d:.82">
+        <a class="btn btn-primary" href="#start"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m-4.5-4.5L10 13l4.5-4.5M4 16.5h12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Get the dataset</a>
+        <button class="btn" id="play-film" type="button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg>Play the film</button>
+        <a class="btn btn-quiet" href="https://proceedings.neurips.cc/paper_files/paper/2025/file/0b82662b6c32e887bb252a74d8cb2d5e-Paper-Datasets_and_Benchmarks_Track.pdf" target="_blank" rel="noopener">Paper <span aria-hidden="true">↗</span></a>
+        <a class="btn btn-quiet" href="https://github.com/zhwang0/carbon-globe" target="_blank" rel="noopener">Code <span aria-hidden="true">↗</span></a>
+      </div>
+      <p class="authors" style="--d:1">Zhihao Wang, Lei Ma, George Hurtt, Xiaowei Jia, Yanhua Li, Ruohan Li, Zhili Li, Shuo Xu, Yiqun Xie</p>
+      <p class="affil" style="--d:1.06">University of Maryland · University of Pittsburgh · Worcester Polytechnic Institute</p>
     </div>
     <div class="scroll-cue" data-u="-1,-1,0.05,0.3" aria-hidden="true"><span>Scroll to begin</span><i></i></div>
 
@@ -151,7 +248,7 @@
     </figure>
 
     <!-- chapter 7 -->
-    <div class="numbers" data-u="10.85,11.05,12.45,12.45">
+    <div class="numbers" data-u="10.85,11.05,11.72,11.92">
       <p class="kicker"><span>07</span> CarbonGlobe in numbers</p>
       <div class="num-grid">
         <div><b class="count" data-count="54152">54,152</b><span>land sites on a 0.5° global grid</span></div>
@@ -161,7 +258,19 @@
         <div><b class="count" data-count="7">7</b><span>carbon targets: stocks, fluxes, structure</span></div>
         <div><b class="count" data-count="8">8</b><span>benchmark models, 3 scenarios, 4 metrics</span></div>
       </div>
-      <a class="btn btn-ghost" href="#overview">Continue <span aria-hidden="true">↓</span></a>
+    </div>
+
+    <!-- chapter 8: the end card -->
+    <div class="finale" data-u="11.86,12.2,13.6,13.6">
+      <p class="kicker"><span>08</span> Available now</p>
+      <h2 class="finale-title" data-text="CarbonGlobe">Carbon<span class="grad">Globe</span></h2>
+      <p class="finale-sub">Open, ML-ready simulations of the world's forests. Free to download, ready to train.</p>
+      <div class="buttons">
+        <a class="btn btn-primary" href="#start">Get the dataset</a>
+        <a class="btn" href="#challenge">Join the challenge</a>
+        <a class="btn btn-quiet" href="#why">Why it matters <span aria-hidden="true">↓</span></a>
+      </div>
+      <p class="finale-links">kaggle.com/datasets/zhihaow/carbonglobe<i>·</i>huggingface.co/datasets/zhwang1/CarbonGlobe<i>·</i>github.com/zhwang0/carbon-globe</p>
     </div>
 
     <!-- film chrome -->
@@ -173,10 +282,57 @@
       <button type="button" data-goto="7.55" aria-label="The planet"><i></i><span>The planet</span></button>
       <button type="button" data-goto="8.95" aria-label="The emulator"><i></i><span>The emulator</span></button>
       <button type="button" data-goto="10.25" aria-label="What if?"><i></i><span>What if?</span></button>
-      <button type="button" data-goto="11.35" aria-label="In numbers"><i></i><span>Numbers</span></button>
+      <button type="button" data-goto="11.4" aria-label="In numbers"><i></i><span>Numbers</span></button>
+      <button type="button" data-goto="12.45" aria-label="Available now"><i></i><span>Get it</span></button>
     </nav>
     <div class="film-bar" aria-hidden="true"><i id="film-progress"></i></div>
     <button class="film-pause" id="film-pause" type="button" hidden>Pause</button>
+  </div>
+</section>
+
+<!-- ================================================================ WHY -->
+<section class="why" id="why" aria-labelledby="why-title">
+  <div class="statement" id="statement">
+    <div class="statement-stage">
+      <div class="wrap">
+        <p class="eyebrow" id="why-title">Why it matters</p>
+        <p class="statement-text">The world's forests take up carbon equal to <mark>almost half</mark> of our fossil-fuel emissions. In boreal and intact tropical forests, that sink is <mark>already shrinking.</mark> Forecasting it takes a process model so detailed that one global run needs <mark>40 days.</mark> CarbonGlobe lets AI learn that model, and run it in <mark>about an hour.</mark></p>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="stats">
+      <article class="stat reveal">
+        <p class="stat-n">⅓</p>
+        <p class="stat-t">of Earth's land is forest: 4.14 billion hectares.</p>
+        <a class="src" href="https://www.fao.org/newsroom/detail/global-deforestation-slows--but-forests-remain-under-pressure--fao-report-shows/en" target="_blank" rel="noopener">FAO · Forest Resources Assessment 2025</a>
+      </article>
+      <article class="stat reveal">
+        <p class="stat-n">7.8<small>GtC/yr</small></p>
+        <p class="stat-t">taken up by the world's forests in 1990–2019, almost half of fossil-fuel emissions.</p>
+        <a class="src" href="https://doi.org/10.1038/s41586-024-07602-x" target="_blank" rel="noopener">Pan et al. · Nature 2024</a>
+      </article>
+      <article class="stat reveal">
+        <p class="stat-n">−36%</p>
+        <p class="stat-t">change in the boreal forest carbon sink over those three decades. Intact tropical forests: −31%.</p>
+        <a class="src" href="https://doi.org/10.1038/s41586-024-07602-x" target="_blank" rel="noopener">Pan et al. · Nature 2024</a>
+      </article>
+      <article class="stat reveal">
+        <p class="stat-n">40<small>days</small></p>
+        <p class="stat-t">for one 40-year global ED run on 20 CPU cores. Most emulators take about an hour on one GPU.</p>
+        <a class="src" href="https://proceedings.neurips.cc/paper_files/paper/2025/file/0b82662b6c32e887bb252a74d8cb2d5e-Paper-Datasets_and_Benchmarks_Track.pdf" target="_blank" rel="noopener">CarbonGlobe · NeurIPS 2025</a>
+      </article>
+    </div>
+
+    <div class="trust reveal">
+      <p class="trust-k">The Ecosystem Demography model that CarbonGlobe emulates already informs</p>
+      <ul>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5S9.4 5.9 12 3.5z"/></svg><b>Global Carbon Budget</b><span>the annual global carbon accounting, since 2023</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 10 6l4 8 2-3 4 7z"/><circle cx="17.5" cy="5.5" r="1.6"/></svg><b>NASA Carbon Monitoring System</b><span>carbon monitoring and projections</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M9.3 20V5M14.6 20v-8M20 20V8"/></svg><b>U.S. Greenhouse Gas Center</b><span>the multi-agency greenhouse-gas data hub</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3.4 3 5 6 5 9.2a5 5 0 0 1-10 0C7 9 8.6 6 12 3zM12 21v-7.5"/></svg><b>Maryland Dept. of the Environment</b><span>the state's annual forest carbon inventory</span></li>
+      </ul>
+    </div>
   </div>
 </section>
 
@@ -253,46 +409,142 @@
       </div>
     </div>
 
-    <div class="tensors reveal">
-      <div class="tensor"><code>X</code><span class="shape">812,280 <i>×</i> 40 <i>×</i> 12 <i>×</i> 136</span><small>sequences × years × months × drivers</small></div>
-      <div class="tensor"><code>v₀</code><span class="shape">812,280 <i>×</i> 7</span><small>initial forest state</small></div>
-      <div class="tensor"><code>Y</code><span class="shape">812,280 <i>×</i> 40 <i>×</i> 7</span><small>annual targets to forecast</small></div>
-      <p class="task">Task: given <code>X</code> and <code>v₀</code>, forecast <code>Y</code> step by step for all 40 years.</p>
+    <div class="specs reveal" id="specs">
+      <div class="specs-head">
+        <h3>Tech specs</h3>
+        <p>Everything in the box, from the paper and the dataset card.</p>
+      </div>
+      <dl class="spec-list">
+        <div><dt>Coverage</dt><dd>Global land at 0.5°, excluding Antarctica<small>54,152 sites</small></dd></div>
+        <div><dt>Period</dt><dd>1981–2021<small>40 annual forecasting steps, each with 12 monthly sub-steps</small></dd></div>
+        <div><dt>Starting forests</dt><dd>15 seed ages, from 1 to 500 years<small>812,280 forecasting sequences</small></dd></div>
+        <div><dt>Inputs</dt><dd>136 drivers per month<small>air and soil temperature, precipitation, 24-hour profiles of humidity, temperature, shortwave radiation, wind and CO₂, disturbance rate and seven soil properties</small></dd></div>
+        <div><dt>Sources</dt><dd>NASA MERRA-2 · NOAA CarbonTracker · ROSETTA · Köppen–Geiger</dd></div>
+        <div><dt>Simulator</dt><dd>Ecosystem Demography v3.0<small>calibrated with lidar, flux towers, forest inventories and atmospheric inversions; about 812 CPU-days to generate</small></dd></div>
+        <div><dt>Targets</dt><dd>7 carbon variables<small>canopy height, aboveground biomass, soil carbon, leaf area index, GPP, NPP and heterotrophic respiration</small></dd></div>
+        <div><dt>Evaluation</dt><dd>3 scenarios, 4 metrics<small>sparse-to-dense, climate zones and forest ages; RMSE, MAE, delta error and cumulative error</small></dd></div>
+        <div><dt>Baselines</dt><dd>8 models with code<small>LSTM, LSTNet, DeepED, Transformer, Informer, DLinear, Crossformer and TimeXer</small></dd></div>
+        <div><dt>Format</dt><dd>NumPy float32 arrays, 29.3 GB<small>with normalization statistics, the land mask and split indices</small></dd></div>
+        <div><dt>License</dt><dd>CC BY 4.0<small>Kaggle and Hugging Face; code on GitHub</small></dd></div>
+      </dl>
     </div>
+  </div>
+</section>
 
-    <div class="cards three">
-      <article class="card reveal">
+<!-- ================================================================ BUILT FOR ML -->
+<section class="section" id="ml">
+  <div class="wrap">
+    <header class="sec-head center reveal">
+      <p class="eyebrow">Built for machine learning</p>
+      <h2 class="display">Not another <em>time&#8209;series</em> benchmark.</h2>
+      <p class="lead">No look-back window. A model gets one starting forest and the climate to come, then forecasts forty years, one step at a time, with errors compounding as they do when an emulator stands in for a simulator.</p>
+    </header>
+
+    <div class="bento">
+      <article class="tile t-task spot reveal">
+        <p class="card-k">The task</p>
+        <h3>One initial state. Forty years ahead.</h3>
+        <div class="horizon" aria-hidden="true">
+          <div class="hz-row"><span class="hz-k">Typical benchmark</span><span class="hz-bar"><i class="hz-past" style="--w:70"></i><i class="hz-fut" style="--w:30"></i></span></div>
+          <div class="hz-row hz-cg"><span class="hz-k">CarbonGlobe</span><span class="hz-bar"><i class="hz-dot"></i><i class="hz-fut" style="--w:96"></i></span></div>
+          <div class="hz-key"><span><i class="hz-past"></i>history given</span><span><i class="hz-dot"></i>initial forest v₀</span><span><i class="hz-fut"></i>to forecast</span></div>
+        </div>
+        <div class="tensors">
+          <div class="tensor"><code>X</code><span class="shape">812,280 <i>×</i> 40 <i>×</i> 12 <i>×</i> 136</span><small>sequences × years × months × drivers</small></div>
+          <div class="tensor"><code>v₀</code><span class="shape">812,280 <i>×</i> 7</span><small>initial forest state</small></div>
+          <div class="tensor"><code>Y</code><span class="shape">812,280 <i>×</i> 40 <i>×</i> 7</span><small>annual targets to forecast</small></div>
+        </div>
+      </article>
+      <article class="tile t-s1 spot reveal">
         <p class="card-k">Scenario 1</p><h3>Sparse to dense</h3>
-        <p>Train on 1/16 of sites (roughly a 4× coarser grid) and predict the rest, just as an emulator would fill in a finer grid.</p>
+        <p>Train on 1/16 of sites, about a 4× coarser grid, and predict the rest, as an emulator would fill in a finer one.</p>
         <svg class="mini" viewBox="0 0 160 70" aria-hidden="true"><g id="mini-grid"></g></svg>
       </article>
-      <article class="card reveal">
+      <article class="tile t-s2 spot reveal">
         <p class="card-k">Scenario 2</p><h3>Across climates</h3>
-        <p>Scores split by Köppen–Geiger zone: tropical, arid, temperate, cold and polar. Where does an emulator break?</p>
+        <p>Scores by Köppen–Geiger zone: tropical, arid, temperate, cold and polar. Where does an emulator break?</p>
         <div class="zonebar" aria-hidden="true"><i style="--c:#3b82f6;--w:17"></i><i style="--c:#f59e0b;--w:26"></i><i style="--c:#4ade80;--w:11"></i><i style="--c:#a78bfa;--w:38"></i><i style="--c:#cbd5e1;--w:8"></i></div>
+        <p class="zonekey" aria-hidden="true"><span style="--c:#3b82f6">Tropical</span><span style="--c:#f59e0b">Arid</span><span style="--c:#4ade80">Temperate</span><span style="--c:#a78bfa">Cold</span><span style="--c:#cbd5e1">Polar</span></p>
       </article>
-      <article class="card reveal">
+      <article class="tile t-s3 spot reveal">
         <p class="card-k">Scenario 3</p><h3>Across forest ages</h3>
-        <p>Fifteen seed ages from 1 to 500 years test young, fast-growing stands and old, carbon-dense ones.</p>
+        <p>Fifteen seed ages, from fast-growing saplings to 500-year-old, carbon-dense stands.</p>
         <div class="agebar" aria-hidden="true" id="agebar"></div>
       </article>
+      <article class="tile t-metric spot reveal">
+        <div class="metrics-copy">
+          <p class="card-k">Problem-driven metrics</p>
+          <h3>Beyond RMSE.</h3>
+          <p>Averaging errors over 40 years hides what matters downstream. Next to RMSE and MAE, CarbonGlobe scores <b>delta error</b>, the error in year-over-year change, and <b>cumulative error</b>, how far a forecast has drifted by year 40.</p>
+        </div>
+        <svg class="metric-fig" viewBox="0 0 520 240" role="img" aria-label="A predicted biomass curve drifting above the true curve, with delta and cumulative errors marked">
+          <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stop-color="#3ee08f"/><stop offset="1" stop-color="#b9f46b"/></linearGradient></defs>
+          <g class="axis"><line x1="40" y1="200" x2="500" y2="200"/><line x1="40" y1="20" x2="40" y2="200"/><text x="500" y="222" text-anchor="end">year 40</text><text x="40" y="222">year 0</text></g>
+          <path class="m-true" d="M40 180 C120 165 200 140 280 118 S420 86 480 78"/>
+          <path class="m-pred" d="M40 180 C120 160 190 128 270 100 S410 52 480 40"/>
+          <g class="m-delta"><line x1="300" y1="111" x2="330" y2="104"/><line x1="300" y1="93" x2="330" y2="80"/><text x="315" y="138" text-anchor="middle">Δ error</text></g>
+          <g class="m-cum"><line x1="492" y1="40" x2="492" y2="78"/><text x="498" y="104" text-anchor="end">cumulative</text></g>
+          <g class="m-key"><circle cx="70" cy="30" r="4" class="k-true"/><text x="80" y="34">ED reference</text><circle cx="180" cy="30" r="4" class="k-pred"/><text x="190" y="34">emulator</text></g>
+        </svg>
+      </article>
+      <article class="tile t-base spot reveal">
+        <p class="card-k">Baselines</p><h3>Eight models, one repo.</h3>
+        <p>Recurrent, attention, linear and simulator-specific architectures, trained and scored the same way.</p>
+        <ul class="models"><li>LSTM</li><li>LSTNet</li><li class="hot">DeepED</li><li>Transformer</li><li>Informer</li><li>DLinear</li><li>Crossformer</li><li>TimeXer</li></ul>
+      </article>
     </div>
+  </div>
+</section>
 
-    <div class="metrics reveal">
-      <div class="metrics-copy">
-        <p class="eyebrow">Problem-driven metrics</p>
-        <h3>Beyond RMSE.</h3>
-        <p>Averaging errors over 40 years hides what matters downstream. Next to RMSE and MAE, CarbonGlobe scores <b>delta error</b>, the error in year-over-year change, and <b>cumulative error</b>, how far a forecast has drifted by year 40.</p>
+<!-- ================================================================ GET STARTED -->
+<section class="section start" id="start">
+  <div class="wrap">
+    <header class="sec-head center reveal">
+      <p class="eyebrow">Get started</p>
+      <h2 class="display">From download to first forecast, <em>in minutes.</em></h2>
+      <p class="lead">29.3 GB of ML-ready arrays under CC BY 4.0, with splits, statistics and the code for every baseline.</p>
+    </header>
+    <div class="start-grid">
+      <div class="get reveal">
+        <a class="res res-main spot" href="https://www.kaggle.com/datasets/zhihaow/carbonglobe" target="_blank" rel="noopener"><span class="res-k">Dataset</span><b>Kaggle</b><small>The full arrays, splits and statistics</small><i aria-hidden="true">↗</i></a>
+        <a class="res spot" href="https://huggingface.co/datasets/zhwang1/CarbonGlobe" target="_blank" rel="noopener"><span class="res-k">Dataset</span><b>Hugging Face</b><small>The same release, on the Hub</small><i aria-hidden="true">↗</i></a>
+        <a class="res spot" href="https://github.com/zhwang0/carbon-globe" target="_blank" rel="noopener"><span class="res-k">Code</span><b>GitHub</b><small>Loaders, metrics and all eight baselines</small><i aria-hidden="true">↗</i></a>
+        <a class="res spot" href="https://proceedings.neurips.cc/paper_files/paper/2025/hash/0b82662b6c32e887bb252a74d8cb2d5e-Abstract-Datasets_and_Benchmarks_Track.html" target="_blank" rel="noopener"><span class="res-k">Paper</span><b>NeurIPS 2025</b><small>Datasets &amp; Benchmarks Track</small><i aria-hidden="true">↗</i></a>
       </div>
-      <svg class="metric-fig" viewBox="0 0 520 240" role="img" aria-label="A predicted biomass curve drifting above the true curve, with delta and cumulative errors marked">
-        <defs><linearGradient id="mg" x1="0" x2="1"><stop offset="0" stop-color="#3ee08f"/><stop offset="1" stop-color="#b9f46b"/></linearGradient></defs>
-        <g class="axis"><line x1="40" y1="200" x2="500" y2="200"/><line x1="40" y1="20" x2="40" y2="200"/><text x="500" y="222" text-anchor="end">year 40</text><text x="40" y="222">year 0</text></g>
-        <path class="m-true" d="M40 180 C120 165 200 140 280 118 S420 86 480 78"/>
-        <path class="m-pred" d="M40 180 C120 160 190 128 270 100 S410 52 480 40"/>
-        <g class="m-delta"><line x1="300" y1="111" x2="330" y2="104"/><line x1="300" y1="93" x2="330" y2="80"/><text x="315" y="138" text-anchor="middle">Δ error</text></g>
-        <g class="m-cum"><line x1="492" y1="40" x2="492" y2="78"/><text x="498" y="104" text-anchor="end">cumulative</text></g>
-        <g class="m-key"><circle cx="70" cy="30" r="4" class="k-true"/><text x="80" y="34">ED reference</text><circle cx="180" cy="30" r="4" class="k-pred"/><text x="190" y="34">emulator</text></g>
-      </svg>
+      <div class="code reveal">
+        <div class="code-head">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <div class="code-tabs" role="tablist" aria-label="Quick start">
+            <button type="button" role="tab" aria-selected="true" aria-controls="code-dl" id="tab-dl">1 · Download</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="code-load" id="tab-load">2 · Load</button>
+          </div>
+          <button class="code-copy" type="button">Copy</button>
+        </div>
+<pre class="code-body" id="code-dl" role="tabpanel" aria-labelledby="tab-dl"><code><span class="c"># from Kaggle</span>
+<span class="k">kaggle</span> datasets download zhihaow/carbonglobe --unzip
+
+<span class="c"># or from Hugging Face</span>
+<span class="k">hf</span> download zhwang1/CarbonGlobe --repo-type dataset --local-dir CarbonGlobe
+
+<span class="c"># what you get, 29.3 GB in all</span>
+<span class="c"># data_global/   glob_X_fea.npy (inputs), glob_Y001.npy … glob_Y500.npy (one per seed age)</span>
+<span class="c"># data_stats/    normalization statistics, the land mask, age statistics</span>
+<span class="c"># insitu_data/   in-situ GPP observations (ABoVE) for validation</span>
+<span class="c"># train.csv  val.csv  test.csv   split indices</span></code></pre>
+<pre class="code-body" id="code-load" role="tabpanel" aria-labelledby="tab-load" hidden><code><span class="k">import</span> numpy <span class="k">as</span> np
+
+<span class="c"># memory-mapped: nothing loads until you index it</span>
+X = np.load(<span class="s">"data_global/glob_X_fea.npy"</span>, mmap_mode=<span class="s">"r"</span>)  <span class="c"># (54152, 40, 12, 136)</span>
+Y = np.load(<span class="s">"data_global/glob_Y001.npy"</span>, mmap_mode=<span class="s">"r"</span>)   <span class="c"># (54152, 41, 12, 7), age-1 start</span>
+
+<span class="c"># site i sits at the i-th land cell of the 0.5° mask</span>
+rows, cols = np.nonzero(np.load(<span class="s">"data_stats/mask2d.npy"</span>))
+lat, lon = <span class="n">89.75</span> - <span class="n">0.5</span> * rows, -<span class="n">179.75</span> + <span class="n">0.5</span> * cols
+
+i = <span class="n">43602</span>                   <span class="c"># central Amazon, 3.25°S 63.75°W</span>
+x, y = X[i], Y[i]           <span class="c"># 40 years of climate; the forest, year 0 to 40</span>
+<span class="c"># an emulator learns ED's step (x[t], y[t]) -> y[t+1], then rolls out</span></code></pre>
+      </div>
     </div>
   </div>
 </section>
@@ -376,6 +628,56 @@
       <img src="assets/img/res_glob.webp" alt="Global maps of year-40 errors (emulator minus ED) for DeepED, Transformer and Informer on height, AGB and soil carbon." loading="lazy">
       <figcaption>Where emulators drift: year-40 difference between emulator and ED for the three strongest models. DeepED overestimates in sparse, cold forests; attention models overshoot in dense tropical and eastern U.S. forests.</figcaption>
     </figure>
+
+    <div class="bench-cta reveal">
+      <p><b>Think you can beat DeepED?</b> Forty-year forecasts under future climates are now an open challenge.</p>
+      <a class="btn btn-primary" href="#challenge">See the challenge <span aria-hidden="true">→</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ CHALLENGE -->
+<section class="section challenge" id="challenge">
+  <div class="wrap">
+    <div class="ch-card reveal">
+      <div class="ch-copy">
+        <p class="eyebrow">IEEE BigData Cup 2026 · Challenge 05</p>
+        <h2 class="display">Now forecast <em>the future.</em></h2>
+        <p class="lead">The AI Emulation Challenge is built on CarbonGlobe. Train on today's climate, then roll your emulator forty years into two futures, low-emission SSP1-2.6 and high-emission SSP5-8.5, and get scored on where the forest ends up. Awards are available.</p>
+        <div class="buttons">
+          <a class="btn btn-primary" href="https://www.kaggle.com/competitions/ieee-bigdata-cup-2026-ai-emulation-challenge/overview" target="_blank" rel="noopener">Join on Kaggle <span aria-hidden="true">↗</span></a>
+          <a class="btn" href="https://bigdataieee.org/BigData2026/cup/" target="_blank" rel="noopener">IEEE Big Data Cup <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <figure class="ch-vis" aria-hidden="true">
+        <svg viewBox="0 0 480 320">
+          <defs>
+            <linearGradient id="chHot" x1="0" x2="1"><stop offset="0" stop-color="#b9f46b"/><stop offset="1" stop-color="#ff7a45"/></linearGradient>
+            <linearGradient id="chCool" x1="0" x2="1"><stop offset="0" stop-color="#b9f46b"/><stop offset="1" stop-color="#35c6f4"/></linearGradient>
+            <linearGradient id="chFan" x1="0" x2="1"><stop offset="0" stop-color="#3ee08f" stop-opacity="0"/><stop offset="1" stop-color="#3ee08f" stop-opacity=".16"/></linearGradient>
+          </defs>
+          <g class="ch-grid"><line x1="40" y1="270" x2="460" y2="270"/><line x1="150" y1="40" x2="150" y2="270"/></g>
+          <path class="ch-fan" d="M150 170 C250 150 350 60 460 40 L460 250 C350 230 250 200 150 170 Z" fill="url(#chFan)"/>
+          <path class="ch-past" d="M40 214 C70 206 100 190 150 170"/>
+          <path class="ch-line ch-hot" d="M150 170 C250 150 350 70 460 52" stroke="url(#chHot)"/>
+          <path class="ch-line ch-cool" d="M150 170 C250 166 350 156 460 150" stroke="url(#chCool)"/>
+          <circle class="ch-now" cx="150" cy="170" r="6"/>
+          <text x="150" y="292" text-anchor="middle">year 0</text><text x="460" y="292" text-anchor="end">year 40</text>
+          <text x="44" y="236">1981–2021</text>
+          <text x="158" y="50">CO₂ forcing</text>
+          <text class="ch-tag ch-tag-hot" x="456" y="36" text-anchor="end">SSP5-8.5<tspan class="ch-long"> · high emissions</tspan></text>
+          <text class="ch-tag ch-tag-cool" x="456" y="176" text-anchor="end">SSP1-2.6<tspan class="ch-long"> · low emissions</tspan></text>
+        </svg>
+        <figcaption>Schematic: the forcing an emulator faces in each future</figcaption>
+      </figure>
+      <dl class="ch-facts">
+        <div><dt>Futures</dt><dd>2 climate scenarios</dd></div>
+        <div><dt>Sites</dt><dd>6,171 worldwide</dd></div>
+        <div><dt>Starting forests</dt><dd>15 ages each</dd></div>
+        <div><dt>Rollout</dt><dd>40 years</dd></div>
+        <div><dt>IEEE BigData 2026</dt><dd>Phoenix · Dec 14–17</dd></div>
+      </dl>
+    </div>
   </div>
 </section>
 
@@ -426,27 +728,96 @@
       <article class="card reveal"><p class="card-k">Explore</p><h3>Scenarios in hours</h3><p>Sweep climate pathways, disturbance and reforestation plans fast enough for interactive what-if analysis.</p></article>
       <article class="card reveal"><p class="card-k">Monitor</p><h3>Digital twins of the sink</h3><p>ED already informs the Global Carbon Budget, NASA CMS and Maryland's carbon inventory. Emulators make it continuous.</p></article>
     </div>
+
+    <div class="road reveal">
+      <div class="road-head">
+        <p class="eyebrow">The road so far</p>
+        <h3>From one emulator to an open benchmark, and on to world models.</h3>
+      </div>
+      <ol class="road-list">
+        <li><span class="when">2023</span><b>DeepED</b><p>The first deep emulator of ED, for the U.S. Northeast. <a href="https://par.nsf.gov/servlets/purl/10503425" target="_blank" rel="noopener">ACM SIGSPATIAL</a></p></li>
+        <li class="now"><span class="when">2025</span><b>CarbonGlobe</b><p>The first global, ML-ready dataset and benchmark for forest carbon. <a href="https://proceedings.neurips.cc/paper_files/paper/2025/hash/0b82662b6c32e887bb252a74d8cb2d5e-Abstract-Datasets_and_Benchmarks_Track.html" target="_blank" rel="noopener">NeurIPS</a></p></li>
+        <li><span class="when">2026</span><b>The AI Emulation Challenge</b><p>Forty-year forecasts under two future climates, open to everyone. <a href="#challenge">IEEE BigData Cup</a></p></li>
+        <li><span class="when">2026</span><b>Earth-system world models</b><p>An action-conditioned world model, trained on CarbonGlobe, for what-if simulation. <a href="https://arxiv.org/abs/2609.08855" target="_blank" rel="noopener">arXiv</a></p></li>
+        <li class="next"><span class="when">Next</span><b>Future climates and more</b><p>CMIP6-driven runs to 2100, sub-annual and submodule outputs, and new learning tasks, as planned in the paper.</p></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ FILM -->
+<section class="section watch" id="watch">
+  <div class="wrap">
+    <header class="sec-head center reveal">
+      <p class="eyebrow">The film</p>
+      <h2 class="display">The whole story, <em>in <span id="film-secs">72</span> seconds.</em></h2>
+    </header>
+    <a class="film-hero reveal" id="film-open" href="assets/film/carbonglobe-film.mp4" aria-label="Play the CarbonGlobe film">
+      <img src="assets/film/carbonglobe-film.jpg" alt="" loading="lazy" width="1280" height="720">
+      <span class="film-play" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg></span>
+    </a>
+    <p class="film-note">1280 × 720 · MP4 · silent · rendered frame by frame from this page, free to use in talks and posts. <a href="assets/film/carbonglobe-film.mp4" download>Download</a></p>
+  </div>
+  <dialog class="lightbox" id="lightbox" aria-label="CarbonGlobe film">
+    <form method="dialog"><button class="lb-close" type="submit" aria-label="Close">×</button></form>
+    <video controls playsinline preload="none" poster="assets/film/carbonglobe-film.jpg"><source src="assets/film/carbonglobe-film.mp4" type="video/mp4"></video>
+  </dialog>
+</section>
+
+<!-- ================================================================ TEAM -->
+<section class="section" id="team">
+  <div class="wrap">
+    <header class="sec-head center reveal">
+      <p class="eyebrow">The team</p>
+      <h2 class="display">Carbon scientists and AI researchers, <em>together.</em></h2>
+      <p class="lead">CarbonGlobe was built jointly by the people who develop ED and the people who build emulators, so the data is both faithful to the science and ready to train on.</p>
+    </header>
+    <ul class="people">
+      <li class="person reveal"><span class="av" aria-hidden="true">ZW</span><span class="pi"><b>Zhihao Wang</b><small>University of Maryland</small><i>First author</i></span></li>
+      <li class="person reveal"><span class="av" aria-hidden="true">LM</span><span class="pi"><b>Lei Ma</b><small>University of Maryland</small></span></li>
+      <li class="person reveal"><span class="av" aria-hidden="true">GH</span><span class="pi"><b>George Hurtt</b><small>University of Maryland</small></span></li>
+      <li class="person reveal"><span class="av" aria-hidden="true">XJ</span><span class="pi"><b>Xiaowei Jia</b><small>University of Pittsburgh</small></span></li>
+      <li class="person reveal"><span class="av" aria-hidden="true">YL</span><span class="pi"><b>Yanhua Li</b><small>Worcester Polytechnic Institute</small></span></li>
+      <li class="person reveal"><span class="av" aria-hidden="true">RL</span><span class="pi"><b>Ruohan Li</b><small>University of Maryland</small></span></li>
+      <li class="person reveal"><span class="av" aria-hidden="true">ZL</span><span class="pi"><b>Zhili Li</b><small>University of Maryland</small></span></li>
+      <li class="person reveal"><span class="av" aria-hidden="true">SX</span><span class="pi"><b>Shuo Xu</b><small>University of Maryland</small></span></li>
+      <li class="person reveal"><span class="av" aria-hidden="true">YX</span><span class="pi"><b>Yiqun Xie</b><small>University of Maryland</small><i>Corresponding author</i></span></li>
+    </ul>
+    <p class="support reveal">Supported in part by NSF, NASA, USGS, Google's AI for Social Good Impact Scholars program and the University of Pittsburgh, with computing from the University of Maryland's Zaratan cluster and NSF NCAR's Derecho. Questions: <span class="mail">zhwang1@umd.edu</span> and <span class="mail">xie@umd.edu</span>.</p>
+  </div>
+</section>
+
+<!-- ================================================================ FAQ -->
+<section class="section" id="faq">
+  <div class="wrap narrow">
+    <header class="sec-head center reveal">
+      <p class="eyebrow">FAQ</p>
+      <h2 class="display">Good questions.</h2>
+    </header>
+    <div class="faq reveal">
+      <details><summary>What is an AI emulator?<i aria-hidden="true"></i></summary><p>A neural network trained to reproduce a simulator: the same inputs in, the same outputs out. Once trained, it runs orders of magnitude faster. On CarbonGlobe, the 40-year global forecast that took ED 40.6 days of wall time takes most baselines about an hour on one GPU.</p></details>
+      <details><summary>How does CarbonGlobe relate to ERA5 and WeatherBench 2?<i aria-hidden="true"></i></summary><p>Its climate inputs are the same kind of gridded reanalysis (here NASA's MERRA-2). WeatherBench 2 asks a model to predict the atmosphere; CarbonGlobe asks what forests do with it. It is the land-carbon counterpart that can sit next to AI weather and climate models.</p></details>
+      <details><summary>Is it observations or simulation?<i aria-hidden="true"></i></summary><p>The inputs are observation-based products. The targets are simulations from ED, a process model calibrated and evaluated against lidar, flux towers, forest inventories and atmospheric inversions, whose results feed the Global Carbon Budget. An emulator trained on CarbonGlobe learns ED.</p></details>
+      <details><summary>How big is it, and what hardware do I need?<i aria-hidden="true"></i></summary><p>29.3 GB of float32 NumPy arrays. Memory-map them and stream batches, as in the quick start. The paper's timings for global inference come from a single RTX A4500 GPU.</p></details>
+      <details><summary>Does it cover future climates?<i aria-hidden="true"></i></summary><p>The dataset spans 1981–2021, so ED could be calibrated against real observations. The IEEE BigData Cup 2026 challenge adds two future scenarios, SSP1-2.6 and SSP5-8.5, and CMIP6-driven runs to 2100 are planned.</p></details>
+      <details><summary>Can I use it in my own work?<i aria-hidden="true"></i></summary><p>Yes. Data and code are released under CC BY 4.0: use, share and adapt them with attribution. Please cite the NeurIPS 2025 paper.</p></details>
+    </div>
   </div>
 </section>
 
 <!-- ================================================================ CITE -->
 <section class="section" id="cite">
-  <div class="wrap">
-    <header class="sec-head reveal">
-      <p class="eyebrow">Get started</p>
+  <div class="wrap narrow">
+    <header class="sec-head center reveal">
+      <p class="eyebrow">Cite</p>
       <h2 class="display">Download. Train. <em>Beat the baselines.</em></h2>
+      <p class="lead">If CarbonGlobe helps your research, please cite the paper.</p>
+      <div class="buttons cta-row">
+        <a class="btn btn-primary" href="#start">Get the dataset</a>
+        <a class="btn" href="#challenge">Join the challenge</a>
+        <a class="btn btn-quiet" href="https://proceedings.neurips.cc/paper_files/paper/2025/file/0b82662b6c32e887bb252a74d8cb2d5e-Paper-Datasets_and_Benchmarks_Track.pdf" target="_blank" rel="noopener">Read the paper <span aria-hidden="true">↗</span></a>
+      </div>
     </header>
-    <div class="resources reveal">
-      <a class="res" href="https://www.kaggle.com/datasets/zhihaow/carbonglobe" target="_blank" rel="noopener"><span class="res-k">Dataset</span><b>Kaggle</b><small>Full ML-ready arrays, splits and statistics</small><i aria-hidden="true">↗</i></a>
-      <a class="res" href="https://huggingface.co/datasets/zhwang1/CarbonGlobe" target="_blank" rel="noopener"><span class="res-k">Dataset</span><b>Hugging Face</b><small>Also available on the Hub</small><i aria-hidden="true">↗</i></a>
-      <a class="res" href="https://github.com/zhwang0/carbon-globe" target="_blank" rel="noopener"><span class="res-k">Code</span><b>GitHub</b><small>Loaders, metrics and all eight baselines</small><i aria-hidden="true">↗</i></a>
-      <a class="res" href="https://proceedings.neurips.cc/paper_files/paper/2025/hash/0b82662b6c32e887bb252a74d8cb2d5e-Abstract-Datasets_and_Benchmarks_Track.html" target="_blank" rel="noopener"><span class="res-k">Paper</span><b>NeurIPS 2025</b><small>Datasets &amp; Benchmarks Track proceedings</small><i aria-hidden="true">↗</i></a>
-    </div>
-    <a class="film-card reveal" href="assets/film/carbonglobe-film.mp4" target="_blank" rel="noopener">
-      <img src="assets/film/carbonglobe-film.jpg" alt="Opening frame of the CarbonGlobe film" loading="lazy">
-      <span class="film-play" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg></span>
-      <span class="film-meta"><b>The film, as a video</b><small>64 s · 1280 × 720 · MP4, silent. Rendered from this page, ready for talks and posts.</small></span>
-    </a>
     <div class="bibtex reveal">
       <div class="bib-head"><span>BibTeX</span><button class="btn btn-small" id="copy-bib" type="button">Copy</button></div>
 <pre id="bib"><code>@inproceedings{NEURIPS2025_0b82662b,
@@ -467,8 +838,23 @@
 
 <footer class="footer">
   <div class="wrap foot">
-    <p><b>CarbonGlobe</b> · University of Maryland, University of Pittsburgh, Worcester Polytechnic Institute</p>
-    <p class="muted">Simulations from the Ecosystem Demography model. Earth imagery: NASA Blue Marble Next Generation (Reto Stöckli, NASA Earth Observatory). Coastlines: Natural Earth. The film's trees, network and layout are illustrations driven by CarbonGlobe values.</p>
+    <div class="foot-brand">
+      <a class="brand" href="#top" aria-label="CarbonGlobe, back to the top">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 16h25M16 3c4 3.6 6 8 6 13s-2 9.4-6 13c-4-3.6-6-8-6-13s2-9.4 6-13z" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55"/><circle cx="21.5" cy="11" r="3.2" fill="var(--g1)"/></svg>
+        <span>CarbonGlobe</span>
+      </a>
+      <p>Teaching AI how the world's forests grow. NeurIPS 2025, Datasets &amp; Benchmarks.</p>
+      <a class="btn btn-primary btn-small" href="#start">Get the dataset</a>
+    </div>
+    <nav class="foot-cols" aria-label="Footer">
+      <div><p>Dataset</p><a href="#why">Why it matters</a><a href="#specs">Tech specs</a><a href="#ml">Built for ML</a><a href="#start">Quick start</a></div>
+      <div><p>Research</p><a href="https://proceedings.neurips.cc/paper_files/paper/2025/file/0b82662b6c32e887bb252a74d8cb2d5e-Paper-Datasets_and_Benchmarks_Track.pdf" target="_blank" rel="noopener">Paper</a><a href="#benchmarks">Benchmarks</a><a href="#explore">Explorer</a><a href="#cite">Cite</a></div>
+      <div><p>Community</p><a href="https://www.kaggle.com/competitions/ieee-bigdata-cup-2026-ai-emulation-challenge/overview" target="_blank" rel="noopener">Challenge on Kaggle</a><a href="https://github.com/zhwang0/carbon-globe" target="_blank" rel="noopener">GitHub</a><a href="https://huggingface.co/datasets/zhwang1/CarbonGlobe" target="_blank" rel="noopener">Hugging Face</a><a href="#watch">The film</a></div>
+    </nav>
+  </div>
+  <div class="wrap foot-base">
+    <p>University of Maryland · University of Pittsburgh · Worcester Polytechnic Institute</p>
+    <p class="muted">Simulations from the Ecosystem Demography model. Earth imagery: NASA Blue Marble Next Generation (Reto Stöckli, NASA Earth Observatory). Coastlines: Natural Earth. The film's trees, weather, network and layout are illustrations driven by CarbonGlobe values.</p>
   </div>
 </footer>
 

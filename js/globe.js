@@ -159,7 +159,7 @@ uniform sampler2D uDay;
 uniform sampler2D uMask;
 uniform sampler2D uZones;
 uniform sampler2DArray uData;
-uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec;
+uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight;
 uniform vec3 uSun;
 uniform vec3 uRamp[5];
 uniform vec3 uZone[6];
@@ -192,7 +192,7 @@ void main() {
   vec3 landCol = mix(vec3(lum), base, 0.5) * 0.62 * uBase;
   vec3 oceanCol = vec3(0.012, 0.035, 0.06) + base * vec3(0.10, 0.20, 0.30);
   vec3 col = mix(oceanCol, landCol, land);
-  col *= mix(0.07, 1.0, day);
+  col *= mix(0.07 * uNight, 1.0, day);
 
   vec3 H = normalize(L + V);
   float spec = pow(max(dot(N, H), 0.0), 140.0) * (1.0 - land) * day;
@@ -208,7 +208,7 @@ void main() {
     float cov = smoothstep(0.2, 0.75, d.g) * smoothstep(0.25, 0.65, land);
     float t = d.r / max(d.g, 1e-3);
     vec3 dc = ramp(t);
-    vec3 dataCol = dc * mix(0.22, 1.0, day) * (0.82 + 0.3 * t) + dc * t * t * 0.22 * (1.0 - day);
+    vec3 dataCol = dc * mix(0.22 * uNight, 1.0, day) * (0.82 + 0.3 * t) + dc * t * t * 0.22 * (1.0 - day) * uNight;
     col = mix(col, dataCol, cov * uDataMix * 0.94);
   }
 
@@ -250,7 +250,7 @@ void main() {
 }`;
 const ATMO_FRAG = /* glsl */`
 uniform vec3 uSun;
-uniform float uOpacity;
+uniform float uOpacity, uEclipse;
 uniform vec3 uCenter;
 varying vec3 vN;
 varying vec3 vW;
@@ -260,7 +260,12 @@ void main() {
   // Back faces of a 1.16x shell: strongest at the planet's limb, fading outward.
   float k = clamp(-dot(N, V) / 0.51, 0.0, 1.0);
   float a = pow(k, 2.6);
-  float lit = 0.3 + 0.7 * smoothstep(-0.45, 0.8, dot(normalize(vW - uCenter), normalize(uSun)));
+  vec3 S = normalize(uSun), rel = normalize(vW - uCenter);
+  float lit = 0.3 + 0.7 * smoothstep(-0.45, 0.8, dot(rel, S));
+  // with the sun behind the planet, the ring gathers on the sun's side of the limb
+  vec3 vc = normalize(cameraPosition - uCenter);
+  float side = dot(normalize(rel - vc * dot(rel, vc)), normalize(S - vc * dot(S, vc) + 1e-4));
+  lit *= mix(1.0, 0.08 + 1.3 * pow(max(side * 0.5 + 0.5, 0.0), 4.0), uEclipse);
   gl_FragColor = vec4(vec3(0.26, 0.8, 1.0) * lit * 1.25, a * uOpacity);
 }`;
 
@@ -270,7 +275,7 @@ export function createGlobe({day, mask, zones, data = null, segments = 192}) {
     uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
     uHasData: {value: data ? 1 : 0},
     uYear: {value: 40}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
-    uTime: {value: 0}, uGridMix: {value: 0}, uTargetMix: {value: 0}, uDim: {value: 1}, uBase: {value: 1}, uSpec: {value: 0.22},
+    uTime: {value: 0}, uGridMix: {value: 0}, uTargetMix: {value: 0}, uDim: {value: 1}, uBase: {value: 1}, uSpec: {value: 0.22}, uNight: {value: 1},
     uSun: {value: new THREE.Vector3(-0.85, 0.38, 0.55).normalize()},
     uRamp: {value: rampUniform('height')},
     uZone: {value: ZONE_COLORS.map(colorVec)},
@@ -279,7 +284,7 @@ export function createGlobe({day, mask, zones, data = null, segments = 192}) {
   if (!data) uniforms.uData.value.format = THREE.RGFormat;
   const material = new THREE.ShaderMaterial({uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true});
   const globe = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), material);
-  const atmoU = {uSun: uniforms.uSun, uOpacity: {value: 1}, uCenter: {value: new THREE.Vector3()}};
+  const atmoU = {uSun: uniforms.uSun, uOpacity: {value: 1}, uEclipse: {value: 0}, uCenter: {value: new THREE.Vector3()}};
   const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.16, 96, 48), new THREE.ShaderMaterial({
     uniforms: atmoU, vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
     side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
@@ -317,4 +322,26 @@ export function createStars(count = 2400, radius = 60) {
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   });
   return new THREE.Points(geo, mat);
+}
+
+// A sun flare for the moment the sun clears the planet's limb: a hot core, a soft halo and a thin
+// anamorphic streak. Drawn additively on top, as a quad facing a camera that looks down -Z.
+export function createFlare() {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {uI: {value: 0}},
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform float uI; varying vec2 vUv;
+      void main(){
+        vec2 p = vUv * 2.0 - 1.0; float r2 = dot(p, p);
+        float core = exp(-r2 * 140.0), halo = exp(-r2 * 9.0) * 0.32;
+        float streak = exp(-p.y * p.y * 3000.0) * exp(-p.x * p.x * 3.2) * 0.6;
+        vec3 c = vec3(1.0, 0.98, 0.92) * core * 1.6 + vec3(0.55, 0.88, 1.0) * (halo + streak);
+        gl_FragColor = vec4(c * uI, 1.0);
+      }`,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  m.frustumCulled = false;
+  m.visible = false;
+  return m;
 }

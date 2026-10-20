@@ -86,6 +86,44 @@ for key in ('wet', 'drought', 'fire', 'cold'):
 if png_size('assets/data/climate.png') != (720, 360):
     errors.append('climate.png: unexpected size')
 
+
+def mp4_seconds(path):
+    # duration from the movie header ('moov' > 'mvhd'), enough to keep the page's copy in step
+    with open(os.path.join(ROOT, path), 'rb') as f:
+        data = f.read()
+
+    def boxes(lo, hi):
+        while lo + 8 <= hi:
+            size, kind = struct.unpack('>I4s', data[lo:lo + 8])
+            head = 8
+            if size == 1:
+                size, head = struct.unpack('>Q', data[lo + 8:lo + 16])[0], 16
+            elif size == 0:
+                size = hi - lo
+            yield kind, lo + head, lo + size
+            lo += size
+
+    for kind, a, b in boxes(0, len(data)):
+        if kind == b'moov':
+            for k, c, _ in boxes(a, b):
+                if k == b'mvhd':
+                    if data[c] == 1:
+                        scale, dur = struct.unpack('>IQ', data[c + 20:c + 32])
+                    else:
+                        scale, dur = struct.unpack('>II', data[c + 12:c + 20])
+                    return dur / scale
+    raise ValueError(f'{path}: no movie header')
+
+
+secs = re.search(r'id="film-secs">(\d+)<', html)
+film = 'assets/film/carbonglobe-film.mp4'
+if secs and os.path.exists(os.path.join(ROOT, film)):
+    try:
+        if abs(mp4_seconds(film) - int(secs.group(1))) > 0.6:
+            errors.append(f'index.html: the film is {mp4_seconds(film):.1f} s, the page says {secs.group(1)} s')
+    except ValueError as e:
+        errors.append(str(e))
+
 if errors:
     print('\n'.join(errors))
     sys.exit(1)

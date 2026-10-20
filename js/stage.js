@@ -1,10 +1,11 @@
 // The scroll-driven film: hero globe -> one forest -> four forcings -> fifteen ages -> planet -> emulator -> what if -> numbers.
 import * as THREE from '../assets/vendor/three.module.js';
-import {createGlobe, createStars, facing, cellOf, latLonToVec3} from './globe.js';
+import {createGlobe, createStars, createFlare, facing, cellOf, latLonToVec3} from './globe.js';
 import {createGround, createMotes, createWeather, createSky} from './forest.js';
 import {mulberry32} from './random.js';
 import {growTrees, treePoints, createFlames, PRE_TAU} from './hero-tree.js';
 import {createEmulator, NET} from './network.js';
+import {createPost} from './post.js';
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -78,12 +79,14 @@ function createStreams(zones, net, px, count) {
 }
 
 // ------------------------------------------------------------------ stage
-export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced = false}) {
-  const renderer = new THREE.WebGLRenderer({canvas, antialias: true, powerPreference: 'high-performance'});
+export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced = false, bloom = !mobile}) {
+  // with bloom the frame is multisampled in its own target, so the canvas itself needs no antialiasing
+  const renderer = new THREE.WebGLRenderer({canvas, antialias: !bloom, powerPreference: 'high-performance'});
   renderer.setClearColor(0x050a0c, 1);
   renderer.autoClear = false;
   const px = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.75);
   renderer.setPixelRatio(px);
+  const post = bloom ? createPost(renderer) : null;
 
   const story = meta.story.amazon;
   const target = cellOf(story.lat, story.lon);
@@ -98,6 +101,15 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const stars = createStars(mobile ? 1400 : 2800);
   stars.material.uniforms.uPx.value = px;
   gScene.add(stars, G.group);
+  // the opening: the sun rises from behind the planet to its usual place, flaring as it clears the limb
+  const SUN = G.uniforms.uSun.value.clone(), SUN0 = new THREE.Vector3(0.42, 0.5, -0.76).normalize();
+  // the end card lights its planet from high above, so the horizon glows under the title
+  const SUN_END = new THREE.Vector3(-0.3, 0.85, 0.42).normalize(), END_TILT = -1.45, END_RY = facing(0, -60).y;
+  let endSpin = 0;
+  const INTRO = reduced ? 0 : 3.4;
+  const flare = createFlare();
+  flare.renderOrder = 5;
+  gScene.add(flare);
   const net = createEmulator(px, scen.maps, tex.mask);
   gScene.add(net.group);
   maps?.then(t => net.setMaps(t)).catch(() => {});
@@ -379,6 +391,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   function resize() {
     W = canvas.clientWidth; H = canvas.clientHeight; aspect = W / H;
     renderer.setSize(W, H, false);
+    post?.setSize();
     gCam.aspect = fCam.aspect = aspect;
     gCam.updateProjectionMatrix(); fCam.updateProjectionMatrix();
     const proj = H * 0.5 / Math.tan(THREE.MathUtils.degToRad(fCam.fov) / 2);
@@ -388,7 +401,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     const narrow = aspect < 0.85;
     // hero: globe to the right of the title (or above it on phones)
     const dh = 4.2, hh = dh * t, hw = hh * aspect;
-    L.hero = narrow ? {x: 0, y: hh * 0.4, s: Math.min(0.9, hw * 0.85), d: dh} : {x: hw * 0.5, y: 0, s: 0.95, d: dh};
+    L.hero = narrow ? {x: 0, y: hh * 0.55, s: Math.min(0.82, hw * 0.78), d: dh} : {x: hw * 0.5, y: 0, s: 0.95, d: dh};
     L.planet = narrow ? {x: 0, y: -hh * 0.18, s: Math.min(0.9, hw * 0.85), d: dh} : {x: hw * 0.36, y: 0, s: 1, d: dh};
     // emulator: globe left, network right
     const dn = 4.4, nh = dn * t, nw = nh * aspect;
@@ -409,6 +422,9 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     dom.netLabels.classList.toggle('few', L.netPx < 150);
     dom.netLabels.classList.toggle('tiny', L.netPx < 115);
     L.fc = narrow ? {gx: 0, gy: nh * 0.1, gs: nw * 0.6} : {gx: -nw * 0.62, gy: -nh * 0.62, gs: nh * 0.62};
+    // end card: a planet rising from the bottom of the frame, its horizon below the title
+    const de = 4.3, eh = de * t, ew = eh * aspect, er = narrow ? ew * 1.9 : Math.max(ew * 1.05, eh * 1.7);
+    L.end = {d: de, s: er, y: -eh * (narrow ? 0.4 : 0.27) - er};
     L.narrow = narrow;
     const cap = dom.forcingCap;
     L.capBottom = cap ? cap.offsetTop + cap.offsetHeight : 0;
@@ -419,7 +435,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   }
   resize();
 
-  const tmp = new THREE.Vector3(), mainTgt = new THREE.Vector3();
+  const tmp = new THREE.Vector3(), mainTgt = new THREE.Vector3(), sunSide = new THREE.Vector3();
   const PANEL_VIEW = 4.8;   // world units (10 m) of height each forcing view shows
   const PANEL_TGT = 2.2;    // height the views look at, leaving room for the headers above the crowns
   // key light from the upper left of a camera at azimuth az, slightly in front of the subject
@@ -506,12 +522,17 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       gx = lerp(0, L.planet.x, kOut); gy = lerp(0, L.planet.y, kOut); gs = lerp(1, L.planet.s, kOut);
     }
     let dist = 1 + alt;
-    const kNet = ease(ss(7.9, 8.45, u)), kFc = ease(ss(9.45, 9.9, u)), kNum = ease(ss(10.65, 11.1, u));
+    const kNet = ease(ss(7.9, 8.45, u)), kFc = ease(ss(9.45, 9.9, u)), kNum = ease(ss(10.65, 11.1, u)), kEnd = ease(ss(11.7, 12.45, u));
     if (u > 7.45) {
       dist = lerp(dist, L.net.d, kNet);
       gx = lerp(gx, L.net.gx, kNet); gy = lerp(gy, L.net.gy, kNet); gs = lerp(gs, L.net.gs, kNet);
       gx = lerp(gx, L.fc.gx, kFc); gy = lerp(gy, L.fc.gy, kFc); gs = lerp(gs, L.fc.gs, kFc);
       dist = lerp(dist, 4.3, kNum); gx = lerp(gx, 0, kNum); gy = lerp(gy, 0, kNum); gs = lerp(gs, L.narrow ? 0.95 : 1.3, kNum);
+      dist = lerp(dist, L.end.d, kEnd); gx = lerp(gx, 0, kEnd); gy = lerp(gy, L.end.y, kEnd); gs = lerp(gs, L.end.s, kEnd);
+      // the end card faces the Amazon, tilted so its horizon runs just north of the equator
+      rx = lerp(rx, END_TILT, kEnd);
+      endSpin = kEnd > 0 ? endSpin + Math.min(dt, 0.1) * 0.03 : 0;
+      ry += wrapPi(END_RY - ry) * kEnd + endSpin;
     }
     G.group.position.set(gx, gy, 0);
     G.group.scale.setScalar(gs);
@@ -523,6 +544,30 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
 
     const U = G.uniforms;
     U.uTime.value = time;
+    // dark planet and a ring of light; the sun flares on the limb, then sweeps round to the front
+    const kIn = INTRO ? clamp(time / INTRO) : 1, kSun = ss(0.3, 1, kIn);
+    U.uSun.value.copy(SUN0).lerp(SUN, kSun * kSun * (3 - 2 * kSun)).normalize();
+    U.uNight.value = lerp(0.2, 1, ss(0.35, 1, kIn));
+    G.atmoUniforms.uEclipse.value = 1 - ss(0.3, 0.85, kIn);
+    U.uSun.value.lerp(SUN_END, kEnd).normalize();
+    const I0 = ss(0.08, 0.3, kIn) * (1 - ss(0.4, 0.72, kIn)), I1 = 0.5 * ss(0.35, 1, kEnd);
+    flare.visible = I0 + I1 > 0.003;
+    if (I0 > 0.003) {
+      // on the limb, toward the sun as seen from the camera
+      const c = G.group.position, view = tmp.copy(c).sub(gCam.position).normalize();
+      const side = sunSide.copy(U.uSun.value).addScaledVector(view, -U.uSun.value.dot(view)).normalize();
+      flare.position.copy(c).addScaledVector(side, gs * 0.97);
+      flare.position.z += gs * 0.2;
+      flare.scale.setScalar(gs * 3.2);
+      flare.material.uniforms.uI.value = I0;
+    } else if (I1 > 0.003) {
+      // on the horizon of the end card's planet: where the camera's line of sight grazes it
+      const n = Math.hypot(gy, dist), uy = -gy / n, uz = dist / n, cp = gs / n, sp = Math.sqrt(Math.max(0, 1 - cp * cp));
+      flare.position.set(gx, gy + gs * (cp * uy + sp * uz), gs * (cp * uz - sp * uy) + 0.05);
+      flare.scale.setScalar(2.4);
+      flare.material.uniforms.uI.value = I1;
+    }
+    stars.material.uniforms.uOpacity.value = ss(0, 0.45, kIn);
     const zoneMix = ss(7.15, 7.3, u) * (1 - ss(7.43, 7.55, u));
     U.uZoneMix.value = zoneMix * 0.8;
     // Near the surface, let the satellite imagery show through the data layer.
@@ -531,7 +576,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     U.uYear.value = u < 7.4 ? 40 : 40 * ss(7.51, 8, u);
     U.uGridMix.value = u > 0.9 && u < 7.05 ? 1 : 0;
     U.uTargetMix.value = ss(1.4, 1.75, u) * (1 - ss(6.75, 7, u));
-    U.uDim.value = lerp(1, 0.45, kNum) * lerp(1, 0.6, kFc * (1 - kNum));
+    U.uDim.value = lerp(lerp(1, 0.45, kNum), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum));
     G.atmoUniforms.uOpacity.value = clamp((dist / gs - 1.25) / 0.6);
     G.atmoUniforms.uCenter.value.copy(G.group.position);
     stars.material.uniforms.uTime.value = time;
@@ -647,12 +692,14 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     });
 
     // ---------- draw
+    post?.begin();
     renderer.clear();
     if (fA < 0.999) renderer.render(gScene, gCam);
     if (fA > 0.001) {
       if (rects) drawPanels(rects);
       else { renderer.clearDepth(); renderer.render(fScene, fCam); }
     }
+    post?.end();
 
     // ---------- DOM overlays
     dom.panels.style.visibility = rects ? 'visible' : 'hidden';
