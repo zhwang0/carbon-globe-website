@@ -87,8 +87,9 @@ if png_size('assets/data/climate.png') != (720, 360):
     errors.append('climate.png: unexpected size')
 
 
-def mp4_seconds(path):
-    # duration from the movie header ('moov' > 'mvhd'), enough to keep the page's copy in step
+def mp4_info(path):
+    # duration from the movie header ('moov' > 'mvhd') and each track's handler ('vide', 'soun'),
+    # enough to keep the page's copy in step
     with open(os.path.join(ROOT, path), 'rb') as f:
         data = f.read()
 
@@ -103,24 +104,38 @@ def mp4_seconds(path):
             yield kind, lo + head, lo + size
             lo += size
 
+    seconds, handlers = None, []
     for kind, a, b in boxes(0, len(data)):
-        if kind == b'moov':
-            for k, c, _ in boxes(a, b):
-                if k == b'mvhd':
-                    if data[c] == 1:
-                        scale, dur = struct.unpack('>IQ', data[c + 20:c + 32])
-                    else:
-                        scale, dur = struct.unpack('>II', data[c + 12:c + 20])
-                    return dur / scale
-    raise ValueError(f'{path}: no movie header')
+        if kind != b'moov':
+            continue
+        for k, c, d in boxes(a, b):
+            if k == b'mvhd':
+                if data[c] == 1:
+                    scale, dur = struct.unpack('>IQ', data[c + 20:c + 32])
+                else:
+                    scale, dur = struct.unpack('>II', data[c + 12:c + 20])
+                seconds = dur / scale
+            elif k == b'trak':
+                for k2, c2, d2 in boxes(c, d):
+                    if k2 == b'mdia':
+                        handlers += [data[c3 + 8:c3 + 12].decode() for k3, c3, _ in boxes(c2, d2) if k3 == b'hdlr']
+    if seconds is None:
+        raise ValueError(f'{path}: no movie header')
+    return seconds, handlers
 
 
 secs = re.search(r'id="film-secs">(\d+)<', html)
 film = 'assets/film/carbonglobe-film.mp4'
 if secs and os.path.exists(os.path.join(ROOT, film)):
     try:
-        if abs(mp4_seconds(film) - int(secs.group(1))) > 0.6:
-            errors.append(f'index.html: the film is {mp4_seconds(film):.1f} s, the page says {secs.group(1)} s')
+        seconds, handlers = mp4_info(film)
+        if abs(seconds - int(secs.group(1))) > 0.6:
+            errors.append(f'index.html: the film is {seconds:.1f} s, the page says {secs.group(1)} s')
+        if 'with sound' in html and 'soun' not in handlers:
+            errors.append('index.html: the page says the film has sound, the MP4 has no audio track')
+        cut = json.load(open(os.path.join(ROOT, 'assets/film/cut.json')))
+        if abs(cut['beats'] * 60 / cut['bpm'] - seconds) > 0.6:
+            errors.append(f'assets/film/cut.json: the edit is {cut["beats"] * 60 / cut["bpm"]:.1f} s, the film {seconds:.1f} s; re-render it')
     except ValueError as e:
         errors.append(str(e))
 

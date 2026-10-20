@@ -80,7 +80,9 @@ function createStreams(zones, net, px, count) {
 }
 
 // ------------------------------------------------------------------ stage
-export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced = false, bloom = !mobile}) {
+// film: the rendered video (js/cut.js), which clears the network away for the what-if charts and
+// dims the planet further behind its big number.
+export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced = false, bloom = !mobile, film = false}) {
   // with bloom the frame is multisampled in its own target, so the canvas itself needs no antialiasing
   const renderer = new THREE.WebGLRenderer({canvas, antialias: !bloom, powerPreference: 'high-performance'});
   renderer.setClearColor(0x050a0c, 1);
@@ -508,7 +510,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const amazon = story.ages;
 
   let last = performance.now(), time = 0;
-  function render(uNow, tFixed) {
+  // opt.intro: the sunrise's progress (0..1), when the rendered film times it to its music
+  function render(uNow, tFixed, opt = {}) {
     u = uNow;
     let dt;
     if (tFixed !== undefined) { dt = Math.max(0, tFixed - time); time = tFixed; }
@@ -554,7 +557,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     const U = G.uniforms;
     U.uTime.value = time;
     // dark planet and a ring of light; the sun flares on the limb, then sweeps round to the front
-    const kIn = INTRO ? clamp(time / INTRO) : 1, kSun = ss(0.3, 1, kIn);
+    const kIn = opt.intro ?? (INTRO ? clamp(time / INTRO) : 1), kSun = ss(0.3, 1, kIn);
     U.uSun.value.copy(SUN0).lerp(SUN, kSun * kSun * (3 - 2 * kSun)).normalize();
     U.uNight.value = lerp(0.2, 1, ss(0.35, 1, kIn));
     G.atmoUniforms.uEclipse.value = 1 - ss(0.3, 0.85, kIn);
@@ -577,22 +580,21 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       flare.material.uniforms.uI.value = I1;
     }
     stars.material.uniforms.uOpacity.value = ss(0, 0.45, kIn);
-    const zoneMix = ss(7.15, 7.3, u) * (1 - ss(7.43, 7.55, u));
-    U.uZoneMix.value = zoneMix * 0.8;
     // Near the surface, let the satellite imagery show through the data layer.
     const surface = ss(1.15, 1.7, u) * (1 - ss(6.8, 7.15, u));
-    U.uDataMix.value = (1 - zoneMix * 0.85) * (1 - 0.6 * surface);
-    U.uYear.value = u < 7.4 ? 40 : 40 * ss(7.51, 8, u);
+    U.uDataMix.value = 1 - 0.6 * surface;
+    // the planet comes back in 1981, under the flash that ends the forest chapters, and grows to 2021
+    U.uYear.value = u < 6.45 ? 40 : 40 * ss(7.32, 7.95, u);
     U.uGridMix.value = u > 0.9 && u < 7.05 ? 1 : 0;
     U.uTargetMix.value = ss(1.4, 1.75, u) * (1 - ss(6.75, 7, u));
-    U.uDim.value = lerp(lerp(1, 0.45, kNum), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum));
+    U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kNum), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum));
     G.atmoUniforms.uOpacity.value = clamp((dist / gs - 1.25) / 0.6);
     G.atmoUniforms.uCenter.value.copy(G.group.position);
     stars.material.uniforms.uTime.value = time;
     stars.rotation.y = time * 0.004;
 
     // network & streams
-    const netA = ss(8.2, 8.55, u) * (1 - 0.7 * ss(9.55, 9.8, u)) * (1 - ss(10.6, 10.85, u));
+    const netA = ss(8.2, 8.55, u) * (1 - (film ? 1 : 0.7) * ss(9.55, 9.8, u)) * (1 - ss(10.6, 10.85, u));
     net.group.visible = netA > 0.002;
     net.group.position.set(L.net.nx, L.net.ny, 0);
     net.group.scale.setScalar(L.net.ns);
@@ -747,8 +749,6 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     dom.treeLai.textContent = lai.toFixed(1);
     cohorts.forEach((c, i) => { barEls[i].style.height = `${clamp(c.h / 34) * 100}%`; });
     dom.globeYear.textContent = 1981 + Math.round(U.uYear.value);
-    dom.zoneLegend.style.opacity = zoneMix.toFixed(3);
-    dom.globeGrowth.style.opacity = (1 - zoneMix).toFixed(3);
 
     const labA = ss(5.55, 5.8, u) * (1 - ss(6.25, 6.4, u));
     cohorts.forEach((c, i) => {

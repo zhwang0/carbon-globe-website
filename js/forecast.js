@@ -130,9 +130,10 @@ export function createForecast({svg, tabs, caption, meta}) {
     labB1.setAttribute('x', X1 + 6); labB1.setAttribute('y', (Y0 - linesB[14].series[40] / 24 * (Y0 - Y1) + 4).toFixed(1));
     labB2.setAttribute('x', X1 + 6); labB2.setAttribute('y', (Y0 - linesB[0].series[40] / 24 * (Y0 - Y1) + 4).toFixed(1));
     labB1.setAttribute('opacity', ss(0.8, 1, pB)); labB2.setAttribute('opacity', ss(0.8, 1, pB));
-    const pC = clamp((u - 10.43) / 0.2);
+    // drawn in full before the panel fades out at 10.6
+    const pC = clamp((u - 10.43) / 0.13);
     hist.style.strokeDashoffset = (histLen * (1 - pC)).toFixed(1);
-    const pC2 = ss(10.53, 10.65, u);
+    const pC2 = ss(10.5, 10.58, u);
     [hi, lo, tHi, tLo, tHist].forEach(e => e.setAttribute('opacity', (e === tHist ? ss(0.6, 1, pC) : pC2).toFixed(2)));
   }
   return {update};

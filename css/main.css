@@ -266,11 +266,8 @@ html.no-webgl .stage-fallback {
 }
 .panels-year small { display: block; color: var(--dim); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; text-align: right; }
 .panels-year b { display: block; color: var(--text); font: 650 clamp(34px, 3.6vw, 52px)/1.05 var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.hud-globe { left: max(24px, 6vw); right: max(24px, 6vw); bottom: 7vh; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
-.zones { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; color: var(--muted); transition: opacity .4s; }
-.zones span { display: inline-flex; align-items: center; gap: 7px; }
-.zones span::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--c); box-shadow: 0 0 10px var(--c); }
-.growth { display: flex; align-items: flex-end; gap: 28px; transition: opacity .4s; }
+.hud-globe { left: max(24px, 6vw); right: max(24px, 6vw); bottom: 7vh; display: flex; justify-content: flex-end; align-items: flex-end; gap: 24px; }
+.growth { display: flex; align-items: flex-end; gap: 28px; }
 .legend { display: grid; grid-template-columns: auto auto; gap: 4px 0; width: 220px; font-size: 11px; color: var(--dim); }
 .legend small { grid-column: 1 / -1; }
 .legend span:last-child { text-align: right; }
@@ -813,3 +810,40 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 /* deterministic video rendering (scripts/render_film.py) */
 .render *, .render *::before, .render *::after { transition: none !important; animation: none !important; }
 .render .topbar, .render .chapters, .render .film-pause, .render .film-bar, .render .scroll-cue, .render .hero .buttons, .render .numbers .btn, .render .skip { display: none !important; }
+/* the rendered film tells its story in short beat-timed titles (js/cut.js) instead of the page's captions and readouts */
+.titles, .film-fade { display: none; }
+.render .titles { display: block; position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.render .film-fade { display: block; position: absolute; inset: 0; z-index: 6; background: #000; opacity: 0; pointer-events: none; }
+.render .hero, .render .cell-label, .render .rewind, .render .numbers, .render #net-labels, .render .fc-tabs, .render .forecast figcaption,
+.render .hud-tree .hud-row, .render .hud-note, .render .p-title span, .render .p-clim, .render .p-map, .render .p-note, .render .p-stats,
+.render .finale .kicker span { display: none !important; }
+.render .cap { visibility: hidden !important; }
+.render .p-head { opacity: 0; transform-origin: 0 50%; }
+.render .p-title b { font-size: 15px; letter-spacing: .16em; }
+.render .p-icon { width: 27px; height: 27px; }
+.t-card { position: absolute; visibility: hidden; text-shadow: 0 2px 28px rgba(0, 0, 0, .5); }
+/* a soft shade behind each title keeps it legible over trees and maps */
+.t-card::before { content: ""; position: absolute; inset: -45% -22%; z-index: -1; background: radial-gradient(closest-side, rgba(4, 9, 10, .5), transparent); }
+.t-left { left: max(24px, 6vw); top: 50%; transform: translateY(-50%); width: min(470px, 37vw); }
+.t-top { left: max(24px, 6vw); top: max(52px, 9vh); width: min(820px, 72vw); }
+.t-center { left: 50%; top: 50%; transform: translate(-50%, -52%); width: 92vw; text-align: center; }
+.t-card p { margin: 0; }
+.t-card .t-sub { margin-top: 14px; }
+.t-main { font: 650 clamp(30px, 4.3vw, 64px)/1.06 var(--sans); letter-spacing: -0.035em; color: var(--text); text-wrap: balance; }
+.t-main .w, .t-sub, .t-parts span { display: inline-block; }
+.t-num { display: inline-block; font-variant-numeric: tabular-nums; }
+.t-sub { font: 450 clamp(16px, 1.95vw, 28px)/1.3 var(--sans); letter-spacing: -0.012em; color: var(--muted); }
+.t-sub em { color: var(--g1); }
+/* a second line that lands the point: as large as the first, in the brand gradient */
+.t-card .t-sub.grad { margin-top: 2px; font: 650 clamp(30px, 4.3vw, 64px)/1.06 var(--sans); letter-spacing: -0.035em; color: transparent; text-shadow: none; }
+.t-left.t-brand { width: min(660px, 52vw); }
+.t-brand .t-main { font-size: clamp(52px, 7.3vw, 108px); font-weight: 750; letter-spacing: -0.055em; line-height: .92; }
+.t-card.t-brand .t-sub { margin-top: 18px; font-size: clamp(19px, 2.15vw, 31px); font-weight: 500; letter-spacing: -0.022em; color: var(--text); }
+.t-big .t-main { font-size: clamp(84px, 13.5vw, 200px); font-weight: 750; letter-spacing: -0.05em; line-height: .95; text-shadow: none; }
+.t-big .t-num { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 .04em; }
+.t-card.t-big .t-sub { margin-top: 10px; color: var(--text); font-weight: 500; }
+.t-parts { display: flex; gap: clamp(18px, 2.4vw, 36px); font: 550 clamp(15px, 1.75vw, 25px)/1.2 var(--sans); letter-spacing: -0.01em; color: var(--muted); }
+.t-parts span.now, .t-big .t-parts span { color: var(--text); }
+.t-card .t-parts { margin-top: 22px; }
+.t-center .t-parts { justify-content: center; }
+.render .forecast { width: min(780px, 56vw); right: 4vw; }

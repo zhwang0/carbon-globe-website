@@ -141,6 +141,8 @@
     <div class="stage-fallback" aria-hidden="true"></div>
     <div class="vignette" aria-hidden="true"></div>
     <div class="flash" id="flash" aria-hidden="true"></div>
+    <div class="titles" id="titles" aria-hidden="true"></div>
+    <div class="film-fade" id="film-fade" aria-hidden="true"></div>
 
     <!-- hero -->
     <div class="hero" data-u="-1,-1,0.18,0.62">
@@ -194,7 +196,7 @@
       <h2>Every site is seeded with <em>fifteen</em> forest ages.</h2>
       <p>From 1-year saplings to 500-year-old stands, each grown in the same climate. Young forests race upward while old ones hold their carbon. An emulator has to learn both.</p>
     </article>
-    <div class="hud hud-cohort" data-u="5.25,5.5,6.45,6.65" aria-hidden="true">
+    <div class="hud hud-cohort" data-u="5.33,5.5,6.45,6.65" aria-hidden="true">
       <div class="hud-year"><small>Year</small><b id="cohort-year">1981</b></div>
       <div class="bars" id="cohort-bars"></div>
       <p class="hud-note">Canopy height by starting age (years) · same site</p>
@@ -208,10 +210,7 @@
       <p>Repeated at every 0.5° land cell, across tropical, arid, temperate, cold and polar climates. Generating it took ED about <b>812 CPU-days</b> on an HPC cluster.</p>
     </article>
     <div class="hud hud-globe" data-u="6.8,7.05,7.95,8.15" aria-hidden="true">
-      <div class="zones" id="zone-legend">
-        <span style="--c:#3b82f6">Tropical</span><span style="--c:#f59e0b">Arid</span><span style="--c:#4ade80">Temperate</span><span style="--c:#a78bfa">Cold</span><span style="--c:#cbd5e1">Polar</span>
-      </div>
-      <div class="growth" id="globe-growth">
+      <div class="growth">
         <div class="hud-year"><small>Year</small><b id="globe-year">1981</b></div>
         <div class="legend"><small>Canopy height</small><i class="ramp ramp-height"></i><span>0</span><span>35 m</span></div>
       </div>
@@ -750,13 +749,13 @@ x, y = X[i], Y[i]           <span class="c"># 40 years of climate; the forest, y
   <div class="wrap">
     <header class="sec-head center reveal">
       <p class="eyebrow">The film</p>
-      <h2 class="display">The whole story, <em>in <span id="film-secs">68</span> seconds.</em></h2>
+      <h2 class="display">The whole story, <em>in <span id="film-secs">79</span> seconds.</em></h2>
     </header>
     <a class="film-hero reveal" id="film-open" href="assets/film/carbonglobe-film.mp4" aria-label="Play the CarbonGlobe film">
       <img src="assets/film/carbonglobe-film.jpg" alt="" loading="lazy" width="1280" height="720">
       <span class="film-play" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg></span>
     </a>
-    <p class="film-note">1280 × 720 · MP4 · silent · rendered frame by frame from this page, free to use in talks and posts. <a href="assets/film/carbonglobe-film.mp4" download>Download</a></p>
+    <p class="film-note">1280 × 720 · MP4 · with sound · rendered frame by frame from this page, with a score generated in code. Free to use in talks and posts. <a href="assets/film/carbonglobe-film.mp4" download>Download</a></p>
   </div>
   <dialog class="lightbox" id="lightbox" aria-label="CarbonGlobe film">
     <form method="dialog"><button class="lb-close" type="submit" aria-label="Close">×</button></form>

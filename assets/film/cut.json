@@ -1,0 +1,79 @@
+{
+  "about": "The rendered film's edit, in beats at bpm. u: film positions (beat, u, easing into it). intro: the sunrise clock. titles: the film's own short titles. pops: beats at which the four forcing views name themselves. finale: the beat on which the end card's title lands. cues and music: the score, read by scripts/soundtrack.py. Rendered by scripts/render_film.py.",
+  "bpm": 100,
+  "beats": 132,
+  "fade": [128, 132],
+  "u": [
+    [0, 0], [10, 0.05],
+    [14, 1.45, "io"], [16, 1.96, "in"], [17, 2.15, "out"], [24, 3.45], [26, 3.45],
+    [27, 3.5, "in"], [29, 3.8, "out"], [34, 3.9], [42, 4.9], [44, 5.0], [45, 5.25, "io"], [46, 5.32], [47, 5.4],
+    [54, 6.4], [56, 6.45], [60, 7.3, "io"], [62, 7.32], [70, 7.95], [72, 8.0],
+    [76, 8.45, "io"], [84, 9.1], [86, 9.3], [88, 9.45], [92, 9.63, "io"], [96, 9.99], [97, 10.11, "io"], [100, 10.37],
+    [101, 10.43, "io"], [103, 10.585], [104, 10.6], [105, 10.82], [108, 11.1, "io"], [116, 11.6], [120, 12.45, "io"], [132, 12.6]
+  ],
+  "intro": [[0, 0], [4, 0.33], [9, 1, "out"]],
+  "titles": [
+    {"in": 4, "out": 10, "pos": "left", "kind": "brand", "text": "Carbon<span class=\"grad\">Globe</span>", "sub": "Teaching AI how the world's forests <em>grow</em>.", "subIn": 6},
+    {"in": 16, "out": 21.5, "pos": "left", "text": "One forest.", "sub": "Central Amazon, 1981.", "subIn": 17},
+    {"in": 22, "out": 27, "pos": "left", "text": "Forty years, simulated.", "sub": "Ecosystem Demography model, ED v3.0", "subIn": 23},
+    {"in": 28, "out": 44, "pos": "top", "text": "Same start.", "sub": "Four forcings.", "subIn": 30},
+    {"in": 48, "out": 56, "pos": "left", "text": "Fifteen starting ages.", "sub": "From 1-year saplings to 500-year-old stands.", "subIn": 50},
+    {"in": 56, "out": 71, "pos": "left", "kind": "count", "count": 54152, "countTo": 60, "text": "{n} forests.", "sub": "One planet.", "subIn": 62},
+    {"in": 72, "out": 86, "pos": "top", "text": "Now, teach an AI.", "parts": [["Climate in.", 76], ["Forest out.", 80], ["Year after year.", 82]]},
+    {"in": 88, "out": 92, "pos": "top", "text": "Forty years ahead.", "sub": "In about an hour.", "subIn": 90, "subClass": "grad"},
+    {"in": 92, "out": 96, "pos": "top", "text": "Another climate?"},
+    {"in": 96, "out": 100, "pos": "top", "text": "Another starting forest?"},
+    {"in": 100, "out": 104, "pos": "top", "text": "Another future?"},
+    {"in": 105, "out": 116, "pos": "center", "kind": "big", "count": 812280, "countTo": 108, "sub": "forest simulations, forty years each.", "subIn": 108, "parts": [["136 drivers", 110], ["7 targets", 111], ["8 baselines", 112]]}
+  ],
+  "pops": [30, 31, 32, 33],
+  "finale": 120,
+  "cues": [
+    {"b": 0, "kind": "riser", "len": 4, "gain": 0.7},
+    {"b": 4, "kind": "hit", "size": 1.0},
+    {"b": 6, "kind": "bell", "note": 74},
+    {"b": 10, "kind": "whoosh", "len": 4},
+    {"b": 14, "kind": "riser", "len": 2, "gain": 0.8},
+    {"b": 16, "kind": "hit", "size": 0.6},
+    {"b": 25.5, "kind": "whoosh", "len": 2.5, "gain": 0.6},
+    {"b": 30, "kind": "pluck", "note": 74}, {"b": 31, "kind": "pluck", "note": 79}, {"b": 32, "kind": "pluck", "note": 81}, {"b": 33, "kind": "pluck", "note": 86},
+    {"u": 4.4575, "kind": "fire"},
+    {"u": 4.75, "kind": "drought"},
+    {"b": 43.5, "kind": "whoosh", "len": 2.5, "gain": 0.6},
+    {"b": 56, "kind": "riser", "len": 4},
+    {"b": 56, "kind": "count", "len": 4},
+    {"b": 60, "kind": "hit", "size": 0.9},
+    {"b": 72, "kind": "whoosh", "len": 4, "gain": 0.8},
+    {"b": 76, "kind": "pluck", "note": 74}, {"b": 80, "kind": "pluck", "note": 77}, {"b": 82, "kind": "pluck", "note": 81},
+    {"b": 84, "kind": "riser", "len": 4},
+    {"b": 88, "kind": "hit", "size": 0.7},
+    {"b": 90, "kind": "bell", "note": 81},
+    {"b": 92, "kind": "bell", "note": 74}, {"b": 96, "kind": "bell", "note": 77}, {"b": 100, "kind": "bell", "note": 79},
+    {"b": 104, "kind": "riser", "len": 4},
+    {"b": 105, "kind": "count", "len": 3},
+    {"b": 108, "kind": "hit", "size": 1.2},
+    {"b": 110, "kind": "pluck", "note": 81}, {"b": 111, "kind": "pluck", "note": 84}, {"b": 112, "kind": "pluck", "note": 86},
+    {"b": 116, "kind": "riser", "len": 4},
+    {"b": 120, "kind": "hit", "size": 1.0},
+    {"b": 120, "kind": "bell", "note": 77}
+  ],
+  "music": {
+    "chords": [
+      [0, "D5"], [4, "Dm9"], [12, "Bbmaj9"], [16, "Dm9"], [20, "Bbmaj9"], [24, "F9"], [28, "C9"],
+      [32, "Dm9"], [36, "Bbmaj9"], [40, "Gm9"], [44, "A7sus"], [48, "Dm9"], [52, "Bbmaj9"], [56, "C9"],
+      [60, "F9"], [64, "C9"], [68, "Dm9"], [72, "Dm9"], [80, "Bbmaj9"], [84, "C9"], [88, "F9"],
+      [92, "Dm9"], [96, "Bbmaj9"], [100, "Gm9"], [104, "A7sus"], [108, "Dm9"], [112, "Bbmaj9"], [116, "C9"],
+      [120, "F9"], [124, "Fmaj9"]
+    ],
+    "parts": {
+      "pad": [[0, 132]],
+      "bass": [[4, 26], [29, 56], [60, 88], [92, 104], [108, 132]],
+      "arp8": [[16, 26], [34, 44], [47, 56], [62, 72]],
+      "arp16": [[76, 88]],
+      "arp4": [[92, 104]],
+      "kick2": [[20, 26], [34, 44], [48, 56], [108, 116]],
+      "kick4": [[76, 88]],
+      "hat": [[20, 26], [36, 44], [50, 56], [78, 88], [110, 116]]
+    }
+  }
+}

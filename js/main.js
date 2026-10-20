@@ -307,28 +307,32 @@ async function boot() {
   const M = scen.maps, nv = M.vars.length;
   const maps = loadTiles(M.file, M.tile[0], M.tile[1], nv * 12, i => [i % 12 % M.cols, 2 * Math.floor(i / 12) + Math.floor(i % 12 / M.cols)]);
   stage = createStage({
-    canvas, meta, scen, maps, mobile, reduced, bloom: !mobile && !PARAMS.has('nobloom'),
+    canvas, meta, scen, maps, mobile, reduced, bloom: !mobile && !PARAMS.has('nobloom'), film: RENDER,
     tex: {...tex, height},
     dom: {
       flash: $('#flash'), bars: $('#cohort-bars'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'),
       treeYear: $('#tree-year'), cohortYear: $('#cohort-year'), treeH: $('#tree-h'), treeAgb: $('#tree-agb'), treeLai: $('#tree-lai'),
-      globeYear: $('#globe-year'), zoneLegend: $('#zone-legend'), globeGrowth: $('#globe-growth'), panels: $('#panels'),
+      globeYear: $('#globe-year'), panels: $('#panels'),
       forcingCap: $('.cap-forcing'), netCap: $('.cap-net'),
     },
   });
   canvas.classList.add('ready');
   addEventListener('resize', () => stage.resize());
   if (RENDER) {
-    // Deterministic frame stepping for scripts/render_film.py, once the trees have grown.
-    await Promise.all([stage.ready, maps]);
+    // Deterministic frame stepping for scripts/render_film.py, once the trees have grown: the film's
+    // edit maps video time t to a film position and draws its own titles.
+    const [{createCut}] = await Promise.all([import('./cut.js'), stage.ready, maps]);
+    const cut = await createCut({titles: $('#titles'), fade: $('#film-fade'), panels: $('#panels'), finale: $('.finale')});
     window.__cg = {
-      frame(u, t) {
+      duration: cut.duration,
+      frame(t) {
+        const {u, intro} = cut.at(t);
         const {vh, top} = filmMetrics();
         window.scrollTo(0, top + u * vh);
-        applyIntro(t);
         applyFades(u);
         forecast.update(u);
-        stage.render(u, t);
+        stage.render(u, t, {intro});
+        cut.apply(t);
       },
     };
     return;

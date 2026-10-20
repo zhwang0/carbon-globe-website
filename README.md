@@ -2,7 +2,7 @@
 
 Project page for **CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems** (NeurIPS 2025, Datasets & Benchmarks).
 
-The page is laid out like a product launch. It opens with a scroll-driven film rendered live in WebGL from CarbonGlobe data: the sun rising over the Earth, a dive into one 0.5° Amazon cell, a forest growing year by year, the same start under four forcings (warm and wet, drought, fire, cold), each with its weather, a regional climate map and its rain and temperature year by year, fifteen starting ages, the whole planet across climate zones, an annotated deep emulator that reads a deck of gridded monthly climate maps (the kind of input ERA5 gives AI weather models) and the forest state and rolls next year's forest out, conditional rollouts, the dataset in numbers, and an "Available now" end card over the Amazon. Below the film are why it matters (a statement that lights up as it scrolls, sourced figures on the forest carbon sink, and the programmes ED already informs), the dataset pipeline and tech specs, a bento of what makes it a machine-learning benchmark, a quick start with download and loading code, the interactive globe explorer, benchmarks, the IEEE BigData Cup 2026 challenge built on CarbonGlobe, the case for coupling ecosystem emulators with weather and climate models with a roadmap, the film as a video, the team, an FAQ and the citation.
+The page is laid out like a product launch. It opens with a scroll-driven film rendered live in WebGL from CarbonGlobe data: the sun rising over the Earth, a dive into one 0.5° Amazon cell, a forest growing year by year, the same start under four forcings (warm and wet, drought, fire, cold), each with its weather, a regional climate map and its rain and temperature year by year, fifteen starting ages, the whole planet's forests growing from 1981 to 2021, an annotated deep emulator that reads a deck of gridded monthly climate maps (the kind of input ERA5 gives AI weather models) and the forest state and rolls next year's forest out, conditional rollouts, the dataset in numbers, and an "Available now" end card over the Amazon. Below the film are why it matters (a statement that lights up as it scrolls, sourced figures on the forest carbon sink, and the programmes ED already informs), the dataset pipeline and tech specs, a bento of what makes it a machine-learning benchmark, a quick start with download and loading code, the interactive globe explorer, benchmarks, the IEEE BigData Cup 2026 challenge built on CarbonGlobe, the case for coupling ecosystem emulators with weather and climate models with a roadmap, the film as a video, the team, an FAQ and the citation.
 
 Public URL: `https://zhwang0.github.io/carbon-globe-website/`. The dataset and model code live at [zhwang0/carbon-globe](https://github.com/zhwang0/carbon-globe) and on [Kaggle](https://www.kaggle.com/datasets/zhihaow/carbonglobe).
 
@@ -23,6 +23,7 @@ Then open `http://localhost:8000`. Use a server rather than opening `index.html`
 | `index.html`, `css/main.css` | Page structure and styles |
 | `js/main.js` | Scroll timeline, the opening and word-by-word headlines, reveals, "Play the film" autoplay, the statement, quick-start tabs, the film lightbox, boot and lazy loading |
 | `js/stage.js` | The WebGL film: globe, dive, forests, the four-forcing split view, streams and camera choreography |
+| `js/cut.js` | The video's edit in the render mode (`index.html?render`): video time to film position, and its short beat-timed titles |
 | `js/network.js` | The annotated emulator: a deck of monthly climate maps and the forest state in, encoder, sequence model, heads and the autoregressive loop |
 | `js/globe.js` | Shared globe shader (with the opening's eclipse ring and night side), data-atlas decoding, the sun flare and geographic helpers |
 | `js/post.js` | The film's post-processing: a multisampled frame and a soft bloom (desktop only; add `?nobloom` to compare) |
@@ -35,10 +36,10 @@ Then open `http://localhost:8000`. Use a server rather than opening `index.html`
 | `js/bench.js` | Benchmark heat map, bar chart and runtime comparison (Table 1 and Fig. 6 of the paper) |
 | `assets/data/` | Browser exports of the CarbonGlobe simulations (see below) |
 | `assets/tex/` | Earth imagery and land mask |
-| `assets/film/` | MP4 render of the film, for talks and social posts |
+| `assets/film/` | The video's edit (`cut.json`) and its MP4 render with sound, for talks and social posts |
 | `assets/img/` | Paper figure, social card and no-WebGL poster |
 | `assets/vendor/` | Three.js 0.186.1 (MIT), served locally |
-| `scripts/` | Reproducible exporters, texture preparation, film renderer and site validator |
+| `scripts/` | Reproducible exporters, texture preparation, film renderer, the video's score (`soundtrack.py`) and site validator |
 
 ## What the visualizations show
 
@@ -76,11 +77,16 @@ python scripts/export_v2_data.py --source /path/to/CarbonGlobe/datasets     # gr
 python scripts/export_v2_layers.py --source /path/to/CarbonGlobe/datasets   # dataset-section map layers
 python scripts/export_scenarios.py --source /path/to/CarbonGlobe/datasets   # drought site, site climates and forcing maps for chapters 2 and 5
 python scripts/prepare_textures.py                                          # Blue Marble + Natural Earth land mask
-python scripts/render_film.py                                               # 68 s MP4, poster and social card (Playwright + imageio-ffmpeg)
+python scripts/render_film.py                                               # 79 s MP4 with its score, poster and social card (Playwright + imageio-ffmpeg)
+python scripts/render_film.py --audio-only                                  # re-score the video without rendering it again
 python scripts/validate_site.py                                             # link, module and data checks
 ```
 
 The exporters read the multi-gigabyte arrays with memory maps and take about two minutes. `prepare_textures.py` caches its downloads outside the website directory.
+
+## The video
+
+The MP4 is an edit of the page's film rather than a straight scroll through it, cut like a launch film: `assets/film/cut.json` places every shot on a 100 BPM beat grid (`u` maps beats to film positions), replaces the page's captions and readouts with short titles that land on the beat, and lists the cues the score hits. `scripts/soundtrack.py` synthesises that score with NumPy from the same file (pads, bass, plucked arpeggios and soft drums following its chords; hits, risers, whooshes and counter runs on its cues), so there is nothing to license. To change a title or its timing, edit `cut.json` and run `render_film.py`; to change only the music, edit `soundtrack.py` or the `music` and `cues` entries and run `render_film.py --audio-only`. A licensed track at 100 BPM that starts on beat 0 would follow the same cuts; the big moments fall on beats 4, 16, 60, 88, 108 and 120.
 
 ## Hosting
 
