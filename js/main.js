@@ -45,7 +45,9 @@ function textures() {
       loadTexture(mobile ? 'assets/tex/earth-day-2k.webp' : 'assets/tex/earth-day.webp'),
       loadTexture('assets/tex/land-mask.png'),
       loadZones('assets/data/climate.png'),
-    ]).then(([day, mask, zones]) => ({day, mask, zones}));
+      loadTexture('assets/tex/clouds.webp'),
+      loadTexture('assets/tex/night-lights.webp'),
+    ]).then(([day, mask, zones, clouds, lights]) => ({day, mask, zones, clouds, lights}));
   }
   return texP;
 }

@@ -158,8 +158,11 @@ precision highp sampler2DArray;
 uniform sampler2D uDay;
 uniform sampler2D uMask;
 uniform sampler2D uZones;
+uniform sampler2D uClouds;
+uniform sampler2D uLights;
 uniform sampler2DArray uData;
 uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight;
+uniform float uReal, uCloud, uCloudShift;
 uniform vec3 uSun;
 uniform vec3 uRamp[5];
 uniform vec3 uZone[6];
@@ -199,17 +202,42 @@ void main() {
   col += vec3(0.55, 0.75, 0.95) * spec * uSpec;
 
   vec2 duv = vec2(vUv.x, 1.0 - vUv.y);
+  float t = 0.0, cov = 0.0;
   if (uHasData > 0.5) {
     float y0 = floor(uYear);
     float y1 = min(y0 + 1.0, 40.0);
     vec2 a = texture(uData, vec3(duv, y0)).rg;
     vec2 b = texture(uData, vec3(duv, y1)).rg;
     vec2 d = mix(a, b, uYear - y0);
-    float cov = smoothstep(0.2, 0.75, d.g) * smoothstep(0.25, 0.65, land);
-    float t = d.r / max(d.g, 1e-3);
-    vec3 dc = ramp(t);
-    vec3 dataCol = dc * mix(0.22 * uNight, 1.0, day) * (0.82 + 0.3 * t) + dc * t * t * 0.22 * (1.0 - day) * uNight;
-    col = mix(col, dataCol, cov * uDataMix * 0.94);
+    cov = smoothstep(0.2, 0.75, d.g) * smoothstep(0.25, 0.65, land);
+    t = d.r / max(d.g, 1e-3);
+  }
+  vec3 dc = ramp(t);
+  vec3 dataCol = dc * mix(0.22 * uNight, 1.0, day) * (0.82 + 0.3 * t) + dc * t * t * 0.22 * (1.0 - day) * uNight;
+  col = mix(col, dataCol, cov * uDataMix * 0.94);
+
+  // The photographic globe of the film: the daylit Blue Marble with drifting clouds and their shadows,
+  // sun glint on the sea, blue haze toward the limb and city lights at night. Forest data is laid over
+  // the imagery only where forest stands, more opaque the taller it is, so bare land stays as it looks.
+  if (uReal > 0.001) {
+    float lit = smoothstep(-0.1, 0.2, ndl);
+    float sun = pow(max(ndl, 0.0), 0.7);
+    vec3 alb = pow(base, vec3(1.08)) * 1.18;
+    // a green tint that keeps the imagery's texture, deepening as the canopy grows
+    alb = mix(alb, ramp(t * 0.82) * 0.92 + alb * 0.22, cov * smoothstep(0.06, 0.6, t) * uDataMix * 0.78);
+    vec2 cuv = vec2(vUv.x + uCloudShift, vUv.y);
+    float cl = texture2D(uClouds, cuv).r * uCloud;
+    float shade = texture2D(uClouds, cuv + vec2(0.0022, 0.0018)).r * uCloud;
+    vec3 real = alb * (1.0 - 0.4 * shade) * (0.02 + 1.22 * sun);
+    vec3 Hh = normalize(L + V);
+    float nh = max(dot(N, Hh), 0.0);
+    real += (vec3(1.0, 0.95, 0.86) * pow(nh, 260.0) * 0.32 + vec3(0.45, 0.62, 0.85) * pow(nh, 14.0) * 0.035) * (1.0 - land) * lit * (1.0 - cl);
+    real = mix(real, vec3(0.03) + vec3(1.02, 1.02, 1.0) * sun, cl);
+    float dark = 1.0 - smoothstep(-0.2, 0.06, ndl);
+    real += vec3(1.0, 0.72, 0.4) * texture2D(uLights, vUv).r * dark * (1.0 - 0.8 * cl) * 1.2;
+    float fh = pow(1.0 - max(dot(N, V), 0.0), 2.3);
+    real = mix(real, vec3(0.36, 0.6, 1.0) * (0.06 + 0.9 * sun), fh * (0.18 + 0.5 * lit));
+    col = mix(col, real, uReal);
   }
 
   float z = texture2D(uZones, duv).r * 255.0;
@@ -234,7 +262,7 @@ void main() {
   col += vec3(0.85, 1.0, 0.7) * edge * uTargetMix * pulse;
 
   float fr = pow(1.0 - max(dot(N, V), 0.0), 2.6);
-  col += vec3(0.22, 0.72, 0.95) * fr * (0.12 + 0.55 * day);
+  col += vec3(0.22, 0.72, 0.95) * fr * (0.12 + 0.55 * day) * (1.0 - uReal);
   col *= uDim;
   gl_FragColor = vec4(col, uOpacity);
 }`;
@@ -250,28 +278,33 @@ void main() {
 }`;
 const ATMO_FRAG = /* glsl */`
 uniform vec3 uSun;
-uniform float uOpacity, uEclipse;
+uniform float uOpacity, uEclipse, uReal;
 uniform vec3 uCenter;
 varying vec3 vN;
 varying vec3 vW;
 void main() {
   vec3 V = normalize(cameraPosition - vW);
   vec3 N = normalize(vN);
-  // Back faces of a 1.16x shell: strongest at the planet's limb, fading outward.
+  // Back faces of a 1.16x shell: strongest at the planet's limb, fading outward; the photographic
+  // globe keeps a thinner, bluer rim, lit on the day side.
   float k = clamp(-dot(N, V) / 0.51, 0.0, 1.0);
-  float a = pow(k, 2.6);
+  float a = pow(k, mix(2.6, 6.5, uReal));
   vec3 S = normalize(uSun), rel = normalize(vW - uCenter);
-  float lit = 0.3 + 0.7 * smoothstep(-0.45, 0.8, dot(rel, S));
+  float lit = mix(0.3 + 0.7 * smoothstep(-0.45, 0.8, dot(rel, S)), 0.06 + 0.94 * smoothstep(-0.35, 0.55, dot(rel, S)), uReal);
   // with the sun behind the planet, the ring gathers on the sun's side of the limb
   vec3 vc = normalize(cameraPosition - uCenter);
   float side = dot(normalize(rel - vc * dot(rel, vc)), normalize(S - vc * dot(S, vc) + 1e-4));
   lit *= mix(1.0, 0.08 + 1.3 * pow(max(side * 0.5 + 0.5, 0.0), 4.0), uEclipse);
-  gl_FragColor = vec4(vec3(0.26, 0.8, 1.0) * lit * 1.25, a * uOpacity);
+  gl_FragColor = vec4(mix(vec3(0.26, 0.8, 1.0), vec3(0.42, 0.68, 1.0), uReal) * lit * mix(1.25, 1.6, uReal), a * uOpacity);
 }`;
 
-export function createGlobe({day, mask, zones, data = null, segments = 192}) {
+// real: 0 for the stylised data globe (the explorer), 1 for the photographic Earth of the film, which
+// also takes clouds and night lights.
+export function createGlobe({day, mask, zones, data = null, segments = 192, clouds = null, lights = null, real = 0}) {
   const uniforms = {
     uDay: {value: day}, uMask: {value: mask}, uZones: {value: zones},
+    uClouds: {value: clouds || mask}, uLights: {value: lights || mask},
+    uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0},
     uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
     uHasData: {value: data ? 1 : 0},
     uYear: {value: 40}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
@@ -284,7 +317,7 @@ export function createGlobe({day, mask, zones, data = null, segments = 192}) {
   if (!data) uniforms.uData.value.format = THREE.RGFormat;
   const material = new THREE.ShaderMaterial({uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true});
   const globe = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), material);
-  const atmoU = {uSun: uniforms.uSun, uOpacity: {value: 1}, uEclipse: {value: 0}, uCenter: {value: new THREE.Vector3()}};
+  const atmoU = {uSun: uniforms.uSun, uOpacity: {value: 1}, uEclipse: {value: 0}, uCenter: {value: new THREE.Vector3()}, uReal: uniforms.uReal};
   const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.16, 96, 48), new THREE.ShaderMaterial({
     uniforms: atmoU, vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
     side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,

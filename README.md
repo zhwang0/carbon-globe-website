@@ -2,7 +2,7 @@
 
 Project page for **CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems** (NeurIPS 2025, Datasets & Benchmarks).
 
-The page is laid out like a product launch. It opens with a scroll-driven film rendered live in WebGL from CarbonGlobe data: the sun rising over the Earth, a dive into one 0.5° Amazon cell, a forest growing year by year, the same start under four forcings (warm and wet, drought, fire, cold), each with its weather, a regional climate map and its rain and temperature year by year, fifteen starting ages, the whole planet's forests growing from 1981 to 2021, an annotated deep emulator that reads a deck of gridded monthly climate maps (the kind of input ERA5 gives AI weather models) and the forest state and rolls next year's forest out, conditional rollouts, the dataset in numbers, and an "Available now" end card over the Amazon. Below the film are why it matters (a statement that lights up as it scrolls, sourced figures on the forest carbon sink, and the programmes ED already informs), the dataset pipeline and tech specs, a bento of what makes it a machine-learning benchmark, a quick start with download and loading code, the interactive globe explorer, benchmarks, the IEEE BigData Cup 2026 challenge built on CarbonGlobe, the case for coupling ecosystem emulators with weather and climate models with a roadmap, the film as a video, the team, an FAQ and the citation.
+The page is laid out like a product launch. It opens with a scroll-driven film rendered live in WebGL from CarbonGlobe data: the sun rising over the Earth, a dive into one 0.5° Amazon cell, a forest growing year by year, the same start under different forcings (here warm and wet, drought, fire and cold), each with its weather, a regional climate map and its rain and temperature year by year, fifteen starting ages, the whole planet's forests growing from 1981 to 2021, an annotated deep emulator that reads a deck of gridded monthly climate maps (the kind of input ERA5 gives AI weather models) and the forest state and rolls next year's forest out, conditional rollouts, the dataset in numbers, and an "Available now" end card over the Amazon. Below the film are why it matters (a statement that lights up as it scrolls, sourced figures on the forest carbon sink, and the programmes ED already informs), the dataset pipeline and tech specs, a bento of what makes it a machine-learning benchmark, a quick start with download and loading code, the interactive globe explorer, benchmarks, the IEEE BigData Cup 2026 challenge built on CarbonGlobe, the case for coupling ecosystem emulators with weather and climate models with a roadmap, the film as a video, the team, an FAQ and the citation.
 
 Public URL: `https://zhwang0.github.io/carbon-globe-website/`. The dataset and model code live at [zhwang0/carbon-globe](https://github.com/zhwang0/carbon-globe) and on [Kaggle](https://www.kaggle.com/datasets/zhihaow/carbonglobe).
 
@@ -76,8 +76,8 @@ With NumPy and Pillow installed, from this directory:
 python scripts/export_v2_data.py --source /path/to/CarbonGlobe/datasets     # grids, climate zones, meta.json
 python scripts/export_v2_layers.py --source /path/to/CarbonGlobe/datasets   # dataset-section map layers
 python scripts/export_scenarios.py --source /path/to/CarbonGlobe/datasets   # drought site, site climates and forcing maps for chapters 2 and 5
-python scripts/prepare_textures.py                                          # Blue Marble + Natural Earth land mask
-python scripts/render_film.py                                               # 79 s MP4 with its score, poster and social card (Playwright + imageio-ffmpeg)
+python scripts/prepare_textures.py                                          # Blue Marble, its clouds, Black Marble night lights, Natural Earth land mask
+python scripts/render_film.py                                               # 74 s MP4 with its score, poster and social card (Playwright + imageio-ffmpeg)
 python scripts/render_film.py --audio-only                                  # re-score the video without rendering it again
 python scripts/validate_site.py                                             # link, module and data checks
 ```
@@ -86,7 +86,7 @@ The exporters read the multi-gigabyte arrays with memory maps and take about two
 
 ## The video
 
-The MP4 is an edit of the page's film rather than a straight scroll through it, cut like a launch film: `assets/film/cut.json` places every shot on a 100 BPM beat grid (`u` maps beats to film positions), replaces the page's captions and readouts with short titles that land on the beat, and lists the cues the score hits. `scripts/soundtrack.py` synthesises that score with NumPy from the same file (pads, bass, plucked arpeggios and soft drums following its chords; hits, risers, whooshes and counter runs on its cues), so there is nothing to license. To change a title or its timing, edit `cut.json` and run `render_film.py`; to change only the music, edit `soundtrack.py` or the `music` and `cues` entries and run `render_film.py --audio-only`. A licensed track at 100 BPM that starts on beat 0 would follow the same cuts; the big moments fall on beats 4, 16, 60, 88, 108 and 120.
+The MP4 is an edit of the page's film rather than a straight scroll through it, cut like a launch film: `assets/film/cut.json` places every shot on a 100 BPM beat grid (`u` maps beats to film positions), replaces the page's captions and readouts with short titles that land on the beat, and lists the cues the score hits. `scripts/soundtrack.py` synthesises that score with NumPy from the same file (pads, bass, plucked arpeggios and soft drums following its chords; hits, risers, whooshes and counter runs on its cues), so there is nothing to license. To change a title or its timing, edit `cut.json` and run `render_film.py`; to change only the music, edit `soundtrack.py` or the `music` and `cues` entries and run `render_film.py --audio-only`. A licensed track at 100 BPM that starts on beat 0 would follow the same cuts; the big moments fall on beats 4, 16, 52, 80, 100 and 112.
 
 ## Hosting
 
@@ -94,7 +94,7 @@ GitHub Pages publishes the site with GitHub Actions on every push to `main` (`.g
 
 ## Credits
 
-- Earth imagery: NASA Earth Observatory, Blue Marble Next Generation (Reto Stöckli), July 2004, topography and bathymetry. Public domain.
+- Earth imagery: NASA Earth Observatory, Blue Marble Next Generation (Reto Stöckli), July 2004, topography and bathymetry, and its cloud cover; night lights from NASA's Black Marble 2016. Public domain.
 - Land mask: Natural Earth 1:50m land polygons, public domain, pinned to commit `ca96624a56bd078437bca8184e78163e5039ad19` (SHA-256 checked).
 - Three.js (MIT). Fonts: Inter, Instrument Serif and JetBrains Mono via Google Fonts (SIL Open Font License).
 - Simulations: Ecosystem Demography (ED) model, University of Maryland.

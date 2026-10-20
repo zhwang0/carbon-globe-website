@@ -262,8 +262,7 @@ def score(cut):
     chord_at = lambda b: next(name for b0, b1, name in seg if b0 <= b < b1)
 
     # pad: each chord as three detuned voices per note, brighter and fuller where the film lifts
-    bright = [[0, 700], [4, 1300], [16, 1500], [60, 2100], [72, 1700], [84, 2500], [88, 2000], [104, 1700], [108, 2900], [120, 2500], [132, 1100]]
-    level = [[0, 0.45], [4, 1.0], [16, 0.8], [28, 0.95], [60, 1.1], [76, 0.75], [88, 1.0], [104, 0.85], [108, 1.15], [124, 1.0], [132, 0.6]]
+    bright, level = music['bright'], music['level']
     for b0, b1, name in seg:
         bass, voicing = CHORDS[name]
         dur = T(b1 - b0) + 0.9

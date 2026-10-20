@@ -98,13 +98,16 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   // globe scene
   const gScene = new THREE.Scene();
   const gCam = new THREE.PerspectiveCamera(35, 1, 0.005, 200);
-  const G = createGlobe({day: tex.day, mask: tex.mask, zones: tex.zones.tex, data: tex.height.tex, segments: mobile ? 160 : 224});
+  const G = createGlobe({day: tex.day, mask: tex.mask, zones: tex.zones.tex, data: tex.height.tex, segments: mobile ? 160 : 224,
+    clouds: tex.clouds, lights: tex.lights, real: 1});
   G.uniforms.uTarget.value.set(target.col, target.row);
   G.globe.renderOrder = 1; G.atmo.renderOrder = 2;
   const stars = createStars(mobile ? 1400 : 2800);
   stars.material.uniforms.uPx.value = px;
   gScene.add(stars, G.group);
-  // the opening: the sun rises from behind the planet to its usual place, flaring as it clears the limb
+  // the opening: the sun rises from behind the planet to its usual place, flaring as it clears the limb;
+  // that place is high in front and to the left, so most of the disc is in daylight
+  G.uniforms.uSun.value.set(-0.62, 0.36, 0.7).normalize();
   const SUN = G.uniforms.uSun.value.clone(), SUN0 = new THREE.Vector3(0.42, 0.5, -0.76).normalize();
   // the end card lights its planet from high above, so the horizon glows under the title
   const SUN_END = new THREE.Vector3(-0.3, 0.85, 0.42).normalize(), END_TILT = -1.45, END_RY = facing(0, -60).y;
@@ -530,7 +533,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       const kOut = ease(ss(6.6, 7.3, u));
       alt = Math.exp(lerp(Math.log(DIVE_ALT), Math.log(L.planet.d - 1), kOut));
       rx = lerp(targetRot.x, 0.32, kOut);
-      ry = targetRot.y + kOut * 0.7 + Math.max(0, u - 7.3) * 0.3;
+      // one full turn while the forests grow, so every continent comes past
+      ry = targetRot.y + kOut * 0.7 + 2 * Math.PI * ease(ss(7.3, 8.0, u)) + Math.max(0, u - 7.3) * 0.3;
       gx = lerp(0, L.planet.x, kOut); gy = lerp(0, L.planet.y, kOut); gs = lerp(1, L.planet.s, kOut);
     }
     let dist = 1 + alt;
@@ -582,7 +586,12 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     stars.material.uniforms.uOpacity.value = ss(0, 0.45, kIn);
     // Near the surface, let the satellite imagery show through the data layer.
     const surface = ss(1.15, 1.7, u) * (1 - ss(6.8, 7.15, u));
-    U.uDataMix.value = 1 - 0.6 * surface;
+    // clouds drift; they part as the camera nears the ground and thin while the forests grow, when
+    // the forest layer is drawn strongest
+    const growing = ss(6.9, 7.3, u) * (1 - ss(7.95, 8.4, u));
+    U.uDataMix.value = (1 - 0.6 * surface) * (1 + 0.2 * growing);
+    U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing);
+    U.uCloudShift.value = time * 0.0016;
     // the planet comes back in 1981, under the flash that ends the forest chapters, and grows to 2021
     U.uYear.value = u < 6.45 ? 40 : 40 * ss(7.32, 7.95, u);
     U.uGridMix.value = u > 0.9 && u < 7.05 ? 1 : 0;

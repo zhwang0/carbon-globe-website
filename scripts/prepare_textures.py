@@ -1,8 +1,10 @@
-"""Prepare the globe textures: NASA Blue Marble imagery and a Natural Earth land mask.
+"""Prepare the globe textures: NASA Blue Marble imagery, clouds and night lights, and a Natural Earth land mask.
 
 Downloads (cached outside the website) and writes:
   assets/tex/earth-day.webp      4096 x 2048 Blue Marble Next Generation, July 2004, topography + bathymetry
   assets/tex/earth-day-2k.webp   2048 x 1024 version for phones
+  assets/tex/clouds.webp         2048 x 1024 Blue Marble cloud cover (grey)
+  assets/tex/night-lights.webp   2048 x 1024 Black Marble 2016 night lights (grey)
   assets/tex/land-mask.png       2048 x 1024 antialiased land mask from Natural Earth 1:50m land polygons
 
 Usage: python scripts/prepare_textures.py [--cache ../.texture-cache]   (Pillow required)
@@ -13,6 +15,8 @@ from PIL import Image, ImageDraw
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', 'assets', 'tex')
 BLUE_MARBLE = 'https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73751/world.topo.bathy.200407.3x5400x2700.jpg'
+CLOUDS = 'https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57747/cloud_combined_2048.jpg'
+LIGHTS = 'https://eoimages.gsfc.nasa.gov/images/imagerecords/144000/144898/BlackMarble_2016_01deg.jpg'
 LAND_COMMIT = 'ca96624a56bd078437bca8184e78163e5039ad19'
 LAND_URL = f'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/{LAND_COMMIT}/geojson/ne_50m_land.geojson'
 LAND_SHA256 = 'e874b27a51d146452be360cafb3cc50c86001074a67d534113e6534682f9826b'
@@ -68,6 +72,11 @@ def main():
     big = day.resize((4096, 2048), Image.LANCZOS)
     big.save(os.path.join(OUT, 'earth-day.webp'), quality=84, method=6)
     big.resize((2048, 1024), Image.LANCZOS).save(os.path.join(OUT, 'earth-day-2k.webp'), quality=84, method=6)
+    clouds = Image.open(fetch(CLOUDS, os.path.join(cache, 'clouds-2048.jpg'))).convert('L').resize((2048, 1024), Image.LANCZOS)
+    clouds.save(os.path.join(OUT, 'clouds.webp'), quality=72, method=6)
+    # keep the lights of towns and cities, not the faint moonlit land and ice under them (levels up to ~55)
+    lights = Image.open(fetch(LIGHTS, os.path.join(cache, 'blackmarble-2016.jpg'))).convert('L').resize((2048, 1024), Image.LANCZOS)
+    lights.point([round(255 * max(0, (v - 58) / 197) ** 1.2) for v in range(256)]).save(os.path.join(OUT, 'night-lights.webp'), quality=80, method=6)
     mask = land_mask(fetch(LAND_URL, os.path.join(cache, 'ne_50m_land.geojson')))
     mask.save(os.path.join(OUT, 'land-mask.png'), optimize=True)
     for f in sorted(os.listdir(OUT)):
