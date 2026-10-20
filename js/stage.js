@@ -13,9 +13,9 @@ const ss = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0)); return t * t 
 const ease = t => (t < .5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
 const AGES = [1, 10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 350, 400, 450, 500];
-const DIVE_ALT = 0.2;      // altitude (globe radii) at which the dive frames its 0.5° grid cell
+const DIVE_ALT = 0.2;      // altitude (globe radii) the dive passes on its way down to the Amazon
 const GROUND_ALT = 0.002;  // ... and where it ends, about 13 km above the forest
-const GROUND = {lat: -3.29, lon: -63.68};   // the forest at the head of a lake, inside that cell
+const GROUND = {lat: -3.29, lon: -63.68};   // the forest at the head of a lake, by the chapter's site
 
 // Interpolate a 41-element annual series at fractional year index.
 const at = (series, y) => { const i = Math.floor(y), f = y - i; return i >= 40 ? series[40] : series[i] * (1 - f) + series[i + 1] * f; };
@@ -34,6 +34,11 @@ function forestYear(u) {
   if (u < 5.4) return 0;
   return 40 * clamp(u - 5.4);                          // fifteen ages
 }
+// Year of a forcing view's own story at progress k (0..1): [[k, year], ...], linear in between.
+const storyYear = (keys, k) => {
+  for (let i = 1; i < keys.length; i++) if (k <= keys[i][0]) return lerp(keys[i - 1][1], keys[i][1], (k - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0]));
+  return keys[keys.length - 1][1];
+};
 // Split of the forest view into four: 0 = one view, 1 = four.
 const splitK = u => ease(ss(3.5, 3.8, u)) * (1 - ease(ss(5.0, 5.25, u)));
 
@@ -235,10 +240,10 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   // the fire view's stand before the fire, then a new one from age 1
   const afterFire = (pre, post, y) => (y <= FIRE ? at(pre, y) : at(post, Math.max(0, y - FIRE - 1)));
   const dryLoss = Math.round(100 * (1 - dry.agb[35] / dry.agb[34]));
-  // the drought view's crown: leaves against the stand's leaf area before the drought, and dieback that
-  // follows (and never undoes) its loss of biomass from the 2015 peak
+  // the drought view's crown: leaves against the stand's leaf area before the drought, and dieback as deep
+  // as its loss of biomass from the 2015 peak (a loss of 30% or more kills back 62% of the crown)
   const dryLai = dry.lai.slice(0, 34).reduce((a, b) => a + b) / 34, dryPeak = Math.max(...dry.agb.slice(0, 35));
-  const dieback = dry.agb.map((v, k, a) => (k < 34 ? 0 : 0.62 * Math.min(1, Math.max(...a.slice(34, k + 1).map(w => Math.max(0, (dryPeak - w) / (0.3 * dryPeak)))))));
+  const dieMax = 0.62 * Math.min(1, (dryPeak - Math.min(...dry.agb.slice(34))) / (0.3 * dryPeak));
   const fmt = n => Math.round(n).toLocaleString('en-US');
   const where = s => `${Math.abs(s.lat).toFixed(2)}°${s.lat < 0 ? 'S' : 'N'}`;
   const degC = t => `${t >= 10 ? Math.round(t) : t.toFixed(1)} °C`;
@@ -277,17 +282,23 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const CALM = {sky: SKY.base, rain: 0, snow: 0, dust: 0, ash: 0, dry: 0, frost: 0, char: 0, wet: 0, heat: 0, grid: GRID.base, on: false};
   const boreal = meta.story.boreal;
   const panels = [
-    {key: 'wet', title: 'Warm & wet', color: '#b9f46b', site: story, cl: 'amazon',
+    // story: in the film each view runs its own compressed years, slowing for its key moment
+    {key: 'wet', title: 'Warm & wet', color: '#b9f46b', site: story, cl: 'amazon', story: [[0, 0], [1, 40]],
       lines: [`Amazon, ${where(story)}`, `${degC(story.temp_c)} · ${fmt(story.precip_mm)} mm/yr`],
       tree: hero, h: y => at(h1, y), agb: y => at(agb1, y),
       clim: y => ({...CALM, sky: SKY.wet, rain: Math.max(0.35, rainRate(at(series.amazon.rain, y))), wet: 0.85})},
     {key: 'drought', title: 'Drought', color: '#f5b544', site: scen.drought, cl: 'drought', event: 34,
       lines: [`Amazon, ${where(scen.drought)}`, `${degC(scen.drought.temp_c)} · ${fmt(scen.drought.precip_mm)} mm/yr`],
-      // a mature tree all along (its growth clock starts late); its leaves thin in dry years, fall in 2015-16,
-      // and stay thin and browned on the limbs the drought has not killed
+      // a mature tree all along (its growth clock starts late); its leaves thin in dry years, then in 2015-16
+      // brown and fall with those of the limbs the drought kills; the survivors slowly re-leaf
+      story: [[0, 26], [0.36, 33.9], [0.9, 35.6], [1, 37.5]],
       clock: y => 0.72 + 0.28 * y / 40,
-      h: y => at(dry.height, y), agb: y => at(dry.agb, y), min: 0.02, dieback: y => at(dieback, y),
-      leaf: y => clamp(at(dry.lai, y) / dryLai) * (1 - 0.35 * dryness('drought', y)) * (1 - 0.7 * at(dieback, y)),
+      h: y => at(dry.height, y), agb: y => at(dry.agb, y), min: 0.02,
+      leaf: y => clamp(at(dry.lai, Math.min(y, 34)) / dryLai) * (1 - 0.3 * dryness('drought', Math.min(y, 34))),
+      fall: y => ss(34.1, 35.4, y),
+      keep: y => (y < 34.1 ? 1 : 0.22 + 0.5 * Math.max(0, clamp(at(dry.lai, y) / dryLai) - 0.6) * ss(35.4, 36.5, y)),
+      dieback: y => (y < 34.1 ? 0 : dieMax),   // the dead limbs' leaves fall with the rest, and the limbs bleach as they go
+      stress: y => (y < 34.1 ? clamp((1 - clamp(at(dry.lai, y) / dryLai) * (1 - 0.3 * dryness('drought', y))) * 3.5) : 0.75 - 0.35 * ss(36.5, 40, y)),
       note: y => (y >= 34.6 ? `2015 rain ${Math.round(scen.drought.precip_pct[34])}% of normal: the canopy sheds its leaves, biomass −${dryLoss}%` : ''),
       // hot and rainless in every year, so the view reads as drought from the start; the 2015-16
       // drought then scorches the sky, cracks the ground and fills the air with dust
@@ -297,8 +308,11 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
           grid: GRID.dry, on: d > 0.35};
       }},
     {key: 'fire', title: 'Fire', tag: 'sketch', color: '#ff7a45', site: story, cl: 'amazon', event: FIRE,
+      story: [[0, 12], [0.15, 21.8], [0.6, 24.2], [1, 40]],
       lines: [`Amazon, ${where(story)}`, `burnt in ${1981 + FIRE}`],
       h: y => (y > FIRE && y < FIRE + 1 ? 0 : afterFire(young.height, h1, y)), agb: y => (y > FIRE && y < FIRE + 1 ? 0 : afterFire(young.agb, agb1, y)),
+      // the burning tree keeps its height in the shader until the new stand takes over
+      top: y => (y < FIRE + 1 ? at(young.height, Math.min(y, FIRE)) : at(h1, y - FIRE - 1)),
       leaf: y => (y <= FIRE ? leafRatio(young.lai, y) : leafRatio(lai1, Math.max(0, y - FIRE - 1))), min: 0.35, burn: (FIRE + 0.3) / 40,
       note: y => (y > FIRE ? 'A fire resets the clock: the stand starts again at age 1' : ''),
       // fire-season haze with rising embers, the blaze, then smoke and ash over scorched ground
@@ -309,7 +323,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
         return {...CALM, sky: mixSky(mixSky(SKY.haze, SKY.smoke, smoke), SKY.fire, blaze), ash: Math.max(0.12, smoke, blaze * 0.7),
           char: t > 0 ? 0.3 + 0.7 * ss(0, 0.1, t) * Math.exp(-t / 3.5) : 0, dry: 0.25, heat: 0.25, grid: GRID.fire, on: blaze + smoke > 0.3};
       }},
-    {key: 'cold', title: 'Cold', color: '#8fc7ff', site: boreal, cl: 'boreal',
+    {key: 'cold', title: 'Cold', color: '#8fc7ff', site: boreal, cl: 'boreal', story: [[0, 0], [1, 40]],
       lines: [`Finland, ${where(boreal)}`, `${degC(boreal.temp_c)} · ${fmt(boreal.precip_mm)} mm/yr`],
       h: y => at(cold.height, y), agb: y => at(cold.agb, y), tint: [0.6, 0.92, 0.86],
       clim: y => ({...CALM, sky: SKY.cold, snow: clamp(0.6 - 0.14 * at(series.boreal.anom, y), 0.3, 0.95), frost: 0.85, grid: GRID.cold})},
@@ -324,7 +338,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     if (P.tint) P.tree.material.uniforms.uTint.value.setRGB(...P.tint);
     if (P.burn) {
       P.tree.material.uniforms.uBurn.value = P.burn;
-      P.flames = createFlames(px, mobile ? 300 : 600);
+      P.flames = createFlames(px, mobile ? 450 : 900);
       P.flames.material.uniforms.uBurn.value = P.burn;
       P.tree.add(P.flames);
     }
@@ -457,8 +471,9 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       : {gx: -nw * 0.62, gy: -nh * 0.3, gs: Math.min(nh * 0.4, nw * 0.25), nx: nw * 0.5, ny: -nh * 0.1, ns: nw * 0.29, d: dn};
     L.netPx = L.net.ns * H * 0.5 / nh;
     if (!narrow && dom.netCap) {
-      // fit the network and its labels into the space right of the chapter's caption; the film, without
-      // labels, gives it most of the frame below its title and moves the globe small into the corner
+      // fit the network and its labels into the space right of the chapter's caption; the film, which names
+      // only the emulator and its three blocks, gives it most of the frame below its title and moves the
+      // globe small into the corner
       const pxw = H * 0.5 / nh;   // pixels per world unit
       const NB = film ? {l: -1.95, r: 1.55, t: 0.95, b: -1.15} : {l: -1.95, r: 1.62, t: 1.3, b: -1.3};   // bounds in network units
       const x0 = film ? W * 0.2 : dom.netCap.offsetLeft + dom.netCap.offsetWidth + 14, x1 = W - (film ? W * 0.025 : 14);
@@ -532,7 +547,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       P.tree.material.uniforms.uProj.value = proj;
       motes.material.uniforms.uProj.value = proj;
       if (P.flames) P.flames.material.uniforms.uProj.value = proj;
-      ground.material.uniforms.uShade.value = Math.max(0.2, P.h(forestYear(u)) * 0.034);
+      ground.material.uniforms.uShade.value = Math.max(0.2, P.h(P.y) * 0.034);
       bg.material.uniforms.uOpacity.value = opacity;   // a view keeps its sky while it slides, never a black box
       applyClimate(P.state, R.k, R.w / R.h, proj, opacity);
       renderer.render(fScene, P.cam);
@@ -646,9 +661,9 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     U.uYear.value = u < 6.45 ? 40 : 40 * ss(7.32, 7.95, u);
     CU.uYear.value = U.uYear.value;
     CU.uCenter.value.copy(G.group.position);
-    // the grid and the highlighted cell fall away as the camera passes below the cell
-    U.uGridMix.value = (u > 0.9 && u < 7.05 ? 1 : 0) * (1 - ss(1.66, 1.8, u) * (1 - ss(6.6, 6.8, u)));
-    U.uTargetMix.value = ss(1.4, 1.6, u) * (1 - ss(1.68, 1.82, u)) + ss(6.55, 6.7, u) * (1 - ss(6.75, 7, u));
+    // the dive goes straight down into the forest; the grid and its cell appear only on the way back up
+    U.uGridMix.value = u > 6.6 && u < 7.05 ? 1 : 0;
+    U.uTargetMix.value = ss(6.55, 6.7, u) * (1 - ss(6.75, 7, u));
     U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kDim), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum));
     // the photographic Earth gives way to its digital twin behind a scan line, and comes back for the end card
     U.uTwin.value = -1.25 + 2.5 * ss(10.68, 10.95, u);
@@ -702,7 +717,9 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     });
     const sharedT = fScene.children;
     for (const o of sharedT) if (o.material?.uniforms?.uTime) o.material.uniforms.uTime.value = time;
-    panels.forEach(P => { P.state = P.clim(forestYear(u)); });
+    // each view's year: its own story in the film, the scroll's shared years on the page
+    const kF = clamp(forestYear(u) / 40);
+    panels.forEach(P => { P.y = film && P.story ? storyYear(P.story, kF) : forestYear(u); P.state = P.clim(P.y); });
     // the hero tree: sprouts during the dive, then follows the simulated years
     const HU = hero.material.uniforms;
     HU.uT.value = u < 2.15 ? lerp(PRE_TAU, 0, ss(1.9, 2.15, u)) : year / 40;
@@ -751,17 +768,20 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     panels.forEach((P, i) => {
       const U = P.tree.material.uniforms, pa = az + i * 0.9;
       if (i > 0) {
-        U.uT.value = P.clock ? P.clock(year) : year / 40;
-        U.uTop.value = Math.max(0.5, P.h(year));
-        const lr = P.leaf ? P.leaf(year) : 1;
+        const y = P.y;
+        U.uT.value = P.clock ? P.clock(y) : y / 40;
+        U.uTop.value = Math.max(0.5, (P.top ?? P.h)(y));
+        const lr = P.leaf ? P.leaf(y) : 1;
         U.uLeaf.value = clamp(lr * lr, P.min ?? 0.35, 1);
-        U.uStress.value = clamp((1 - lr) * 3.5);
-        U.uDieback.value = P.dieback ? P.dieback(year) : 0;
+        U.uStress.value = P.stress ? P.stress(y) : clamp((1 - lr) * 3.5);
+        U.uDieback.value = P.dieback ? P.dieback(y) : 0;
+        U.uFall.value = P.fall ? P.fall(y) : 0;
+        U.uKeep.value = P.keep ? P.keep(y) : 1;
         U.uOpacity.value = fA * (rects ? rects[i].k : 0);
         keyLight(U.uLight.value, pa);
         if (P.flames) {
           const F = P.flames.material.uniforms;
-          F.uT.value = year / 40; F.uTime.value = time; F.uH.value = young.height[FIRE]; F.uOpacity.value = U.uOpacity.value;
+          F.uT.value = y / 40; F.uTime.value = time; F.uH.value = young.height[FIRE]; F.uOpacity.value = U.uOpacity.value;
         }
       }
       if (!rects) return;
@@ -801,14 +821,14 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
         el.style.transform = `translate(${R.x.toFixed(1)}px, ${R.y.toFixed(1)}px)`;
         el.style.width = `${R.w.toFixed(1)}px`;
         el.style.height = `${R.h.toFixed(1)}px`;
-        P.hEl.textContent = P.h(year).toFixed(1);
-        P.agbEl.textContent = P.agb(year).toFixed(1);
+        P.hEl.textContent = P.h(P.y).toFixed(1);
+        P.agbEl.textContent = P.agb(P.y).toFixed(1);
         // the climate strip fills in up to the current year
         const cur = Math.round(clamp(year / 40) * 1000) / 10;
         if (cur !== P.cur) { P.cur = cur; P.curEl.style.left = `${cur}%`; P.pastEl.style.clipPath = `inset(-2px ${(100 - cur).toFixed(1)}% -2px 0)`; }
         P.iconEl.classList.toggle('on', P.state.on);
         if (P.note) {
-          const n = P.note(year);
+          const n = P.note(P.y);
           if (n && P.noteEl.textContent !== n) P.noteEl.textContent = n;
           P.noteEl.classList.toggle('on', !!n);
         }

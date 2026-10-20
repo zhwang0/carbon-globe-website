@@ -796,11 +796,16 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 .titles, .film-fade { display: none; }
 .render .titles { display: block; position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .render .film-fade { display: block; position: absolute; inset: 0; z-index: 6; background: #000; opacity: 0; pointer-events: none; }
-.render .hero, .render .cell-label, .render .rewind, .render .numbers, .render #net-labels, .render .fc-tabs, .render .forecast figcaption,
+.render .hero, .render .cell-label, .render .rewind, .render .numbers, .render .panels-year, .render .fc-tabs, .render .forecast figcaption,
 .render .hud-tree .hud-row, .render .hud-note, .render .p-title span, .render .p-clim, .render .p-map, .render .p-note, .render .p-stats,
 .render .finale .kicker span { display: none !important; }
 .render .cap { visibility: hidden !important; }
 .render .p-head { opacity: 0; transform-origin: 0 50%; }
+/* the film names the emulator and its three blocks, and nothing else */
+.render #net-labels > span:not([data-k="title"]):not([data-k="enc"]):not([data-k="core"]):not([data-k="heads"]) { display: none !important; }
+.render #net-labels > span { font-size: 0; max-width: none; white-space: nowrap; }
+.render #net-labels b { margin: 0; font: 500 13px/1.2 var(--mono); letter-spacing: .14em; color: var(--text); text-shadow: 0 1px 12px rgba(0, 0, 0, .9); }
+.render #net-labels .net-title b { padding: 7px 16px; border: 1px solid rgba(62, 224, 143, .55); border-radius: 99px; background: rgba(4, 12, 10, .6); color: var(--g2); font-size: 15px; letter-spacing: .16em; text-shadow: none; }
 .render .p-title b { font-size: 15px; letter-spacing: .16em; }
 .render .p-icon { width: 27px; height: 27px; }
 .t-card { position: absolute; visibility: hidden; text-shadow: 0 2px 28px rgba(0, 0, 0, .5); }
