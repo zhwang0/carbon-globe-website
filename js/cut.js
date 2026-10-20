@@ -101,7 +101,7 @@ export async function createCut({titles, fade, panels, finale}) {
     duration: cut.beats * spb,
     at(t) {
       const b = t / spb;
-      return {u: keyed(cut.u, b), intro: keyed(cut.intro, b)};
+      return {u: keyed(cut.u, b), intro: keyed(cut.intro, b), lidar: keyed(cut.lidar, b)};
     },
     apply(t) {
       const b = t / spb;

@@ -338,6 +338,13 @@ def score(cut):
                 pool = sorted({n + 12 * o for n in CHORDS[chord_at(b + i / 4)][1] for o in (1, 2, 3)} & set(range(69, 104)))
                 note = pool[round(i * (len(pool) - 1) / max(1, steps - 1))]
                 mix.add('arp', T(b + i / 4), pluck(hz(note), 0.22, bright=1.4), 0.05 + 0.07 * i / steps, 0.5 * np.sin(i))
+        elif kind == 'scan':
+            # the lidar pass: soft pings, one per sixteenth, stepping through the chord as the footprints land
+            steps = int(round(c['len'] * 4))
+            for i in range(steps):
+                pool = sorted({n + 12 * o for n in CHORDS[chord_at(b + i / 4)][1] for o in (2, 3)} & set(range(76, 101)))
+                note = pool[(i * 5) % len(pool)]
+                mix.add('bell', T(b + i / 4), tone(hz(note), 0.9, [1, 0.3, 0.1], [0.35, 0.18, 0.09], attack=0.002), 0.045, 0.6 * np.sin(i * 0.9))
         elif kind == 'fire':
             mix.add('fx', T(b), fire(), 0.32 * g)
         elif kind == 'drought':

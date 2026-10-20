@@ -204,3 +204,62 @@ export function createSky() {
   sky.renderOrder = -10;
   return sky;
 }
+
+// A satellite lidar pass over the fifteen-age forest, the way NASA's GEDI measures forests from orbit: a beam
+// crosses the plot along a ground track and leaves a footprint on top of the canopy every few metres, tracing
+// its height profile.
+export function createLidar(px, count = 40) {
+  const group = new THREE.Group();
+  const beamGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 8, 1, true);
+  beamGeo.translate(0, 0.5, 0);
+  const beamMat = new THREE.ShaderMaterial({
+    uniforms: {uOpacity: {value: 0}},
+    vertexShader: `varying float vY; void main(){ vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform float uOpacity; varying float vY;
+      void main(){ gl_FragColor = vec4(vec3(0.6, 1.0, 0.9), uOpacity * (1.0 - vY) * (1.0 - vY)); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const beam = new THREE.Mesh(beamGeo, beamMat);
+  beam.frustumCulled = false;
+  const pos = new Float32Array(count * 3), show = new Float32Array(count);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aShow', new THREE.BufferAttribute(show, 1));
+  const dots = new THREE.Points(geo, new THREE.ShaderMaterial({
+    uniforms: {uPx: {value: px}, uProj: {value: 800}, uOpacity: {value: 0}},
+    vertexShader: `attribute float aShow; uniform float uPx, uProj; varying float vS;
+      void main(){ vS = aShow; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+        gl_PointSize = (0.2 + 0.3 * (1.0 - aShow) * aShow * 4.0 + 0.12 * aShow) * uProj * uPx / -mv.z; }`,
+    fragmentShader: `uniform float uOpacity; varying float vS;
+      void main(){ if (vS <= 0.0) discard; float d = length(gl_PointCoord - 0.5);
+        gl_FragColor = vec4(vec3(0.75, 1.0, 0.92), smoothstep(0.5, 0.12, d) * uOpacity * min(1.0, vS * 2.0)); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  dots.frustumCulled = false;
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color: 0x7dffd8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending}));
+  line.frustumCulled = false;
+  group.add(beam, line, dots);
+  group.visible = false;
+  // k: progress of the pass (0..1); a: opacity; dir: unit direction of the ground track; top(x, z): canopy height there
+  function update(k, a, dir, top) {
+    group.visible = a > 0.002;
+    if (!group.visible) return;
+    const L = 17, s = -L + 2 * L * k;
+    let passed = 0;
+    for (let i = 0; i < count; i++) {
+      const si = -L + 2 * L * (i + 0.5) / count, x = dir.x * si, z = dir.z * si;
+      pos.set([x, top(x, z) + 0.06, z], i * 3);
+      show[i] = Math.min(1, Math.max(0, (s - si) / 1.5));
+      if (s >= si) passed = i + 1;
+    }
+    geo.attributes.position.needsUpdate = geo.attributes.aShow.needsUpdate = true;
+    geo.setDrawRange(0, passed);
+    const bx = dir.x * s, bz = dir.z * s;
+    beam.position.set(bx, top(bx, bz), bz);
+    beam.scale.set(1, 60, 1);
+    beamMat.uniforms.uOpacity.value = a * (k > 0.001 && k < 0.999 ? 1 : 0);
+    dots.material.uniforms.uOpacity.value = a;
+    line.material.opacity = 0.75 * a;
+  }
+  return {group, update};
+}

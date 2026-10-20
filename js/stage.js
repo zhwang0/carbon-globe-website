@@ -1,7 +1,7 @@
 // The scroll-driven film: hero globe -> one forest -> four forcings -> fifteen ages -> planet -> emulator -> what if -> numbers.
 import * as THREE from '../assets/vendor/three.module.js';
 import {createGlobe, createCanopy, createStars, createFlare, facing, cellOf, latLonToVec3} from './globe.js';
-import {createGround, createMotes, createWeather, createSky} from './forest.js';
+import {createGround, createMotes, createWeather, createSky, createLidar} from './forest.js';
 import {mulberry32} from './random.js';
 import {growTrees, treePoints, createFlames, PRE_TAU} from './hero-tree.js';
 import {createEmulator, NET} from './network.js';
@@ -13,7 +13,9 @@ const ss = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0)); return t * t 
 const ease = t => (t < .5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
 const AGES = [1, 10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 350, 400, 450, 500];
-const DIVE_ALT = 0.2;
+const DIVE_ALT = 0.2;      // altitude (globe radii) at which the dive frames its 0.5° grid cell
+const GROUND_ALT = 0.002;  // ... and where it ends, about 13 km above the forest
+const GROUND = {lat: -3.29, lon: -63.68};   // the forest at the head of a lake, inside that cell
 
 // Interpolate a 41-element annual series at fractional year index.
 const at = (series, y) => { const i = Math.floor(y), f = y - i; return i >= 40 ? series[40] : series[i] * (1 - f) + series[i + 1] * f; };
@@ -87,20 +89,24 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const renderer = new THREE.WebGLRenderer({canvas, antialias: !bloom, powerPreference: 'high-performance'});
   renderer.setClearColor(0x050a0c, 1);
   renderer.autoClear = false;
-  const px = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.75);
+  // the rendered film draws at the full device resolution it is captured at
+  const px = film ? (window.devicePixelRatio || 1) : Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.75);
   renderer.setPixelRatio(px);
   const post = bloom ? createPost(renderer) : null;
 
   const story = meta.story.amazon;
   const target = cellOf(story.lat, story.lon);
-  const targetRot = facing(story.lat, story.lon);
+  const targetRot = facing(story.lat, story.lon), groundRot = facing(GROUND.lat, GROUND.lon);
 
   // globe scene
   const gScene = new THREE.Scene();
   const gCam = new THREE.PerspectiveCamera(35, 1, 0.005, 200);
-  // the photographic Earth, with a 1 km image of the Amazon for the dive (box in step with prepare_textures.py)
+  // the photographic Earth, with ever sharper images of the Amazon for the dive: the region at 1 km, the grid
+  // cell at 65 m and the ground where it ends at 11 m (boxes in step with prepare_textures.py)
   const G = createGlobe({day: tex.day, mask: tex.mask, zones: tex.zones.tex, data: tex.height.tex, segments: mobile ? 160 : 224,
-    clouds: tex.clouds, lights: tex.lights, real: 1, detail: {tex: tex.amazon, box: [-76, 5, -52, -11]}});
+    clouds: tex.clouds, lights: tex.lights, real: 1,
+    details: [{tex: tex.amazon, box: [-76, 5, -52, -11]}, {tex: tex.amazonCell, box: [-64.35, -2.65, -63.15, -3.85]},
+      {tex: tex.amazonGround, box: [-63.78, -3.19, -63.58, -3.39]}]});
   G.uniforms.uTarget.value.set(target.col, target.row);
   G.globe.renderOrder = 1; G.atmo.renderOrder = 2;
   // the planet chapter's forests in relief, rising over the globe as the years pass
@@ -138,6 +144,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   fScene.add(ground);
   const motes = createMotes(mobile ? 400 : 900, px);
   fScene.add(motes);
+  const lidar = createLidar(px);
+  fScene.add(lidar.group);
   // the four-forcing views' weather, shown only inside their viewports
   const weather = {rain: createWeather('rain', mobile ? 400 : 700, px), snow: createWeather('snow', mobile ? 400 : 700, px),
     dust: createWeather('dust', mobile ? 160 : 260, px), ash: createWeather('ash', mobile ? 260 : 420, px)};
@@ -192,6 +200,16 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
 
   const cohorts = [];
   const rng = mulberry32(5);
+  // height (world units of 10 m) of the canopy at ground point (x, z): the tallest cohort tree within reach
+  const canopyTop = (x, z) => {
+    let h = 0.02;
+    for (const c of cohorts) for (const t of c.trees) {
+      const dx = t.position.x - x, dz = t.position.z - z;
+      if (dx * dx + dz * dz < 2.6) h = Math.max(h, c.h * t.userData.scale / 10);
+    }
+    return h;
+  };
+  const lidarDir = new THREE.Vector3(1, 0, 0);
   AGES.forEach((age, gi) => {
     const r = gi === 0 ? 0 : 3.3 * Math.sqrt(gi + 0.4), th = gi * 2.39996 + 0.6;
     const cx = Math.cos(th) * r, cz = Math.sin(th) * r;
@@ -526,12 +544,13 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     else { const now = performance.now(); dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt; }
 
     // ---------- globe state (a chain of eased keyframes)
-    // Turn to the Amazon first, then fly straight down onto the highlighted cell.
-    const kDive = ease(ss(0.55, 1.95, u)), kRot = ease(ss(0.55, 1.45, u));
+    // Turn to the Amazon first, fly straight down onto the highlighted cell, then on into the forest inside it.
+    const kDive = ease(ss(0.55, 1.62, u)), kRot = ease(ss(0.55, 1.45, u)), kGround = ss(1.62, 1.96, u);
     if (!drag.active) { heroY += (reduced ? 0 : dt * 0.06 * (1 - kRot)) + drag.vy; drag.vy *= 0.92; }
-    let rx = lerp(heroTilt, targetRot.x, kRot);
-    let ry = heroY + wrapPi(targetRot.y - heroY) * kRot;
+    let rx = lerp(heroTilt, targetRot.x, kRot) + (groundRot.x - targetRot.x) * kGround;
+    let ry = heroY + wrapPi(targetRot.y - heroY) * kRot + (groundRot.y - targetRot.y) * kGround;
     let alt = Math.exp(lerp(Math.log(L.hero.d - 1), Math.log(DIVE_ALT), kDive));
+    alt = Math.exp(lerp(Math.log(alt), Math.log(GROUND_ALT), kGround));
     let gx = lerp(L.hero.x, 0, kRot), gy = lerp(L.hero.y, 0, kRot), gs = lerp(L.hero.s, 1, kRot);
     if (u > 6.45) {
       // pull back out to the planet, settling right of the caption
@@ -543,14 +562,18 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       gx = lerp(0, L.planet.x, kOut); gy = lerp(0, L.planet.y, kOut); gs = lerp(1, L.planet.s, kOut);
     }
     let dist = 1 + alt;
-    const kNet = ease(ss(7.9, 8.45, u)), kFc = ease(ss(9.45, 9.9, u)), kNum = ease(ss(10.65, 11.1, u)), kEnd = ease(ss(11.7, 12.45, u));
+    // kNum brings the planet to the centre (where the film shows its digital twin), dimming it after
+    const kNet = ease(ss(7.9, 8.45, u)), kFc = ease(ss(9.45, 9.9, u)), kNum = ease(ss(10.65, 10.95, u)), kEnd = ease(ss(11.7, 12.45, u));
+    const kDim = ss(10.95, 11.1, u);
     if (u > 7.45) {
       dist = lerp(dist, L.net.d, kNet);
       gx = lerp(gx, L.net.gx, kNet); gy = lerp(gy, L.net.gy, kNet); gs = lerp(gs, L.net.gs, kNet);
       gx = lerp(gx, L.fc.gx, kFc); gy = lerp(gy, L.fc.gy, kFc); gs = lerp(gs, L.fc.gs, kFc);
       dist = lerp(dist, 4.3, kNum); gx = lerp(gx, 0, kNum); gy = lerp(gy, 0, kNum); gs = lerp(gs, L.narrow ? 0.95 : 1.3, kNum);
       dist = lerp(dist, L.end.d, kEnd); gx = lerp(gx, 0, kEnd); gy = lerp(gy, L.end.y, kEnd); gs = lerp(gs, L.end.s, kEnd);
-      // the end card faces the Amazon, tilted so its horizon runs just north of the equator
+      // the twin and the numbers face the Americas, still turning slowly; the end card faces the Amazon,
+      // tilted so its horizon runs just north of the equator
+      ry += wrapPi(END_RY - 0.4 - ry) * kNum + Math.max(0, u - 10.95) * 0.5;
       rx = lerp(rx, END_TILT, kEnd);
       endSpin = kEnd > 0 ? endSpin + Math.min(dt, 0.1) * 0.03 : 0;
       ry += wrapPi(END_RY - ry) * kEnd + endSpin;
@@ -560,7 +583,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     G.spin.rotation.set(rx, ry, 0, 'XYZ');
     gCam.position.set(0, 0, dist);
     gCam.lookAt(0, 0, 0);
-    gCam.near = Math.max(0.002, (dist - gs) * 0.3);
+    gCam.near = Math.max(0.0002, (dist - gs) * 0.3);
     gCam.updateProjectionMatrix();
 
     const U = G.uniforms;
@@ -607,9 +630,13 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     U.uYear.value = u < 6.45 ? 40 : 40 * ss(7.32, 7.95, u);
     CU.uYear.value = U.uYear.value;
     CU.uCenter.value.copy(G.group.position);
-    U.uGridMix.value = u > 0.9 && u < 7.05 ? 1 : 0;
-    U.uTargetMix.value = ss(1.4, 1.75, u) * (1 - ss(6.75, 7, u));
-    U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kNum), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum));
+    // the grid and the highlighted cell fall away as the camera passes below the cell
+    U.uGridMix.value = (u > 0.9 && u < 7.05 ? 1 : 0) * (1 - ss(1.66, 1.8, u) * (1 - ss(6.6, 6.8, u)));
+    U.uTargetMix.value = ss(1.4, 1.6, u) * (1 - ss(1.68, 1.82, u)) + ss(6.55, 6.7, u) * (1 - ss(6.75, 7, u));
+    U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kDim), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum));
+    // the photographic Earth gives way to its digital twin behind a scan line, and comes back for the end card
+    U.uTwin.value = -1.25 + 2.5 * ss(10.68, 10.95, u);
+    U.uTwinMix.value = u > 10.6 ? 1 - ss(11.7, 12.15, u) : 0;
     G.atmoUniforms.uOpacity.value = clamp((dist / gs - 1.25) / 0.6);
     G.atmoUniforms.uCenter.value.copy(G.group.position);
     stars.material.uniforms.uTime.value = time;
@@ -694,6 +721,14 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       mainTgt.add(tmp);
       fCam.lookAt(mainTgt);
     }
+    // a satellite lidar pass over the grown fifteen-age forest, across the screen
+    const lk = opt.lidar ?? ss(6.2, 6.42, u);
+    const lidarA = (lk > 0.001 ? 1 : 0) * cohortA * fA * (1 - ss(6.45, 6.6, u));
+    if (lidarA > 0.002) {
+      fCam.updateMatrixWorld();
+      lidarDir.setFromMatrixColumn(fCam.matrixWorld, 0).setY(0).normalize();
+    }
+    lidar.update(lk, lidarA, lidarDir, canopyTop);
 
     // four forcings: every view shares one scale so heights compare directly
     const kS = splitK(u), rects = kS > 0.001 ? panelRects(kS) : null;
@@ -762,7 +797,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
         }
       });
     }
-    dom.flash.style.opacity = (ss(1.75, 1.96, u) * (1 - ss(1.98, 2.25, u)) * 0.55 + ss(6.47, 6.59, u) * (1 - ss(6.63, 6.85, u)) * 0.3).toFixed(3);
+    dom.flash.style.opacity = (ss(1.93, 1.975, u) * (1 - ss(1.99, 2.25, u)) * 0.55 + ss(6.47, 6.59, u) * (1 - ss(6.63, 6.85, u)) * 0.3).toFixed(3);
     const yr = Math.round(year);
     dom.treeYear.textContent = 1981 + yr;
     dom.cohortYear.textContent = 1981 + yr;

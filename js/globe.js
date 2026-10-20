@@ -160,11 +160,11 @@ uniform sampler2D uMask;
 uniform sampler2D uZones;
 uniform sampler2D uClouds;
 uniform sampler2D uLights;
-uniform sampler2D uDetail;
+uniform sampler2D uDetail, uDetail2, uDetail3;
 uniform sampler2DArray uData;
 uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight;
-uniform float uReal, uCloud, uCloudShift, uDetailMix, uExposure;
-uniform vec4 uDetailBox;
+uniform float uReal, uCloud, uCloudShift, uDetailMix, uExposure, uTwin, uTwinMix;
+uniform vec4 uDetailBox, uDetailBox2, uDetailBox3;
 uniform vec3 uSun;
 uniform vec3 uRamp[5];
 uniform vec3 uZone[6];
@@ -182,6 +182,14 @@ vec3 ramp(float t) {
   else if (i > 1.5) { a = uRamp[2]; b = uRamp[3]; }
   else if (i > 0.5) { a = uRamp[1]; b = uRamp[2]; }
   return mix(a, b, f);
+}
+
+// a sharper image of a region (box: west, south, east, north in texture space), feathered into img
+vec3 detail(vec3 img, sampler2D tex, vec4 box) {
+  vec2 dq = (vUv - box.xy) / (box.zw - box.xy);
+  if (dq.x <= 0.0 || dq.x >= 1.0 || dq.y <= 0.0 || dq.y >= 1.0) return img;
+  float edge = smoothstep(0.0, 0.08, min(min(dq.x, 1.0 - dq.x), min(dq.y, 1.0 - dq.y)));
+  return mix(img, texture2D(tex, dq).rgb, edge);
 }
 
 void main() {
@@ -217,6 +225,10 @@ void main() {
   vec3 dc = ramp(t);
   vec3 dataCol = dc * mix(0.22 * uNight, 1.0, day) * (0.82 + 0.3 * t) + dc * t * t * 0.22 * (1.0 - day) * uNight;
   col = mix(col, dataCol, cov * uDataMix * 0.94);
+  // the digital twin: left of a scan line that sweeps across the disc, the photographic Earth gives way to
+  // its data twin, the forest layer over muted imagery under a fine graticule
+  float sx = dot(N, vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]));
+  float twin = uTwinMix * (1.0 - smoothstep(uTwin - 0.015, uTwin + 0.015, sx));
 
   // The photographic globe of the film: the daylit Blue Marble with drifting clouds and their shadows,
   // sun glint on the sea, blue haze toward the limb and city lights at night. Forest data is laid over
@@ -224,13 +236,10 @@ void main() {
   if (uReal > 0.001) {
     float lit = smoothstep(-0.1, 0.2, ndl);
     float sun = pow(max(ndl, 0.0), 0.7);
-    // a sharper image of one region (the film's dive into the Amazon), feathered into the global one
+    // sharper images of the film's dive into the Amazon, each nested in the last: the region, the grid
+    // cell, the ground where it ends
     vec3 img = base;
-    vec2 dq = (vUv - uDetailBox.xy) / (uDetailBox.zw - uDetailBox.xy);
-    if (uDetailMix > 0.0 && dq.x > 0.0 && dq.x < 1.0 && dq.y > 0.0 && dq.y < 1.0) {
-      float edge = smoothstep(0.0, 0.06, min(min(dq.x, 1.0 - dq.x), min(dq.y, 1.0 - dq.y)));
-      img = mix(img, texture2D(uDetail, dq).rgb, edge * uDetailMix);
-    }
+    if (uDetailMix > 0.0) img = detail(detail(detail(img, uDetail, uDetailBox), uDetail2, uDetailBox2), uDetail3, uDetailBox3);
     vec3 alb = pow(img, vec3(1.08)) * 1.18;
     // a green tint that keeps the imagery's texture, deepening as the canopy grows
     alb = mix(alb, ramp(t * 0.82) * 0.92 + alb * 0.22, cov * smoothstep(0.06, 0.6, t) * uDataMix * 0.78);
@@ -247,7 +256,11 @@ void main() {
     real += vec3(1.0, 0.72, 0.4) * texture2D(uLights, vUv).r * dark * (1.0 - 0.8 * cl) * 1.2;
     float fh = pow(1.0 - max(dot(N, V), 0.0), 2.3);
     real = mix(real, vec3(0.36, 0.6, 1.0) * (0.06 + 0.9 * sun), fh * (0.18 + 0.5 * lit));
-    col = mix(col, real, uReal);
+    vec2 gg = duv * vec2(72.0, 36.0), gwid = fwidth(gg), gfr = abs(fract(gg) - 0.5);
+    vec2 gl2 = smoothstep(0.5 - gwid * 1.1, vec2(0.5), gfr);
+    col += vec3(0.4, 0.95, 0.85) * max(gl2.x, gl2.y) * twin * 0.28 * (0.3 + 0.7 * day);
+    col = mix(col, real, uReal * (1.0 - twin));
+    col += vec3(0.45, 1.0, 0.85) * exp(-pow((sx - uTwin) / 0.012, 2.0)) * uTwinMix * step(-1.0, uTwin) * step(uTwin, 1.0) * 0.9;
   }
 
   float z = texture2D(uZones, duv).r * 255.0;
@@ -274,7 +287,7 @@ void main() {
   col += vec3(0.85, 1.0, 0.7) * edge * uTargetMix * pulse;
 
   float fr = pow(1.0 - max(dot(N, V), 0.0), 2.6);
-  col += vec3(0.22, 0.72, 0.95) * fr * (0.12 + 0.55 * day) * (1.0 - uReal);
+  col += vec3(0.22, 0.72, 0.95) * fr * (0.12 + 0.55 * day) * max(1.0 - uReal, twin);
   col *= uDim;
   gl_FragColor = vec4(col, uOpacity);
 }`;
@@ -312,14 +325,15 @@ void main() {
 
 // real: 0 for the stylised data globe (the explorer), 1 for the photographic Earth of the film, which
 // also takes clouds and night lights.
-// detail: {tex, box: [west, north, east, south]} in degrees, a sharper image of one region.
-export function createGlobe({day, mask, zones, data = null, segments = 192, clouds = null, lights = null, real = 0, detail = null}) {
-  const box = detail ? detail.box : [0, 0, 1, 1];
+// details: up to three {tex, box: [west, north, east, south] in degrees}, sharper images of nested regions.
+export function createGlobe({day, mask, zones, data = null, segments = 192, clouds = null, lights = null, real = 0, details = []}) {
+  const boxVec = d => (d ? new THREE.Vector4((d.box[0] + 180) / 360, (d.box[3] + 90) / 180, (d.box[2] + 180) / 360, (d.box[1] + 90) / 180) : new THREE.Vector4(2, 2, 3, 3));   // unused: a box off the globe
   const uniforms = {
     uDay: {value: day}, uMask: {value: mask}, uZones: {value: zones},
-    uClouds: {value: clouds || mask}, uLights: {value: lights || mask}, uDetail: {value: detail ? detail.tex : mask},
-    uDetailMix: {value: detail ? 1 : 0},
-    uDetailBox: {value: new THREE.Vector4((box[0] + 180) / 360, (box[3] + 90) / 180, (box[2] + 180) / 360, (box[1] + 90) / 180)},
+    uClouds: {value: clouds || mask}, uLights: {value: lights || mask},
+    uDetail: {value: details[0]?.tex || mask}, uDetail2: {value: details[1]?.tex || mask}, uDetail3: {value: details[2]?.tex || mask},
+    uDetailBox: {value: boxVec(details[0])}, uDetailBox2: {value: boxVec(details[1])}, uDetailBox3: {value: boxVec(details[2])},
+    uDetailMix: {value: details.length ? 1 : 0}, uTwin: {value: -2}, uTwinMix: {value: 0},
     uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0}, uExposure: {value: 1},
     uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
     uHasData: {value: data ? 1 : 0},

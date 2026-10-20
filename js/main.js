@@ -42,13 +42,16 @@ let texP = null;
 function textures() {
   if (!texP) {
     texP = Promise.all([
-      loadTexture(mobile ? 'assets/tex/earth-day-2k.webp' : 'assets/tex/earth-day.webp'),
+      // the rendered film uses an 8K Earth; phones a 2K one
+      loadTexture(RENDER ? 'assets/tex/earth-day-8k.webp' : mobile ? 'assets/tex/earth-day-2k.webp' : 'assets/tex/earth-day.webp'),
       loadTexture('assets/tex/land-mask.png'),
       loadZones('assets/data/climate.png'),
       loadTexture('assets/tex/clouds.webp'),
       loadTexture('assets/tex/night-lights.webp'),
       loadTexture('assets/tex/amazon.webp'),
-    ]).then(([day, mask, zones, clouds, lights, amazon]) => ({day, mask, zones, clouds, lights, amazon}));
+      loadTexture('assets/tex/amazon-cell.webp'),
+      loadTexture('assets/tex/amazon-ground.webp'),
+    ]).then(([day, mask, zones, clouds, lights, amazon, amazonCell, amazonGround]) => ({day, mask, zones, clouds, lights, amazon, amazonCell, amazonGround}));
   }
   return texP;
 }
@@ -329,12 +332,12 @@ async function boot() {
     window.__cg = {
       duration: cut.duration,
       frame(t) {
-        const {u, intro} = cut.at(t);
+        const {u, intro, lidar} = cut.at(t);
         const {vh, top} = filmMetrics();
         window.scrollTo(0, top + u * vh);
         applyFades(u);
         forecast.update(u);
-        stage.render(u, t, {intro});
+        stage.render(u, t, {intro, lidar});
         cut.apply(t);
       },
     };
