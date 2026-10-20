@@ -169,8 +169,10 @@ function loop(now) {
   last = now;
   if (playing) {
     const {vh, top} = filmMetrics();
-    // Linger while a caption is fully on screen, move faster through transitions.
-    const speed = vh / (3.8 + 3.0 * captionShown);
+    // Linger while a caption is fully on screen, move faster through transitions and the years
+    // of growth.
+    const growing = (uS > 2.15 && uS < 3.45) || (uS > 5.4 && uS < 6.4);
+    const speed = (growing ? 1.45 : 1) * vh / (3.8 + 3.0 * captionShown);
     playY += speed * dt;
     window.scrollTo(0, playY);
     if ((playY - top) / vh >= U_END - 0.05) stopPlay();

@@ -12,16 +12,16 @@ float noise(vec2 p) {
 }
 float fbm(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { s += a * noise(p); p *= 2.03; a *= 0.5; } return s; }`;
 
-// Ground: a grid that fades into the dark. uDry cracks it into baked mud, uSnow covers it and
-// uChar leaves it burnt with a few glowing embers.
+// Ground: a grid that fades into the dark. uWet darkens it with rings where raindrops land, uDry
+// cracks it into baked mud, uSnow covers it and uChar leaves it burnt with a few glowing embers.
 export function createGround(px) {
   const geo = new THREE.PlaneGeometry(120, 120, 1, 1);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.ShaderMaterial({
     uniforms: {uOpacity: {value: 1}, uTime: {value: 0}, uShade: {value: 0}, uGrid: {value: new THREE.Color(0.25, 0.9, 0.6)},
-      uDry: {value: 0}, uSnow: {value: 0}, uChar: {value: 0}},
+      uDry: {value: 0}, uSnow: {value: 0}, uChar: {value: 0}, uWet: {value: 0}},
     vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: `uniform float uOpacity, uShade, uTime, uDry, uSnow, uChar; uniform vec3 uGrid; varying vec3 vW;
+    fragmentShader: `uniform float uOpacity, uShade, uTime, uDry, uSnow, uChar, uWet; uniform vec3 uGrid; varying vec3 vW;
       ${NOISE}
       float grid(vec2 p, float s){ vec2 g = p / s; vec2 w = fwidth(g); vec2 f = abs(fract(g - 0.5) - 0.5) / w; return 1.0 - min(min(f.x, f.y), 1.0); }
       // borders of a Voronoi tiling: the cracks of drying mud
@@ -47,12 +47,21 @@ export function createGround(px) {
         }
         if (uSnow > 0.0) base = mix(base, vec3(0.34, 0.41, 0.5) * (0.75 + 0.35 * n), uSnow * near * smoothstep(0.2, 0.45, n + 0.25));
         if (uChar > 0.0) base = mix(base, vec3(0.03, 0.024, 0.02) * (0.6 + 0.8 * n), uChar * near);
+        base *= 1.0 - 0.3 * uWet * near;
         float sh = uShade > 0.0 ? smoothstep(uShade, uShade * 0.2, r) : 0.0;  // shade under a crown of radius uShade
         vec3 col = base * (1.0 - 0.45 * sh) + uGrid * g * fade * (1.0 - 0.7 * sh) * (1.0 - 0.55 * uChar);
         if (uChar > 0.0) {
           vec2 c = floor(vW.xz * 2.5);
           float e = hash(c), on = step(0.965, e) * near * smoothstep(0.35, 0.0, length(fract(vW.xz * 2.5) - 0.5));
           col += vec3(1.0, 0.38, 0.06) * on * uChar * (0.55 + 0.45 * sin(uTime * (2.0 + 3.0 * e) + e * 40.0));
+        }
+        if (uWet > 0.0) {
+          // a drop lands in some cells each cycle and its ring spreads and fades
+          vec2 q = vW.xz * 1.6, cell = floor(q);
+          float h = hash(cell), t = fract(uTime * (0.55 + 0.5 * h) + h * 7.0);
+          float d = length(fract(q) - 0.5 - (hash2(cell + 3.1) - 0.5) * 0.4), aa = fwidth(d) * 1.5;
+          float ring = smoothstep(0.03 + aa, 0.0, abs(d - t * 0.42)) * (1.0 - t) * step(0.35, h);
+          col += vec3(0.5, 0.75, 0.9) * ring * uWet * near * 0.3;
         }
         gl_FragColor = vec4(col, uOpacity * (0.25 + 0.75 * fade));
       }`,
@@ -126,7 +135,7 @@ export function createWeather(kind, count, px) {
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
         // drops and flakes right in front of the lens fade, so the weather stays around the tree
-        vA = step(aR.x, uRate) * smoothstep(0.0, 0.6, p.y) * smoothstep(6.0, 4.8, p.y) * (0.55 + 0.45 * aR.y) * smoothstep(3.0, 5.5, -mv.z);
+        vA = step(aR.x, uRate) * smoothstep(0.0, 0.6, p.y) * smoothstep(6.0, 4.8, p.y) * (0.55 + 0.45 * aR.y) * smoothstep(3.6, 6.0, -mv.z);
         gl_PointSize = vA > 0.0 ? uPx * ${K.size.toFixed(3)} * (0.7 + 0.6 * aR.y) * uProj / -mv.z : 0.0;
       }`,
     fragmentShader: `uniform float uOpacity; varying float vA; varying float vE;
@@ -155,19 +164,20 @@ export function createWeather(kind, count, px) {
 }
 
 // The sky behind the forest views: a vertical gradient with a glow on the horizon, an optional
-// sun and a band of drifting cloud (or smoke). Drawn as a full-viewport quad behind everything.
+// sun, a band of drifting cloud (or smoke) and heat shimmer over the horizon. Drawn as a
+// full-viewport quad behind everything.
 export function createSky() {
   const C = (r, g, b) => new THREE.Color(r, g, b);
   const uniforms = {
     uOpacity: {value: 0}, uTime: {value: 0}, uAspect: {value: 1},
     uTop: {value: C(0.03, 0.09, 0.09)}, uBot: {value: C(0.012, 0.03, 0.035)}, uBand: {value: C(0.02, 0.06, 0.04)},
     uSun: {value: new THREE.Vector3(0.7, 0.8, 0.0)}, uSunCol: {value: C(0, 0, 0)},
-    uCloud: {value: 0}, uCloudCol: {value: C(0.06, 0.1, 0.11)},
+    uCloud: {value: 0}, uCloudCol: {value: C(0.06, 0.1, 0.11)}, uHeat: {value: 0},
   };
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
     uniforms,
     vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
-    fragmentShader: `uniform float uOpacity, uTime, uAspect, uCloud; uniform vec3 uTop, uBot, uBand, uSun, uSunCol, uCloudCol; varying vec2 vUv;
+    fragmentShader: `uniform float uOpacity, uTime, uAspect, uCloud, uHeat; uniform vec3 uTop, uBot, uBand, uSun, uSunCol, uCloudCol; varying vec2 vUv;
       ${NOISE}
       void main(){
         vec3 c = mix(uBot, uTop, smoothstep(0.1, 0.95, vUv.y)) + uBand * exp(-pow((vUv.y - 0.42) * 4.0, 2.0));
@@ -180,6 +190,11 @@ export function createSky() {
           float n = fbm(q + vec2(fbm(q * 0.7 - uTime * 0.01), 0.0));
           float cl = smoothstep(0.42, 0.78, n) * smoothstep(0.38, 0.85, vUv.y);
           c = mix(c, uCloudCol * (0.8 + 0.5 * n), cl * uCloud);
+        }
+        if (uHeat > 0.0) {
+          float hb = exp(-pow((vUv.y - 0.4) * 6.0, 2.0));
+          float w = noise(vec2(vUv.x * uAspect * 16.0, vUv.y * 80.0 - uTime * 3.0));
+          c += vec3(1.0, 0.62, 0.28) * uHeat * hb * (0.04 + 0.1 * w);
         }
         gl_FragColor = vec4(c, uOpacity);
       }`,

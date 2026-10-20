@@ -15,9 +15,9 @@ IMG = os.path.join(ROOT, 'assets', 'img')
 # (seconds, film position u). Linear in between; holds give captions time to be read. The first
 # seconds hold on the hero while the sun rises over the globe; the last hold on the end card.
 KEYS = [
-    (0, 0), (4.6, 0.05), (9.6, 1.95), (10.2, 2.15), (16.6, 3.45), (18.6, 3.9), (25.1, 4.9), (27.6, 5.4),
-    (33.4, 6.4), (34.9, 6.75), (36.4, 7.3), (38.9, 7.5), (41.4, 8.0), (42.4, 8.2), (48.6, 9.3), (49.6, 9.6),
-    (53.1, 10.05), (56.1, 10.4), (59.1, 10.65), (60.6, 11.05), (64.1, 11.4), (66.6, 12.3), (72.0, 12.6),
+    (0, 0), (4.6, 0.05), (9.6, 1.95), (10.2, 2.15), (14.6, 3.45), (16.6, 3.9), (22.6, 4.9), (25.0, 5.4),
+    (29.0, 6.4), (30.5, 6.75), (32.0, 7.3), (34.5, 7.5), (37.0, 8.0), (38.0, 8.2), (44.2, 9.3), (45.2, 9.6),
+    (48.7, 10.05), (51.7, 10.4), (54.7, 10.65), (56.2, 11.05), (59.7, 11.4), (62.2, 12.3), (68.0, 12.6),
 ]
 
 
@@ -80,7 +80,7 @@ def main():
         # stills: social card (the end card), video poster (the hero once the sun is up), and a
         # text-free fallback image
         page.set_viewport_size({'width': 1600, 'height': 900})
-        shot(71.0).resize((1200, 675), Image.LANCZOS).crop((0, 22, 1200, 652)).save(os.path.join(IMG, 'social.jpg'), quality=88)
+        shot(67.0).resize((1200, 675), Image.LANCZOS).crop((0, 22, 1200, 652)).save(os.path.join(IMG, 'social.jpg'), quality=88)
         shot(4.4).resize((1280, 720), Image.LANCZOS).save(os.path.join(OUT, 'carbonglobe-film.jpg'), quality=86)
         page.add_style_tag(content='[data-u], .cell-label { visibility: hidden !important; }')
         shot(4.45).save(os.path.join(IMG, 'poster.jpg'), quality=84)

@@ -18,16 +18,17 @@ const DIVE_ALT = 0.2;
 // Interpolate a 41-element annual series at fractional year index.
 const at = (series, y) => { const i = Math.floor(y), f = y - i; return i >= 40 ? series[40] : series[i] * (1 - f) + series[i + 1] * f; };
 
-// Year index (0..40) of the forest chapters as a function of film position u.
+// Year index (0..40) of the forest chapters as a function of film position u. Each return to 1981
+// happens at the bottom of a short dip to dark, so trees never visibly shrink.
+const DIPS = [3.5, 5.32];
+const dipAt = u => DIPS.reduce((m, c) => Math.max(m, ss(c - 0.06, c, u) * (1 - ss(c, c + 0.09, u))), 0);
 function forestYear(u) {
   if (u < 2.15) return 0;
   if (u < 3.45) return 40 * (u - 2.15) / 1.3;          // one forest
-  if (u < 3.55) return 40;
-  if (u < 3.85) return 40 * (1 - ss(3.55, 3.85, u));   // back to 1981 as the view splits
+  if (u < DIPS[0]) return 40;
   if (u < 3.9) return 0;
   if (u < 4.9) return 40 * (u - 3.9);                  // four forcings
-  if (u < 5.05) return 40;
-  if (u < 5.3) return 40 * (1 - ss(5.05, 5.3, u));     // back to 1981 as the views merge
+  if (u < DIPS[1]) return 40;                          // the views merge back into one
   if (u < 5.4) return 0;
   return 40 * clamp(u - 5.4);                          // fifteen ages
 }
@@ -221,46 +222,53 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   };
   const rainRate = p => clamp(0.1 + 0.6 * (p - 0.4) / 0.8);
   const dryness = (key, y) => lingering(k => clamp((0.85 - at(series[key].rain, k)) / 0.45), y, 1.6);
-  // skies: gradient top and bottom, horizon glow, sun (u, v, size) and its colour, cloud cover and colour
+  // skies: gradient top and bottom, horizon glow, sun (u, v, size) and its colour, cloud cover and colour.
+  // Each view has its own: rain clouds (wet), a hot clear sky (arid, scorching in the drought years),
+  // fire-season haze (smoky, red at the burn) and a snowy night (cold).
   const SKY = {
     base: {top: [0.03, 0.09, 0.09], bot: [0.012, 0.03, 0.035], band: [0.02, 0.06, 0.04], sun: [0.7, 0.8, 0], sunCol: [0, 0, 0], cloud: 0, cloudCol: [0.06, 0.1, 0.11]},
     wet: {top: [0.03, 0.085, 0.1], bot: [0.012, 0.035, 0.04], band: [0.03, 0.085, 0.07], sun: [0.7, 0.8, 0], sunCol: [0, 0, 0], cloud: 0.8, cloudCol: [0.075, 0.11, 0.12]},
-    dry: {top: [0.21, 0.125, 0.05], bot: [0.075, 0.042, 0.018], band: [0.3, 0.17, 0.05], sun: [0.7, 0.8, 0.24], sunCol: [1, 0.68, 0.3], cloud: 0, cloudCol: [0.2, 0.13, 0.06]},
+    arid: {top: [0.15, 0.11, 0.06], bot: [0.055, 0.038, 0.02], band: [0.24, 0.15, 0.06], sun: [0.72, 0.8, 0.16], sunCol: [0.95, 0.74, 0.42], cloud: 0, cloudCol: [0.2, 0.14, 0.07]},
+    dry: {top: [0.25, 0.12, 0.04], bot: [0.09, 0.04, 0.015], band: [0.4, 0.18, 0.045], sun: [0.7, 0.8, 0.3], sunCol: [1, 0.62, 0.24], cloud: 0, cloudCol: [0.2, 0.13, 0.06]},
+    haze: {top: [0.06, 0.042, 0.04], bot: [0.028, 0.019, 0.017], band: [0.32, 0.075, 0.02], sun: [0.3, 0.3, 0.07], sunCol: [0.6, 0.14, 0.03], cloud: 0.7, cloudCol: [0.1, 0.07, 0.06]},
     fire: {top: [0.16, 0.045, 0.02], bot: [0.05, 0.016, 0.01], band: [0.55, 0.15, 0.03], sun: [0.5, 0.2, 0.3], sunCol: [0.5, 0.12, 0.02], cloud: 0.9, cloudCol: [0.12, 0.06, 0.04]},
     smoke: {top: [0.085, 0.072, 0.065], bot: [0.032, 0.028, 0.025], band: [0.08, 0.05, 0.03], sun: [0.7, 0.8, 0], sunCol: [0, 0, 0], cloud: 0.85, cloudCol: [0.14, 0.12, 0.105]},
     cold: {top: [0.04, 0.065, 0.13], bot: [0.02, 0.032, 0.06], band: [0.05, 0.085, 0.15], sun: [0.26, 0.5, 0.09], sunCol: [0.26, 0.34, 0.5], cloud: 0.55, cloudCol: [0.13, 0.15, 0.2]},
   };
-  const GRID = {base: [0.25, 0.9, 0.6], dry: [0.8, 0.52, 0.18], cold: [0.55, 0.78, 1]};
+  const GRID = {base: [0.25, 0.9, 0.6], dry: [0.8, 0.52, 0.18], fire: [0.95, 0.42, 0.2], cold: [0.55, 0.78, 1]};
   const mix3 = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
   const mixSky = (a, b, t) => ({top: mix3(a.top, b.top, t), bot: mix3(a.bot, b.bot, t), band: mix3(a.band, b.band, t), sun: mix3(a.sun, b.sun, t),
     sunCol: mix3(a.sunCol, b.sunCol, t), cloud: lerp(a.cloud, b.cloud, t), cloudCol: mix3(a.cloudCol, b.cloudCol, t)});
-  const CALM = {sky: SKY.base, rain: 0, snow: 0, dust: 0, ash: 0, dry: 0, frost: 0, char: 0, grid: GRID.base, on: false};
+  const CALM = {sky: SKY.base, rain: 0, snow: 0, dust: 0, ash: 0, dry: 0, frost: 0, char: 0, wet: 0, heat: 0, grid: GRID.base, on: false};
   const boreal = meta.story.boreal;
   const panels = [
     {key: 'wet', title: 'Warm & wet', color: '#b9f46b', site: story, cl: 'amazon',
       lines: [`Amazon, ${where(story)}`, `${degC(story.temp_c)} · ${fmt(story.precip_mm)} mm/yr`],
       tree: hero, h: y => at(h1, y), agb: y => at(agb1, y),
-      clim: y => ({...CALM, sky: SKY.wet, rain: rainRate(at(series.amazon.rain, y))})},
+      clim: y => ({...CALM, sky: SKY.wet, rain: Math.max(0.35, rainRate(at(series.amazon.rain, y))), wet: 0.85})},
     {key: 'drought', title: 'Drought', color: '#f5b544', site: scen.drought, cl: 'drought', event: 34,
       lines: [`Amazon, ${where(scen.drought)}`, `${degC(scen.drought.temp_c)} · ${fmt(scen.drought.precip_mm)} mm/yr`],
       h: y => at(dry.height, y), agb: y => at(dry.agb, y), leaf: y => leafRatio(dry.lai, y), min: 0.04,
       note: y => (y >= 34.6 ? `2015 rain ${Math.round(scen.drought.precip_pct[34])}% of normal: the canopy sheds its leaves, biomass −${dryLoss}%` : ''),
+      // hot and rainless in every year, so the view reads as drought from the start; the 2015-16
+      // drought then scorches the sky, cracks the ground and fills the air with dust
       clim: y => {
         const d = dryness('drought', y);
-        return {...CALM, sky: mixSky(SKY.wet, SKY.dry, d), rain: rainRate(at(series.drought.rain, y)) * (1 - d), dust: d, dry: d,
-          grid: mix3(GRID.base, GRID.dry, d), on: d > 0.35};
+        return {...CALM, sky: mixSky(SKY.arid, SKY.dry, d), dust: 0.3 + 0.7 * d, dry: 0.5 + 0.5 * d, heat: 0.5 + 0.5 * d,
+          grid: GRID.dry, on: d > 0.35};
       }},
     {key: 'fire', title: 'Fire', tag: 'sketch', color: '#ff7a45', site: story, cl: 'amazon', event: FIRE,
       lines: [`Amazon, ${where(story)}`, `burnt in ${1981 + FIRE}`],
       h: y => (y > FIRE && y < FIRE + 1 ? 0 : afterFire(h1, y)), agb: y => (y > FIRE && y < FIRE + 1 ? 0 : afterFire(agb1, y)),
       leaf: y => leafRatio(lai1, y <= FIRE ? y : Math.max(0, y - FIRE - 1)), min: 0.35, burn: (FIRE + 0.3) / 40,
       note: y => (y > FIRE ? 'A fire resets the clock: the stand starts again at age 1' : ''),
+      // fire-season haze with rising embers, the blaze, then smoke and ash over scorched ground
       clim: y => {
         const t = y - (FIRE + 0.3);
         const blaze = t > -0.15 ? ss(-0.15, 0.02, t) * Math.exp(-Math.max(0, t) / 0.45) : 0;
         const smoke = t > 0 ? ss(0, 0.25, t) * Math.exp(-t / 2.2) : 0;
-        return {...CALM, sky: mixSky(mixSky(SKY.wet, SKY.smoke, smoke), SKY.fire, blaze), rain: rainRate(at(series.amazon.rain, y)) * (1 - Math.max(smoke, blaze)),
-          ash: Math.max(smoke, blaze * 0.7), char: t > 0 ? ss(0, 0.1, t) * Math.exp(-t / 3.5) : 0, on: blaze + smoke > 0.3};
+        return {...CALM, sky: mixSky(mixSky(SKY.haze, SKY.smoke, smoke), SKY.fire, blaze), ash: Math.max(0.12, smoke, blaze * 0.7),
+          char: t > 0 ? 0.3 + 0.7 * ss(0, 0.1, t) * Math.exp(-t / 3.5) : 0, dry: 0.25, heat: 0.25, grid: GRID.fire, on: blaze + smoke > 0.3};
       }},
     {key: 'cold', title: 'Cold', color: '#8fc7ff', site: boreal, cl: 'boreal',
       lines: [`Finland, ${where(boreal)}`, `${degC(boreal.temp_c)} · ${fmt(boreal.precip_mm)} mm/yr`],
@@ -448,7 +456,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     SU.uSun.value.set(...sky.sun); SU.uSunCol.value.setRGB(...sky.sunCol);
     SU.uCloud.value = sky.cloud; SU.uCloudCol.value.setRGB(...sky.cloudCol);
     SU.uAspect.value = aspect;
-    GU.uDry.value = st.dry * k; GU.uSnow.value = st.frost * k; GU.uChar.value = st.char * k;
+    GU.uDry.value = st.dry * k; GU.uSnow.value = st.frost * k; GU.uChar.value = st.char * k; GU.uWet.value = st.wet * k;
+    SU.uHeat.value = st.heat * k;
     GU.uGrid.value.setRGB(...mix3(GRID.base, st.grid, k));
     for (const [kind, w] of Object.entries(weather)) {
       const rate = (kind === 'snow' ? st.snow : st[kind]) * k;
@@ -480,7 +489,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       motes.material.uniforms.uProj.value = proj;
       if (P.flames) P.flames.material.uniforms.uProj.value = proj;
       ground.material.uniforms.uShade.value = Math.max(0.2, P.h(forestYear(u)) * 0.034);
-      bg.material.uniforms.uOpacity.value = opacity * (i === 0 ? 1 : R.k);
+      bg.material.uniforms.uOpacity.value = opacity;   // a view keeps its sky while it slides, never a black box
       applyClimate(P.state, R.k, R.w / R.h, proj, opacity);
       renderer.render(fScene, P.cam);
     });
@@ -605,11 +614,11 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     streams.material.uniforms.uNetM.value.copy(net.group.matrixWorld);
 
     // ---------- forest state
-    const fA = ss(1.9, 2.06, u) * (1 - ss(6.53, 6.71, u));
+    const fBase = ss(1.9, 2.06, u) * (1 - ss(6.53, 6.71, u)), fA = fBase * (1 - dipAt(u));
     const year = forestYear(u);
     const hMain = at(amazon['1'].height, year), lai = at(amazon['1'].lai, year);
     const Hm = hMain / 10;
-    const cohortA = ss(5.3, 5.55, u);
+    const cohortA = ss(DIPS[1], 5.55, u);
     cohorts.forEach(c => {
       const series = amazon[String(c.age)], h = at(series.height, year), r = leafRatio(series.lai, year);
       c.h = h;
@@ -694,7 +703,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     // ---------- draw
     post?.begin();
     renderer.clear();
-    if (fA < 0.999) renderer.render(gScene, gCam);
+    if (fBase < 0.999) renderer.render(gScene, gCam);   // a dip fades the forest to dark, not to the globe
     if (fA > 0.001) {
       if (rects) drawPanels(rects);
       else { renderer.clearDepth(); renderer.render(fScene, fCam); }
