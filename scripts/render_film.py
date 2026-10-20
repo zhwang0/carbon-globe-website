@@ -21,8 +21,8 @@ IMG = os.path.join(ROOT, 'assets', 'img')
 VIDEO = os.path.join(OUT, 'carbonglobe-film.mp4')
 CUT = json.load(open(os.path.join(OUT, 'cut.json')))
 SPB = 60 / CUT['bpm']
-# stills, in beats: the title once the sun is up, and the end card
-POSTER_BEAT, SOCIAL_BEAT = 8, 118
+# stills, in beats: the title once the sun is up, and the dataset in numbers
+POSTER_BEAT, SOCIAL_BEAT = 8, 107.75
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -127,7 +127,7 @@ def main():
             httpd.shutdown()
             return
 
-        # stills: social card (the end card), video poster (the title once the sun is up), and a
+        # stills: social card (the dataset in numbers), video poster (the title once the sun is up), and a
         # text-free fallback image
         page.set_viewport_size({'width': 1600, 'height': 900})
         shot(SOCIAL_BEAT * SPB).resize((1200, 675), Image.LANCZOS).crop((0, 22, 1200, 652)).save(os.path.join(IMG, 'social.jpg'), quality=88)

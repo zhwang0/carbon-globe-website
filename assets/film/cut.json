@@ -1,9 +1,9 @@
 {
   "about": "The rendered film's edit, in beats at bpm. u: film positions (beat, u, easing into it). intro: the sunrise clock. lidar: the satellite lidar pass over the fifteen-age forest. titles: the film's own short titles. pops: beats at which the forcing views name themselves. finale: the beat on which the end card's title lands. cues and music: the score (chords, parts, and the pad's brightness and level), read by scripts/soundtrack.py. Rendered by scripts/render_film.py.",
   "bpm": 100,
-  "beats": 136,
-  "fade": [132, 136],
-  "u": [[0, 0], [10, 0.05], [14, 1.45, "io"], [15.5, 1.62], [20, 1.96], [21, 2.15, "out"], [25, 3.45], [26, 3.45], [27, 3.5, "in"], [28.5, 3.8, "out"], [30, 3.9], [38.5, 4.9], [39.5, 5.0], [40.5, 5.25, "io"], [42, 5.32], [43, 5.4], [47, 6.4], [51, 6.41], [52, 6.45], [56, 7.3, "io"], [57, 7.31], [70, 7.97], [72, 8.0], [76, 8.45, "io"], [84, 9.1], [86, 9.3], [88, 9.45], [92, 9.63, "io"], [96, 9.99], [97, 10.11, "io"], [100, 10.37], [101, 10.43, "io"], [103, 10.585], [104, 10.6], [108, 10.96, "io"], [109, 10.98], [112, 11.1, "io"], [120, 11.6], [124, 12.45, "io"], [136, 12.6]],
+  "beats": 124,
+  "fade": [120, 124],
+  "u": [[0, 0], [10, 0.05], [14, 1.45, "io"], [15.5, 1.62], [20, 1.96], [21, 2.15, "out"], [25, 3.45], [26, 3.45], [27, 3.5, "in"], [28.5, 3.8, "out"], [30, 3.9], [38.5, 4.9], [39.5, 5.0], [40.5, 5.25, "io"], [42, 5.32], [43, 5.4], [47, 6.4], [51, 6.41], [52, 6.45], [56, 7.3, "io"], [57, 7.31], [70, 7.97], [72, 8.0], [76, 8.45, "io"], [84, 9.1], [86, 9.3], [88, 9.45], [92, 9.63, "io"], [93.5, 9.99, "out"], [94, 10.11, "io"], [95.5, 10.37, "out"], [96, 10.43, "io"], [97.5, 10.585, "out"], [98, 10.6], [101, 10.96, "io"], [102, 10.98], [104, 11.1, "io"], [108, 11.6], [112, 12.45, "io"], [124, 12.6]],
   "intro": [[0, 0], [4, 0.33], [9, 1, "out"]],
   "titles": [
     {"in": 4, "out": 10, "pos": "left", "kind": "brand", "text": "Carbon<span class=\"grad\">Globe</span>", "sub": "Teaching AI how the world's forests <em>grow</em>.", "subIn": 6},
@@ -14,14 +14,14 @@
     {"in": 52, "out": 71, "pos": "left", "kind": "count", "count": 54152, "countTo": 56, "text": "{n} forests.", "sub": "One planet.", "subIn": 58},
     {"in": 72, "out": 86, "pos": "top", "text": "Now, teach an AI.", "parts": [["Climate in.", 76], ["Forest out.", 80], ["Year after year.", 82]]},
     {"in": 88, "out": 92, "pos": "top", "text": "Forty years ahead.", "sub": "In about an hour.", "subIn": 90, "subClass": "grad"},
-    {"in": 92, "out": 96, "pos": "top", "text": "Another climate?"},
-    {"in": 96, "out": 100, "pos": "top", "text": "Another starting forest?"},
-    {"in": 100, "out": 104, "pos": "top", "text": "Another future?"},
-    {"in": 104, "out": 108.5, "pos": "top", "text": "A digital twin", "sub": "of the world's forests.", "subIn": 105, "subClass": "grad"},
-    {"in": 109, "out": 120, "pos": "center", "kind": "big", "count": 812280, "countTo": 112, "sub": "forest simulations, forty years each.", "subIn": 112, "parts": [["136 drivers", 114], ["7 targets", 115], ["8 baselines", 116]]}
+    {"in": 92, "out": 94, "pos": "top", "text": "Another climate?"},
+    {"in": 94, "out": 96, "pos": "top", "text": "Another starting forest?"},
+    {"in": 96, "out": 98, "pos": "top", "text": "Another future?"},
+    {"in": 98, "out": 101, "pos": "top", "text": "A digital twin", "sub": "of the world's forests.", "subIn": 99, "subClass": "grad"},
+    {"in": 101.5, "out": 108.5, "pos": "center", "kind": "big", "count": 812280, "countTo": 104, "sub": "forest simulations, forty years each.", "subIn": 104, "parts": [["136 drivers", 105], ["7 targets", 106], ["8 baselines", 107]]}
   ],
   "pops": [29.5, 30, 30.5, 31],
-  "finale": 124,
+  "finale": 112,
   "cues": [
     {"b": 0, "kind": "riser", "len": 4, "gain": 0.7},
     {"b": 4, "kind": "hit", "size": 1.0},
@@ -50,34 +50,34 @@
     {"b": 88, "kind": "hit", "size": 0.7},
     {"b": 90, "kind": "bell", "note": 81},
     {"b": 92, "kind": "bell", "note": 74},
-    {"b": 96, "kind": "bell", "note": 77},
-    {"b": 100, "kind": "bell", "note": 79},
-    {"b": 104, "kind": "whoosh", "len": 3, "gain": 0.7},
-    {"b": 105, "kind": "bell", "note": 81},
+    {"b": 94, "kind": "bell", "note": 77},
+    {"b": 96, "kind": "bell", "note": 79},
+    {"b": 98, "kind": "whoosh", "len": 3, "gain": 0.7},
+    {"b": 99, "kind": "bell", "note": 81},
+    {"b": 100, "kind": "riser", "len": 4},
+    {"b": 101.5, "kind": "count", "len": 2.5},
+    {"b": 104, "kind": "hit", "size": 1.2},
+    {"b": 105, "kind": "pluck", "note": 81},
+    {"b": 106, "kind": "pluck", "note": 84},
+    {"b": 107, "kind": "pluck", "note": 86},
     {"b": 108, "kind": "riser", "len": 4},
-    {"b": 109, "kind": "count", "len": 3},
-    {"b": 112, "kind": "hit", "size": 1.2},
-    {"b": 114, "kind": "pluck", "note": 81},
-    {"b": 115, "kind": "pluck", "note": 84},
-    {"b": 116, "kind": "pluck", "note": 86},
-    {"b": 120, "kind": "riser", "len": 4},
-    {"b": 124, "kind": "hit", "size": 1.0},
-    {"b": 124, "kind": "bell", "note": 77}
+    {"b": 112, "kind": "hit", "size": 1.0},
+    {"b": 112, "kind": "bell", "note": 77}
   ],
   "music": {
-    "chords": [[0, "D5"], [4, "Dm9"], [12, "Bbmaj9"], [16, "C9"], [20, "Dm9"], [24, "Bbmaj9"], [28, "C9"], [32, "Dm9"], [36, "Bbmaj9"], [40, "A7sus"], [44, "Dm9"], [48, "Bbmaj9"], [52, "C9"], [56, "F9"], [60, "C9"], [64, "Dm9"], [68, "Bbmaj9"], [72, "Dm9"], [80, "Bbmaj9"], [84, "C9"], [88, "F9"], [92, "Dm9"], [96, "Bbmaj9"], [100, "Gm9"], [104, "F9"], [108, "A7sus"], [112, "Dm9"], [116, "Bbmaj9"], [120, "C9"], [124, "F9"], [128, "Fmaj9"]],
+    "chords": [[0, "D5"], [4, "Dm9"], [12, "Bbmaj9"], [16, "C9"], [20, "Dm9"], [24, "Bbmaj9"], [28, "C9"], [32, "Dm9"], [36, "Bbmaj9"], [40, "A7sus"], [44, "Dm9"], [48, "Bbmaj9"], [52, "C9"], [56, "F9"], [60, "C9"], [64, "Dm9"], [68, "Bbmaj9"], [72, "Dm9"], [80, "Bbmaj9"], [84, "C9"], [88, "F9"], [92, "Dm9"], [94, "Bbmaj9"], [96, "Gm9"], [98, "F9"], [100, "A7sus"], [104, "Dm9"], [106, "Bbmaj9"], [108, "C9"], [112, "F9"], [116, "Fmaj9"]],
     "parts": {
-      "pad": [[0, 136]],
-      "bass": [[4, 26], [29, 52], [56, 88], [92, 108], [112, 136]],
+      "pad": [[0, 124]],
+      "bass": [[4, 26], [29, 52], [56, 88], [92, 100], [104, 124]],
       "arp8": [[20, 26], [32, 40], [43, 52], [58, 72]],
       "arp16": [[76, 88]],
-      "arp4": [[92, 108]],
-      "kick2": [[22, 26], [32, 40], [44, 52], [112, 120]],
+      "arp4": [[92, 100]],
+      "kick2": [[22, 26], [32, 40], [44, 52], [104, 108]],
       "kick4": [[76, 88]],
-      "hat": [[22, 26], [34, 40], [45, 52], [78, 88], [114, 120]]
+      "hat": [[22, 26], [34, 40], [45, 52], [78, 88], [105, 108]]
     },
-    "bright": [[0, 700], [4, 1300], [20, 1500], [56, 2100], [72, 1700], [84, 2500], [88, 2000], [104, 2200], [108, 1700], [112, 2900], [124, 2500], [136, 1100]],
-    "level": [[0, 0.45], [4, 1.0], [20, 0.8], [28, 0.95], [56, 1.1], [76, 0.75], [88, 1.0], [104, 0.95], [108, 0.85], [112, 1.15], [128, 1.0], [136, 0.6]]
+    "bright": [[0, 700], [4, 1300], [20, 1500], [56, 2100], [72, 1700], [84, 2500], [88, 2000], [98, 2200], [100, 1700], [104, 2900], [112, 2500], [124, 1100]],
+    "level": [[0, 0.45], [4, 1.0], [20, 0.8], [28, 0.95], [56, 1.1], [76, 0.75], [88, 1.0], [98, 0.95], [100, 0.85], [104, 1.15], [116, 1.0], [124, 0.6]]
   },
-  "lidar": [[0, 0], [47, 0], [51, 1, "io"], [136, 1]]
+  "lidar": [[0, 0], [47, 0], [51, 1, "io"], [124, 1]]
 }
