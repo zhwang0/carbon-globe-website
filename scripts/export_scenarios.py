@@ -137,9 +137,13 @@ def main():
     box = (lat >= -10) & (lat <= 5) & (lon >= -75) & (lon <= -50) & (agb[:, 34] > 7)
     idx = np.nonzero(box)[0]
     i = int(idx[np.argmax(1 - agb[idx, 35] / agb[idx, 34])])
-    y = np.asarray(Y[i], np.float32)                     # (41, 12, 7)
-    series = {name: [round(float(x), 3) for x in (y[:, :, k].mean(1) if name in ANNUAL_MEAN else y[:, 11, k])]
-              for k, name in enumerate(NAMES)}
+    def site_series(Y):
+        y = np.asarray(Y[i], np.float32)                 # (41, 12, 7)
+        return {name: [round(float(x), 3) for x in (y[:, :, k].mean(1) if name in ANNUAL_MEAN else y[:, 11, k])]
+                for k, name in enumerate(NAMES)}
+    series = site_series(Y)
+    # the same cell's 100-year-old stand: the film's drought view, a mature forest that the drought thins and kills back
+    series100 = site_series(np.load(os.path.join(src, 'data_global', 'glob_Y100.npy'), mmap_mode='r'))
 
     # ---- monthly temperature and rain at every site, 1981..2020
     X = np.load(os.path.join(src, 'data_global', 'glob_X_fea.npy'), mmap_mode='r')
@@ -214,6 +218,7 @@ def main():
             'rule': 'Amazon-basin cell with the largest 2015-16 age-1 AGB loss',
             'precip_pct': [round(float(p), 1) for p in 100 * pr / pr.mean()],
             'age1': series,
+            'age100': series100,
         },
         'climate': climate,
         'maps': {

@@ -9,7 +9,7 @@
     {"in": 4, "out": 10, "pos": "left", "kind": "brand", "text": "Carbon<span class=\"grad\">Globe</span>", "sub": "Teaching AI how the world's forests <em>grow</em>.", "subIn": 6},
     {"in": 20, "out": 22.75, "pos": "left", "text": "One forest.", "sub": "Central Amazon, 1981.", "subIn": 20.75},
     {"in": 23.25, "out": 26.5, "pos": "left", "text": "Forty years, simulated.", "sub": "Ecosystem Demography model, ED v3.0", "subIn": 24},
-    {"in": 28, "out": 44, "pos": "top", "text": "Same start.", "sub": "Different forcings.", "subIn": 30},
+    {"in": 28, "out": 44, "pos": "top", "text": "Different forcings.", "sub": "Different fates.", "subIn": 30},
     {"in": 47.5, "out": 55.5, "pos": "left", "text": "Fifteen starting ages.", "sub": "From 1-year saplings to 500-year-old stands.", "subIn": 48.25, "parts": [["Measurable from orbit by lidar, like NASA's GEDI.", 51.25]]},
     {"in": 56, "out": 75, "pos": "left", "kind": "count", "count": 54152, "countTo": 60, "text": "{n} forests.", "sub": "One planet.", "subIn": 62},
     {"in": 76, "out": 90, "pos": "top", "text": "Now, teach an AI.", "parts": [["Climate in.", 80], ["Forest out.", 84], ["Year after year.", 86]]},

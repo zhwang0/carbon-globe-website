@@ -55,7 +55,7 @@ export function treePoints(geo, px, {glow = false} = {}) {
 const HERO_VERT = /* glsl */`
 attribute vec3 aNrm;
 attribute vec4 aA, aB;
-uniform float uT, uLeaf, uStress, uTime, uPx, uProj, uTop, uThick, uBurn;
+uniform float uT, uLeaf, uStress, uTime, uPx, uProj, uTop, uThick, uBurn, uDieback;
 uniform vec3 uLight, uTint;
 varying vec3 vColor;
 varying float vVis;
@@ -69,6 +69,11 @@ void main() {
   float drop = burnt < 0.5 && kind > 0.5 && fract(rnd * 7.31) < 0.12 ? clamp((uT - death) / 0.06, 0.0, 1.0) : 0.0;
   float vis = grow * (drop > 0.0 ? 1.0 - smoothstep(0.75, 1.0, drop) : 1.0 - fall);
   if (kind > 0.5) vis *= step(rnd, uLeaf);
+  // dieback: whole parts of the crown, a few metres across, die together and keep their bare, bleached
+  // limbs (a drought killing back a mature tree), never the stem
+  float part = fract(sin(dot(floor(position * 0.3 + 0.5), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+  float dead = step(part, uDieback) * (1.0 - stem);
+  if (kind > 0.5) vis *= 1.0 - dead;
   float fresh = exp(-max(uT - birth, 0.0) / 0.03) * grow;
   // fire: the crown flares as the front passes, then the bark is left scorched
   float flame = burnt * smoothstep(uBurn - 0.01, uBurn + 0.004, uT) * (1.0 - smoothstep(uBurn + 0.012, uBurn + 0.03, uT));
@@ -119,6 +124,7 @@ void main() {
     col += vec3(0.35, 0.95, 0.75) * rim * 0.22 + vec3(0.75, 1.0, 0.45) * fresh * 0.5;
   } else {
     col = vec3(0.66, 0.55, 0.42) * (0.85 + 0.3 * rnd) * (0.2 + 1.0 * diff) + vec3(0.3, 0.7, 0.6) * rim * 0.12;
+    col = mix(col, vec3(0.6, 0.58, 0.55) * (0.3 + 0.85 * diff), dead * 0.75);
   }
   col = mix(col, vec3(0.05, 0.045, 0.04) * (0.5 + diff), scorch);
   col = mix(col, vec3(1.7, 0.55, 0.12) * (0.6 + 0.8 * rnd), flame);
@@ -151,7 +157,7 @@ export function heroTreeMaterial(px, glow = false, shared = null) {
     uniforms: shared || {
       uT: {value: 0}, uLeaf: {value: 1}, uStress: {value: 0}, uTime: {value: 0}, uPx: {value: px}, uProj: {value: 1000},
       uTop: {value: 30}, uThick: {value: 1.15}, uOpacity: {value: 1}, uLight: {value: new THREE.Vector3(-0.55, 0.7, 0.45).normalize()},
-      uBurn: {value: -9}, uTint: {value: new THREE.Color(1, 1, 1)},
+      uBurn: {value: -9}, uTint: {value: new THREE.Color(1, 1, 1)}, uDieback: {value: 0},
     },
     vertexShader: HERO_VERT, fragmentShader: HERO_FRAG,
     ...(glow

@@ -33,17 +33,23 @@ const TARGETS = ['#b9f46b', '#7fe27a', '#c49a6c', '#3ee08f', '#5fe0d0', '#35c6f4
 const POINT_VERT = /* glsl */`
 attribute vec3 color;
 attribute vec4 aP;            // size, stage, square (1) or round (0), random
-uniform float uTime, uPx, uScale, uBuild, uOpacity;
+uniform float uTime, uPx, uScale, uBuild, uOpacity, uWave;
 varying vec3 vC;
 varying float vA, vSq;
+// a surge of activity sweeping from the inputs (left) to the outputs (right), every two beats of the film's
+// 100 BPM score (the film's clock starts on a beat)
+float surge(float x) {
+  float front = -2.0 + 3.8 * fract(uTime / 1.2);
+  return 1.0 + uWave * exp(-pow((x - front) / 0.24, 2.0));
+}
 void main() {
   float on = smoothstep(aP.y, aP.y + 0.12, uBuild);
   vC = color;
-  vA = on * uOpacity * (0.75 + 0.25 * sin(uTime * 2.1 + aP.w * 30.0));
+  vA = on * uOpacity * (0.75 + 0.25 * sin(uTime * 2.1 + aP.w * 30.0)) * surge(position.x);
   vSq = aP.z;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uPx * uScale * aP.x * (0.6 + 0.4 * on) / -mv.z;
+  gl_PointSize = uPx * uScale * aP.x * 1.3 * (0.6 + 0.4 * on) / -mv.z;
 }`;
 const POINT_FRAG = /* glsl */`
 varying vec3 vC;
@@ -54,40 +60,63 @@ void main() {
   float core = smoothstep(0.42, 0.3, d), halo = smoothstep(0.5, 0.0, length(q)) * 0.35;
   gl_FragColor = vec4(vC * (core + halo) * vA, 1.0);
 }`;
+// Connections as ribbons of a set width on screen (uWidth CSS pixels), so they stay bold at any
+// resolution, unlike WebGL lines: one instance per segment, a quad stretched between its ends.
 const LINE_VERT = /* glsl */`
-attribute vec3 color;
-attribute vec2 aL;            // stage, position along the line (for the dash)
-uniform float uBuild;
+attribute vec3 aStart, aEnd, aColor, aL;   // ends, colour; stage and position along the line at each end (dash)
+uniform float uBuild, uWidth, uPx, uTime, uWave;
+uniform vec2 uRes;
 varying vec3 vC;
-varying float vOn, vS;
+varying float vOn, vS, vEdge, vSurge;
+// a surge of activity sweeping from the inputs (left) to the outputs (right), every two beats of the film's
+// 100 BPM score (the film's clock starts on a beat)
+float surge(float x) {
+  float front = -2.0 + 3.8 * fract(uTime / 1.2);
+  return 1.0 + uWave * exp(-pow((x - front) / 0.24, 2.0));
+}
 void main() {
-  vC = color;
+  vec4 c0 = projectionMatrix * modelViewMatrix * vec4(aStart, 1.0);
+  vec4 c1 = projectionMatrix * modelViewMatrix * vec4(aEnd, 1.0);
+  vec2 d = (c1.xy / c1.w - c0.xy / c0.w) * uRes;
+  d = length(d) > 1e-5 ? normalize(d) : vec2(1.0, 0.0);
+  vec4 c = mix(c0, c1, position.x);
+  c.xy += vec2(-d.y, d.x) * position.y * uWidth * uPx / uRes * c.w;
+  gl_Position = c;
+  vC = aColor;
   vOn = smoothstep(aL.x, aL.x + 0.12, uBuild);
-  vS = aL.y;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  vS = mix(aL.y, aL.z, position.x);
+  vEdge = position.y;
+  vSurge = surge(mix(aStart.x, aEnd.x, position.x));
 }`;
 const LINE_FRAG = /* glsl */`
 uniform float uOpacity, uTime, uDash, uAlpha;
 varying vec3 vC;
-varying float vOn, vS;
+varying float vOn, vS, vEdge, vSurge;
 void main() {
   float dash = uDash > 0.0 ? step(0.45, fract(vS * uDash - uTime * 0.8)) : 1.0;
-  gl_FragColor = vec4(vC * vOn * uOpacity * uAlpha * dash, 1.0);
+  float soft = 1.0 - smoothstep(0.35, 1.0, abs(vEdge));
+  gl_FragColor = vec4(vC * vOn * uOpacity * uAlpha * dash * soft * vSurge, 1.0);
 }`;
 const FLOW_VERT = /* glsl */`
 attribute vec3 aB, aC;        // control and end points of a quadratic path from position
 attribute vec4 aF;            // phase, speed, stage, size
-uniform float uTime, uPx, uScale, uBuild;
+uniform float uTime, uPx, uScale, uBuild, uWave;
 varying float vA;
 varying vec3 vCol;
+// a surge of activity sweeping from the inputs (left) to the outputs (right), every two beats of the film's
+// 100 BPM score (the film's clock starts on a beat)
+float surge(float x) {
+  float front = -2.0 + 3.8 * fract(uTime / 1.2);
+  return 1.0 + uWave * exp(-pow((x - front) / 0.24, 2.0));
+}
 void main() {
   float t = fract(uTime * aF.y + aF.x);
   vec3 p = mix(mix(position, aB, t), mix(aB, aC, t), t);
-  vA = smoothstep(aF.z, aF.z + 0.12, uBuild) * sin(3.14159 * t);
+  vA = smoothstep(aF.z, aF.z + 0.12, uBuild) * sin(3.14159 * t) * surge(p.x);
   vCol = mix(vec3(0.35, 0.85, 1.0), vec3(0.75, 1.0, 0.45), t);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = uPx * uScale * aF.w / -mv.z;
+  gl_PointSize = uPx * uScale * aF.w * 1.5 / -mv.z;
 }`;
 const FLOW_FRAG = /* glsl */`
 uniform float uOpacity;
@@ -161,7 +190,9 @@ function additive(shaders, uniforms) {
 export function createEmulator(px, maps, mask) {
   const rng = mulberry32(17);
   const group = new THREE.Group();
-  const shared = {uTime: {value: 0}, uPx: {value: px}, uScale: {value: 1}, uBuild: {value: 0}, uOpacity: {value: 0}};
+  // uRes: the drawing buffer's size in device pixels, for the ribbons; uWave: the strength of the surges
+  const shared = {uTime: {value: 0}, uPx: {value: px}, uScale: {value: 1}, uBuild: {value: 0}, uOpacity: {value: 0},
+    uRes: {value: new THREE.Vector2(1280, 720)}, uWave: {value: 1.1}};
   const col = new THREE.Color();
   const pts = {pos: [], color: [], p: []};
   const point = (x, y, z, hex, size, stage, square = 1) => {
@@ -313,11 +344,32 @@ export function createEmulator(px, maps, mask) {
     group.add(o);
     return o;
   };
-  const lineMat = (alpha, dash = 0) => additive({vertexShader: LINE_VERT, fragmentShader: LINE_FRAG},
-    {uOpacity: shared.uOpacity, uTime: shared.uTime, uBuild: shared.uBuild, uAlpha: {value: alpha}, uDash: {value: dash}});
-  build(lines, [['position', 'pos', 3], ['color', 'color', 3], ['aL', 'l', 2]], lineMat(0.13), THREE.LineSegments);
-  const arcObj = build(arcs, [['position', 'pos', 3], ['color', 'color', 3], ['aL', 'l', 2]], lineMat(0.5), THREE.LineSegments);
-  build(loop, [['position', 'pos', 3], ['color', 'color', 3], ['aL', 'l', 2]], lineMat(0.85, 18), THREE.LineSegments);
+  // segments as ribbons: alpha, dash count along the line, width in CSS pixels
+  const quad = new THREE.BufferGeometry();
+  quad.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 0, 1, 0, 1, 1, 0], 3));
+  quad.setIndex([0, 1, 2, 2, 1, 3]);
+  const ribbons = (data, alpha, dash = 0, width = 1.6) => {
+    const g = new THREE.InstancedBufferGeometry();
+    g.index = quad.index;
+    g.setAttribute('position', quad.attributes.position);
+    const n = data.pos.length / 6, a = new Float32Array(n * 3), b = new Float32Array(n * 3), c = new Float32Array(n * 3), l = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      a.set(data.pos.slice(i * 6, i * 6 + 3), i * 3); b.set(data.pos.slice(i * 6 + 3, i * 6 + 6), i * 3);
+      c.set(data.color.slice(i * 6, i * 6 + 3), i * 3);
+      l.set([data.l[i * 4], data.l[i * 4 + 1], data.l[i * 4 + 3]], i * 3);
+    }
+    [['aStart', a], ['aEnd', b], ['aColor', c], ['aL', l]].forEach(([k, v]) => g.setAttribute(k, new THREE.InstancedBufferAttribute(v, 3)));
+    g.instanceCount = n;
+    const o = new THREE.Mesh(g, additive({vertexShader: LINE_VERT, fragmentShader: LINE_FRAG},
+      {uOpacity: shared.uOpacity, uTime: shared.uTime, uBuild: shared.uBuild, uPx: shared.uPx, uRes: shared.uRes, uWave: shared.uWave,
+        uAlpha: {value: alpha}, uDash: {value: dash}, uWidth: {value: width}}));
+    o.frustumCulled = false;
+    group.add(o);
+    return o;
+  };
+  ribbons(lines, 0.42, 0, 1.4);
+  const arcObj = ribbons(arcs, 0.75, 0, 2);
+  ribbons(loop, 1, 18, 2.6);
   build(pts, [['position', 'pos', 3], ['color', 'color', 3], ['aP', 'p', 4]],
     additive({vertexShader: POINT_VERT, fragmentShader: POINT_FRAG}, shared), THREE.Points);
   const flowObj = build(flows, [['position', 'a', 3], ['aB', 'b', 3], ['aC', 'c', 3], ['aF', 'f', 4]],
@@ -335,7 +387,7 @@ export function createEmulator(px, maps, mask) {
   }
   build(colPts, [['position', 'pos', 3], ['color', 'color', 3], ['aP', 'p', 4]],
     additive({vertexShader: POINT_VERT, fragmentShader: POINT_FRAG}, shared), THREE.Points);
-  build(colLine, [['position', 'pos', 3], ['color', 'color', 3], ['aL', 'l', 2]], lineMat(0.6, 6), THREE.LineSegments);
+  ribbons(colLine, 0.7, 6, 1.8);
 
   // The deck shuffles: each map holds the front for a while, then slips to the back. Slot s of a card
   // is 0 at the front and N - 1 at the back; between N - 1 and N it is travelling from front to back.
@@ -385,7 +437,7 @@ export function createEmulator(px, maps, mask) {
     shuffle(time - (deckStart ?? time), build);
     slabs.forEach(s => { s.mesh.material.uniforms.uOn.value = ss(s.stage, s.stage + 0.12, build); });
     // attention arcs flicker as if weights change
-    arcObj.material.uniforms.uAlpha.value = 0.35 + 0.15 * Math.sin(time * 3.1);
+    arcObj.material.uniforms.uAlpha.value = 0.6 + 0.2 * Math.sin(time * 3.1);
     for (let k = 0; k < nLoop; k++) {
       const t = (flows.f[(base + k) * 4] - time * 0.12 + 10) % 1;
       loopPath.getPoint(1 - t, tmp);
