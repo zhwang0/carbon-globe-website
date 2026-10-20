@@ -1,6 +1,6 @@
 // The scroll-driven film: hero globe -> one forest -> four forcings -> fifteen ages -> planet -> emulator -> what if -> numbers.
 import * as THREE from '../assets/vendor/three.module.js';
-import {createGlobe, createStars, createFlare, facing, cellOf, latLonToVec3} from './globe.js';
+import {createGlobe, createCanopy, createStars, createFlare, facing, cellOf, latLonToVec3} from './globe.js';
 import {createGround, createMotes, createWeather, createSky} from './forest.js';
 import {mulberry32} from './random.js';
 import {growTrees, treePoints, createFlames, PRE_TAU} from './hero-tree.js';
@@ -98,10 +98,15 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   // globe scene
   const gScene = new THREE.Scene();
   const gCam = new THREE.PerspectiveCamera(35, 1, 0.005, 200);
+  // the photographic Earth, with a 1 km image of the Amazon for the dive (box in step with prepare_textures.py)
   const G = createGlobe({day: tex.day, mask: tex.mask, zones: tex.zones.tex, data: tex.height.tex, segments: mobile ? 160 : 224,
-    clouds: tex.clouds, lights: tex.lights, real: 1});
+    clouds: tex.clouds, lights: tex.lights, real: 1, detail: {tex: tex.amazon, box: [-76, 5, -52, -11]}});
   G.uniforms.uTarget.value.set(target.col, target.row);
   G.globe.renderOrder = 1; G.atmo.renderOrder = 2;
+  // the planet chapter's forests in relief, rising over the globe as the years pass
+  const canopy = createCanopy({data: tex.height.tex, ramp: G.uniforms.uRamp, sun: G.uniforms.uSun, segments: mobile ? 180 : 360});
+  canopy.mesh.renderOrder = 1.5;
+  G.spin.add(canopy.mesh);
   const stars = createStars(mobile ? 1400 : 2800);
   stars.material.uniforms.uPx.value = px;
   gScene.add(stars, G.group);
@@ -533,8 +538,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       const kOut = ease(ss(6.6, 7.3, u));
       alt = Math.exp(lerp(Math.log(DIVE_ALT), Math.log(L.planet.d - 1), kOut));
       rx = lerp(targetRot.x, 0.32, kOut);
-      // one full turn while the forests grow, so every continent comes past
-      ry = targetRot.y + kOut * 0.7 + 2 * Math.PI * ease(ss(7.3, 8.0, u)) + Math.max(0, u - 7.3) * 0.3;
+      // one unhurried full turn while the forests grow, so every continent comes past
+      ry = targetRot.y + kOut * 0.7 + 2 * Math.PI * ss(7.3, 8.0, u) + Math.max(0, u - 7.3) * 0.3;
       gx = lerp(0, L.planet.x, kOut); gy = lerp(0, L.planet.y, kOut); gs = lerp(1, L.planet.s, kOut);
     }
     let dist = 1 + alt;
@@ -584,16 +589,24 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       flare.material.uniforms.uI.value = I1;
     }
     stars.material.uniforms.uOpacity.value = ss(0, 0.45, kIn);
-    // Near the surface, let the satellite imagery show through the data layer.
-    const surface = ss(1.15, 1.7, u) * (1 - ss(6.8, 7.15, u));
-    // clouds drift; they part as the camera nears the ground and thin while the forests grow, when
-    // the forest layer is drawn strongest
+    // On the way down to the Amazon the real forest shows, untinted and a little brighter. While the
+    // planet's forests grow they stand in relief instead of tinting the globe, and the clouds thin.
+    // Clouds part as the camera nears the ground.
+    const near = ss(0.8, 1.5, u) * (1 - ss(6.8, 7.15, u));
     const growing = ss(6.9, 7.3, u) * (1 - ss(7.95, 8.4, u));
-    U.uDataMix.value = (1 - 0.6 * surface) * (1 + 0.2 * growing);
+    const relief = ss(6.95, 7.3, u) * (1 - ss(7.95, 8.3, u));
+    U.uDataMix.value = (1 - 0.92 * near) * (1 - 0.85 * relief);
+    U.uExposure.value = 1 + 0.4 * near;
     U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing);
+    canopy.mesh.visible = relief > 0.002;
+    const CU = canopy.uniforms;
+    CU.uOpacity.value = relief;
+    CU.uLift.value = 0.05 * relief;
     U.uCloudShift.value = time * 0.0016;
     // the planet comes back in 1981, under the flash that ends the forest chapters, and grows to 2021
     U.uYear.value = u < 6.45 ? 40 : 40 * ss(7.32, 7.95, u);
+    CU.uYear.value = U.uYear.value;
+    CU.uCenter.value.copy(G.group.position);
     U.uGridMix.value = u > 0.9 && u < 7.05 ? 1 : 0;
     U.uTargetMix.value = ss(1.4, 1.75, u) * (1 - ss(6.75, 7, u));
     U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kNum), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum));

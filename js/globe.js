@@ -160,9 +160,11 @@ uniform sampler2D uMask;
 uniform sampler2D uZones;
 uniform sampler2D uClouds;
 uniform sampler2D uLights;
+uniform sampler2D uDetail;
 uniform sampler2DArray uData;
 uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight;
-uniform float uReal, uCloud, uCloudShift;
+uniform float uReal, uCloud, uCloudShift, uDetailMix, uExposure;
+uniform vec4 uDetailBox;
 uniform vec3 uSun;
 uniform vec3 uRamp[5];
 uniform vec3 uZone[6];
@@ -222,7 +224,14 @@ void main() {
   if (uReal > 0.001) {
     float lit = smoothstep(-0.1, 0.2, ndl);
     float sun = pow(max(ndl, 0.0), 0.7);
-    vec3 alb = pow(base, vec3(1.08)) * 1.18;
+    // a sharper image of one region (the film's dive into the Amazon), feathered into the global one
+    vec3 img = base;
+    vec2 dq = (vUv - uDetailBox.xy) / (uDetailBox.zw - uDetailBox.xy);
+    if (uDetailMix > 0.0 && dq.x > 0.0 && dq.x < 1.0 && dq.y > 0.0 && dq.y < 1.0) {
+      float edge = smoothstep(0.0, 0.06, min(min(dq.x, 1.0 - dq.x), min(dq.y, 1.0 - dq.y)));
+      img = mix(img, texture2D(uDetail, dq).rgb, edge * uDetailMix);
+    }
+    vec3 alb = pow(img, vec3(1.08)) * 1.18;
     // a green tint that keeps the imagery's texture, deepening as the canopy grows
     alb = mix(alb, ramp(t * 0.82) * 0.92 + alb * 0.22, cov * smoothstep(0.06, 0.6, t) * uDataMix * 0.78);
     vec2 cuv = vec2(vUv.x + uCloudShift, vUv.y);
@@ -233,6 +242,7 @@ void main() {
     float nh = max(dot(N, Hh), 0.0);
     real += (vec3(1.0, 0.95, 0.86) * pow(nh, 260.0) * 0.32 + vec3(0.45, 0.62, 0.85) * pow(nh, 14.0) * 0.035) * (1.0 - land) * lit * (1.0 - cl);
     real = mix(real, vec3(0.03) + vec3(1.02, 1.02, 1.0) * sun, cl);
+    real *= uExposure;
     float dark = 1.0 - smoothstep(-0.2, 0.06, ndl);
     real += vec3(1.0, 0.72, 0.4) * texture2D(uLights, vUv).r * dark * (1.0 - 0.8 * cl) * 1.2;
     float fh = pow(1.0 - max(dot(N, V), 0.0), 2.3);
@@ -252,8 +262,10 @@ void main() {
   vec2 gf = abs(fract(g) - 0.5);
   vec2 ll = smoothstep(0.5 - gw * 1.2, vec2(0.5), gf);
   float line = max(ll.x, ll.y) * smoothstep(0.6, 0.12, max(gw.x, gw.y));
-  col += vec3(0.55, 1.0, 0.75) * line * uGridMix * 0.35 * smoothstep(0.2, 0.6, land);
   vec2 cell = floor(g);
+  // the photographic globe draws the 0.5° grid only around the target cell, fainter, so the forest shows
+  float local = mix(1.0, (1.0 - smoothstep(3.0, 8.0, length(cell - uTarget))) * 0.55, uReal);
+  col += vec3(0.55, 1.0, 0.75) * line * uGridMix * 0.35 * local * smoothstep(0.2, 0.6, land);
   float isT = 1.0 - step(0.5, length(cell - uTarget));
   float pulse = 0.7 + 0.3 * sin(uTime * 3.0);
   col = mix(col, col * 1.6 + vec3(0.06, 0.12, 0.06), isT * uTargetMix * 0.5);
@@ -300,11 +312,15 @@ void main() {
 
 // real: 0 for the stylised data globe (the explorer), 1 for the photographic Earth of the film, which
 // also takes clouds and night lights.
-export function createGlobe({day, mask, zones, data = null, segments = 192, clouds = null, lights = null, real = 0}) {
+// detail: {tex, box: [west, north, east, south]} in degrees, a sharper image of one region.
+export function createGlobe({day, mask, zones, data = null, segments = 192, clouds = null, lights = null, real = 0, detail = null}) {
+  const box = detail ? detail.box : [0, 0, 1, 1];
   const uniforms = {
     uDay: {value: day}, uMask: {value: mask}, uZones: {value: zones},
-    uClouds: {value: clouds || mask}, uLights: {value: lights || mask},
-    uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0},
+    uClouds: {value: clouds || mask}, uLights: {value: lights || mask}, uDetail: {value: detail ? detail.tex : mask},
+    uDetailMix: {value: detail ? 1 : 0},
+    uDetailBox: {value: new THREE.Vector4((box[0] + 180) / 360, (box[3] + 90) / 180, (box[2] + 180) / 360, (box[1] + 90) / 180)},
+    uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0}, uExposure: {value: 1},
     uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
     uHasData: {value: data ? 1 : 0},
     uYear: {value: 40}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
@@ -330,6 +346,64 @@ export function createGlobe({day, mask, zones, data = null, segments = 192, clou
     setData(tex) { uniforms.uData.value = tex; uniforms.uHasData.value = tex ? 1 : 0; },
     setRamp(name) { uniforms.uRamp.value = rampUniform(name); },
   };
+}
+
+// The planet's forests in relief, for the film: a shell over the globe raised by each site's canopy height
+// in the given year (exaggerated: lift is the height of a 35 m canopy, in globe radii), coloured by it, and
+// see-through where little or no forest stands, so the forests visibly rise as the years pass.
+const CANOPY_VERT = /* glsl */`
+precision highp sampler2DArray;
+uniform sampler2DArray uData;
+uniform float uYear, uLift;
+varying float vT;
+varying float vH;
+varying vec3 vW;
+void main() {
+  vec2 duv = vec2(uv.x, 1.0 - uv.y);
+  float y0 = floor(uYear), y1 = min(y0 + 1.0, 40.0);
+  vec2 d = mix(texture(uData, vec3(duv, y0)).rg, texture(uData, vec3(duv, y1)).rg, uYear - y0);
+  float cov = smoothstep(0.3, 0.85, d.g);
+  vT = d.r / max(d.g, 1e-3);
+  vH = vT * vT * cov;                       // canopy height / 35 m (values are stored as its square root)
+  vec4 w = modelMatrix * vec4(position * (1.0015 + vH * uLift), 1.0);
+  vW = w.xyz;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+const CANOPY_FRAG = /* glsl */`
+uniform vec3 uSun;
+uniform vec3 uRamp[5];
+uniform vec3 uCenter;
+uniform float uOpacity;
+varying float vT;
+varying float vH;
+varying vec3 vW;
+vec3 ramp(float t) {
+  t = clamp(t, 0.0, 1.0) * 4.0;
+  float i = min(floor(t), 3.0);
+  float f = t - i;
+  vec3 a = uRamp[0], b = uRamp[1];
+  if (i > 2.5) { a = uRamp[3]; b = uRamp[4]; }
+  else if (i > 1.5) { a = uRamp[2]; b = uRamp[3]; }
+  else if (i > 0.5) { a = uRamp[1]; b = uRamp[2]; }
+  return mix(a, b, f);
+}
+void main() {
+  float a = smoothstep(0.03, 0.2, vH) * uOpacity;
+  if (a < 0.01) discard;
+  vec3 N = normalize(cross(dFdx(vW), dFdy(vW)));
+  if (dot(N, vW - uCenter) < 0.0) N = -N;
+  float diff = max(dot(N, normalize(uSun)), 0.0);
+  gl_FragColor = vec4(ramp(0.25 + 0.7 * vT) * (0.12 + 1.05 * diff), a);
+}`;
+
+export function createCanopy({data, ramp, sun, segments = 360}) {
+  const uniforms = {uData: {value: data}, uYear: {value: 0}, uLift: {value: 0}, uOpacity: {value: 0},
+    uRamp: ramp, uSun: sun, uCenter: {value: new THREE.Vector3()}};
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), new THREE.ShaderMaterial({
+    uniforms, vertexShader: CANOPY_VERT, fragmentShader: CANOPY_FRAG, transparent: true,
+  }));
+  mesh.visible = false;
+  return {mesh, uniforms};
 }
 
 export function createStars(count = 2400, radius = 60) {

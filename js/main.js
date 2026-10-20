@@ -47,7 +47,8 @@ function textures() {
       loadZones('assets/data/climate.png'),
       loadTexture('assets/tex/clouds.webp'),
       loadTexture('assets/tex/night-lights.webp'),
-    ]).then(([day, mask, zones, clouds, lights]) => ({day, mask, zones, clouds, lights}));
+      loadTexture('assets/tex/amazon.webp'),
+    ]).then(([day, mask, zones, clouds, lights, amazon]) => ({day, mask, zones, clouds, lights, amazon}));
   }
   return texP;
 }
