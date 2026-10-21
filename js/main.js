@@ -104,9 +104,9 @@ function splitWords(el) {
 }
 fades.forEach(f => { if (f.isCap) f.el.querySelectorAll('h2').forEach(splitWords); });
 
-// The opening: the hero's lines arrive in turn (CSS reads --in, in seconds since the page started).
+// The opening: the hero's lines arrive in turn (CSS reads --in, in seconds since the 3D story came into view).
 const heroEl = $('.hero');
-const T0 = performance.now();
+let T0 = null;
 let introDone = false;
 function applyIntro(s) {
   if (introDone) return;
@@ -140,7 +140,8 @@ function applyFades(u) {
   marks.forEach((m, i) => { if (u >= m - 0.05) cur = i; });
   chapterBtns.forEach((b, i) => b.classList.toggle('on', i === cur));
   progress.style.width = `${clamp(u / U_END) * 100}%`;
-  topbar.classList.toggle('show', u > 0.75);
+  // the bar shows over the film at the top and from the first chapter on, not over the hero
+  topbar.classList.toggle('show', u > 0.75 || scrollY < film.offsetTop - innerHeight * 0.4);
 }
 
 function goto(u) {
@@ -150,7 +151,7 @@ function goto(u) {
 }
 chapterBtns.forEach(b => b.addEventListener('click', () => { stopPlay(); goto(+b.dataset.goto); }));
 
-// Play the film: scroll at a steady pace, stop on any user input.
+// Play in 3D: scroll the story at a steady pace, stop on any user input.
 const pauseBtn = $('#film-pause');
 let playing = false, playY = 0;
 function startPlay() {
@@ -183,11 +184,15 @@ function loop(now) {
     window.scrollTo(0, playY);
     if ((playY - top) / vh >= U_END - 0.05) stopPlay();
   }
-  applyIntro((now - T0) / 1000);
+  // the 3D story waits below the film at the top: nothing is drawn and its opening (the sunrise, the hero's
+  // lines) is held until it comes into view
+  const below = scrollY + innerHeight <= film.offsetTop;
+  if (T0 === null && !below) T0 = now;
+  applyIntro(T0 === null ? 0 : (now - T0) / 1000);
   uT = readU();
   if (snap || reduced) { uS = uT; snap = false; }
   else { uS += (uT - uS) * (1 - Math.exp(-dt * 6)); if (Math.abs(uT - uS) < 1e-4) uS = uT; }
-  const filmVisible = scrollY < film.offsetTop + film.offsetHeight;
+  const filmVisible = !below && scrollY < film.offsetTop + film.offsetHeight;
   if (!filmVisible) { topbar.classList.add('show'); return; }
   applyFades(uS);
   forecast?.update(uS);
@@ -270,17 +275,17 @@ $$('.spot').forEach(el => el.addEventListener('pointermove', e => {
   });
 }
 
-// the film plays in a lightbox; without <dialog> the link opens the MP4
+// the film at the top plays in place, with sound, once asked; it pauses when scrolled away and returns to its
+// poster when it ends
 {
-  const box = $('#lightbox'), video = box.querySelector('video');
-  $('#film-open').addEventListener('click', e => {
-    if (typeof box.showModal !== 'function') return;
-    e.preventDefault();
-    box.showModal();
-    video.play().catch(() => {});
+  const video = $('#ft-video'), play = $('#ft-play');
+  play.addEventListener('click', () => {
+    play.hidden = true;
+    video.controls = true;
+    video.play().catch(() => { play.hidden = false; video.controls = false; });
   });
-  box.addEventListener('close', () => video.pause());
-  box.addEventListener('click', e => { if (e.target === box) box.close(); });
+  video.addEventListener('ended', () => { video.controls = false; video.load(); play.hidden = false; });
+  new IntersectionObserver(([e]) => { if (e.intersectionRatio < 0.25 && !video.paused) video.pause(); }, {threshold: [0, 0.25]}).observe(video);
 }
 
 // the top bar marks the section on screen
