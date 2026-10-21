@@ -85,6 +85,19 @@ export async function createCut({titles, fade, panels, finale}) {
       });
       card.append(row);
     }
+    // a credit (the authors, then where they work) follows the title in, line by line
+    let credit = [];
+    if (T.credit) {
+      const box = document.createElement('div');
+      box.className = 't-credit';
+      credit = T.credit.map((line, i) => {
+        const p = document.createElement('p');
+        p.innerHTML = line;
+        box.append(p);
+        return {el: p, at: T.creditIn + i * 0.5};
+      });
+      card.append(box);
+    }
     titles.append(card);
     // whole lines arrive at once where words would break a gradient; otherwise word by word
     const words = T.kind === 'brand' || T.kind === 'big' ? [main] : splitWords(main);
@@ -94,7 +107,7 @@ export async function createCut({titles, fade, panels, finale}) {
       num.style.width = `${num.offsetWidth + 1}px`;
       num.style.textAlign = 'right';
     }
-    return {T, card, words, sub, parts, num};
+    return {T, card, words, sub, parts, credit, num};
   });
   // the corner tag names the model behind what is on screen, its light pulsing on the beat
   const tags = (cut.tags ?? []).map(T => {
@@ -116,7 +129,7 @@ export async function createCut({titles, fade, panels, finale}) {
     },
     apply(t) {
       const b = t / spb;
-      for (const {T, card, words, sub, parts, num} of cards) {
+      for (const {T, card, words, sub, parts, credit, num} of cards) {
         const x = clamp((b - T.out) * spb / 0.35);
         const on = b >= T.in && x < 1;
         card.style.visibility = on ? 'visible' : 'hidden';
@@ -129,6 +142,7 @@ export async function createCut({titles, fade, panels, finale}) {
         // the newest part is bright, the earlier ones step back
         const now = parts.filter(p => b >= p.at).pop();
         parts.forEach(p => { arrive(p.el, out3(clamp((b - p.at) * spb / 0.4))); p.el.classList.toggle('now', p === now); });
+        credit.forEach(c => arrive(c.el, out3(clamp((b - c.at) * spb / 0.5))));
         if (num) num.textContent = fmt(Math.round(T.count * EASE.io(clamp((b - T.in) / (T.countTo - T.in)))));
       }
       for (const {T, el, dot} of tags) {

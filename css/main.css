@@ -872,6 +872,10 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
 .t-left.t-brand { width: min(660px, 52vw); }
 .t-brand .t-main { font-size: clamp(52px, 7.3vw, 108px); font-weight: 750; letter-spacing: -0.055em; line-height: .92; }
 .t-card.t-brand .t-sub { margin-top: 18px; font-size: clamp(19px, 2.15vw, 31px); font-weight: 500; letter-spacing: -0.022em; color: var(--text); }
+/* the authors under the opening's title, quiet, as on the page's hero */
+.t-credit { margin-top: clamp(22px, 2.9vw, 42px); }
+.t-credit p:first-child { max-width: 30em; font: 550 clamp(12px, 1.2vw, 17px)/1.45 var(--sans); letter-spacing: -0.005em; color: var(--text); text-wrap: balance; }
+.t-credit p + p { margin-top: 6px; font: 450 clamp(11px, 1.02vw, 15px)/1.4 var(--sans); color: var(--muted); }
 .t-big .t-main { font-size: clamp(84px, 13.5vw, 200px); font-weight: 750; letter-spacing: -0.05em; line-height: .95; text-shadow: none; }
 .t-big .t-num { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 .04em; }
 .t-card.t-big .t-sub { margin-top: 10px; color: var(--text); font-weight: 500; }
