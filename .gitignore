@@ -6,3 +6,24 @@ node_modules/
 test-results/
 .env
 .env.*
+
+# Local only, never published: the working notes, the production scripts (all but the
+# validator the deploy runs) and the film's edit
+/NOTES.md
+/scripts/*
+!/scripts/validate_site.py
+/js/cut.js
+/assets/film/cut.json
+/_site/
+
+# No dataset arrays, tables (the challenge's CSVs among them) or model weights
+*.csv
+*.npy
+*.npz
+*.nc
+*.h5
+*.hdf5
+*.parquet
+*.pt
+*.pth
+*.ckpt

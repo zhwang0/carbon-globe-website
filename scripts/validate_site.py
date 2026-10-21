@@ -2,11 +2,14 @@
 
 Verifies that every local file referenced by index.html, the CSS and the JS modules exists,
 and that the exported data has the expected shapes. Exit code 1 on any failure.
-Usage: python scripts/validate_site.py
+Usage: python scripts/validate_site.py [DIR]
+       DIR defaults to the website directory; the deploy passes the copy it publishes.
 """
 import json, os, re, struct, sys
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+ROOT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..'))
+# the render mode's edit, kept out of the repository (see .gitignore), so a published copy has none
+LOCAL_ONLY = {'js/cut.js', 'assets/film/cut.json'}
 errors = []
 
 
@@ -15,7 +18,7 @@ def local(ref):
 
 
 def exists(path, where):
-    if not os.path.exists(os.path.join(ROOT, path)):
+    if path not in LOCAL_ONLY and not os.path.exists(os.path.join(ROOT, path)):
         errors.append(f'{where}: missing {path}')
 
 
@@ -133,9 +136,10 @@ if secs and os.path.exists(os.path.join(ROOT, film)):
             errors.append(f'index.html: the film is {seconds:.1f} s, the page says {secs.group(1)} s')
         if 'with sound' in html and 'soun' not in handlers:
             errors.append('index.html: the page says the film has sound, the MP4 has no audio track')
-        cut = json.load(open(os.path.join(ROOT, 'assets/film/cut.json')))
-        if abs(cut['beats'] * 60 / cut['bpm'] - seconds) > 0.6:
-            errors.append(f'assets/film/cut.json: the edit is {cut["beats"] * 60 / cut["bpm"]:.1f} s, the film {seconds:.1f} s; re-render it')
+        if os.path.exists(os.path.join(ROOT, 'assets/film/cut.json')):
+            cut = json.load(open(os.path.join(ROOT, 'assets/film/cut.json')))
+            if abs(cut['beats'] * 60 / cut['bpm'] - seconds) > 0.6:
+                errors.append(f'assets/film/cut.json: the edit is {cut["beats"] * 60 / cut["bpm"]:.1f} s, the film {seconds:.1f} s; re-render it')
     except ValueError as e:
         errors.append(str(e))
 
