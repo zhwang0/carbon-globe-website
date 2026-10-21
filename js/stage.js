@@ -13,6 +13,7 @@ const ss = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0)); return t * t 
 const ease = t => (t < .5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
 const AGES = [1, 10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 350, 400, 450, 500];
+const HERO_D = 4.2;        // camera distance (globe radii) of the opening globe
 const DIVE_ALT = 0.2;      // altitude (globe radii) the dive passes on its way down to the Amazon
 const GROUND_ALT = 0.002;  // ... and where it ends, about 13 km above the forest
 const GROUND = {lat: -3.29, lon: -63.68};   // the forest at the head of a lake, by the chapter's site
@@ -41,6 +42,20 @@ const storyYear = (keys, k) => {
 };
 // Split of the forest view into four: 0 = one view, 1 = four.
 const splitK = u => ease(ss(3.5, 3.8, u)) * (1 - ease(ss(5.0, 5.25, u)));
+
+// The page's dive comes to rest over the region, where the page names the site, before it goes on down
+// to the forest. The film dives in one motion: its u runs through the dive (0.55 to 1.96) linearly in log
+// altitude, so the edit's easing alone sets the pace, and filmU maps it back to the page's u.
+const DIVE = [0.55, 1.96];
+const diveLog = u => lerp(lerp(Math.log(HERO_D - 1), Math.log(DIVE_ALT), ease(ss(0.55, 1.62, u))), Math.log(GROUND_ALT), ss(1.62, 1.96, u));
+const DIVE_N = 2048, diveTable = Float64Array.from({length: DIVE_N + 1}, (_, i) => diveLog(lerp(DIVE[0], DIVE[1], i / DIVE_N)));
+function filmU(u) {
+  if (u <= DIVE[0] || u >= DIVE[1]) return u;
+  const l = lerp(diveTable[0], diveTable[DIVE_N], (u - DIVE[0]) / (DIVE[1] - DIVE[0]));
+  let lo = 0, hi = DIVE_N;   // the table falls as u rises
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (diveTable[m] > l) lo = m; else hi = m; }
+  return lerp(DIVE[0], DIVE[1], (lo + (diveTable[lo] - l) / (diveTable[lo] - diveTable[hi])) / DIVE_N);
+}
 
 // Particles flowing from land cells on the globe to the same place on the emulator's front map.
 function createStreams(zones, net, px, count) {
@@ -461,9 +476,10 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     miniTree.material.uniforms.uProj.value = H * 0.5 / t;
     const narrow = aspect < 0.85;
     // hero: globe to the right of the title (or above it on phones)
-    const dh = 4.2, hh = dh * t, hw = hh * aspect;
+    const dh = HERO_D, hh = dh * t, hw = hh * aspect;
     L.hero = narrow ? {x: 0, y: hh * 0.55, s: Math.min(0.82, hw * 0.78), d: dh} : {x: hw * 0.5, y: 0, s: 0.95, d: dh};
-    L.planet = narrow ? {x: 0, y: -hh * 0.18, s: Math.min(0.9, hw * 0.85), d: dh} : {x: hw * 0.36, y: 0, s: 1, d: dh};
+    // (the film's planet is a little smaller, clear of its corner tag)
+    L.planet = narrow ? {x: 0, y: -hh * 0.18, s: Math.min(0.9, hw * 0.85), d: dh} : {x: hw * 0.36, y: 0, s: film ? 0.92 : 1, d: dh};
     // emulator: globe left, network right
     const dn = 4.4, nh = dn * t, nw = nh * aspect;
     L.net = narrow
@@ -569,7 +585,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   let last = performance.now(), time = 0;
   // opt.intro: the sunrise's progress (0..1), when the rendered film times it to its music
   function render(uNow, tFixed, opt = {}) {
-    u = uNow;
+    u = film ? filmU(uNow) : uNow;
     let dt;
     if (tFixed !== undefined) { dt = Math.max(0, tFixed - time); time = tFixed; }
     else { const now = performance.now(); dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt; }
@@ -761,7 +777,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       fCam.updateMatrixWorld();
       lidarDir.setFromMatrixColumn(fCam.matrixWorld, 0).setY(0).normalize();
     }
-    lidar.update(lk, lidarA, lidarDir, canopyTop);
+    lidar.update(lk, lidarA, lidarDir, canopyTop, time);
 
     // four forcings: every view shares one scale so heights compare directly
     const kS = splitK(u), rects = kS > 0.001 ? panelRects(kS) : null;

@@ -96,6 +96,17 @@ export async function createCut({titles, fade, panels, finale}) {
     }
     return {T, card, words, sub, parts, num};
   });
+  // the corner tag names the model behind what is on screen, its light pulsing on the beat
+  const tags = (cut.tags ?? []).map(T => {
+    const el = document.createElement('div');
+    el.className = 't-tag';
+    el.innerHTML = `<i></i><b>${T.name}</b><span>${T.what}</span>`;
+    titles.append(el);
+    return {T, el, dot: el.firstChild};
+  });
+  // the end card's lines follow its title in, half a beat apart
+  const finaleParts = [['.finale-sub', 0.5], ['.finale-url', 1], ['.finale-links', 1.5]]
+    .map(([sel, at]) => ({el: finale.querySelector(sel), at})).filter(p => p.el);
 
   return {
     duration: cut.beats * spb,
@@ -120,6 +131,17 @@ export async function createCut({titles, fade, panels, finale}) {
         parts.forEach(p => { arrive(p.el, out3(clamp((b - p.at) * spb / 0.4))); p.el.classList.toggle('now', p === now); });
         if (num) num.textContent = fmt(Math.round(T.count * EASE.io(clamp((b - T.in) / (T.countTo - T.in)))));
       }
+      for (const {T, el, dot} of tags) {
+        const x = clamp((b - T.out) * spb / 0.35);
+        const on = b >= T.in && x < 1;
+        el.style.visibility = on ? 'visible' : 'hidden';
+        if (!on) continue;
+        const q = out3(clamp((b - T.in) * spb / 0.5));
+        el.style.opacity = (q * (1 - x)).toFixed(3);
+        el.style.transform = `translateX(${((1 - q) * 16).toFixed(1)}px)`;
+        el.style.filter = q < 0.995 || x > 0.005 ? `blur(${((1 - q + x) * 6).toFixed(2)}px)` : '';
+        dot.style.opacity = (0.4 + 0.6 * Math.exp(-(b - Math.floor(b)) * spb / 0.16)).toFixed(3);
+      }
       // the four forcing views name themselves one per beat
       const heads = panels.querySelectorAll('.p-head');
       cut.pops.forEach((at, i) => {
@@ -134,6 +156,7 @@ export async function createCut({titles, fade, panels, finale}) {
       finale.style.visibility = k > 0 ? 'visible' : 'hidden';
       finale.style.translate = `0 ${((1 - out3(k)) * 16).toFixed(1)}px`;
       finale.style.setProperty('--k', clamp((b - cut.finale) * spb / 1.4).toFixed(3));
+      finaleParts.forEach(p => arrive(p.el, out3(clamp((b - cut.finale - p.at) * spb / 0.45))));
       fade.style.opacity = clamp((b - cut.fade[0]) / (cut.fade[1] - cut.fade[0])).toFixed(3);
     },
   };

@@ -22,7 +22,7 @@ VIDEO = os.path.join(OUT, 'carbonglobe-film.mp4')
 CUT = json.load(open(os.path.join(OUT, 'cut.json')))
 SPB = 60 / CUT['bpm']
 # stills, in beats: the title once the sun is up, and the dataset in numbers
-POSTER_BEAT, SOCIAL_BEAT = 8, 107.75
+POSTER_BEAT, SOCIAL_BEAT = 8, 103.75
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):

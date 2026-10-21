@@ -282,6 +282,7 @@ html.no-webgl .stage-fallback {
 #net-labels sub { font-size: .78em; line-height: 0; text-transform: none; }
 #net-labels .net-title { max-width: 340px; color: var(--text); }
 #net-labels .net-title b { color: var(--g2); font-size: 12.5px; }
+.net-film { display: none; }
 #net-labels [data-k="forcing"] b { color: #35c6f4; }
 #net-labels [data-k="loop"] { max-width: 300px; }
 #net-labels.few [data-k="enc"], #net-labels.few [data-k="core"], #net-labels.few [data-k="heads"], #net-labels.few [data-k="tree"], #net-labels.few [data-k="next"] { display: none; }
@@ -323,9 +324,14 @@ html.no-webgl .stage-fallback {
 .finale-title { margin: 16px 0 12px; font-size: clamp(50px, 10.5vw, 164px); line-height: .92; letter-spacing: -0.055em; font-weight: 750; }
 .finale-sub { margin: 0 auto; max-width: 640px; color: #c9d6d0; font-size: clamp(17px, 1.55vw, 22px); line-height: 1.45; text-wrap: balance; text-shadow: 0 1px 18px rgba(0, 0, 0, .7); }
 .finale .buttons { justify-content: center; margin-top: 28px; }
-.finale-links { display: none; margin: 26px 0 0; font: 14px var(--mono); color: var(--muted); }
+.finale-links, .finale-url { display: none; }
+.finale-links { margin: 20px 0 0; font: 13px var(--mono); letter-spacing: .04em; color: var(--muted); text-shadow: 0 1px 10px rgba(0, 0, 0, .8); }
 .finale-links i { font-style: normal; margin: 0 12px; color: var(--dim); }
+/* the film's end card points to this page */
+.finale-url { align-items: center; gap: 12px; margin: 26px auto 0; padding: 12px 26px 12px 20px; border: 1px solid rgba(62, 224, 143, .55); border-radius: 99px; background: rgba(4, 12, 10, .6); font: 500 21px/1 var(--mono); letter-spacing: .01em; color: var(--text); box-shadow: 0 0 34px rgba(62, 224, 143, .16); }
+.finale-url svg { width: 21px; height: 21px; fill: none; stroke: var(--g2); stroke-width: 1.5; }
 .render .finale-links { display: block; }
+.render .finale-url { display: inline-flex; }
 .render .finale .buttons { display: none !important; }
 
 /* chapter nav */
@@ -806,6 +812,12 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 .render #net-labels > span { font-size: 0; max-width: none; white-space: nowrap; }
 .render #net-labels b { margin: 0; font: 500 13px/1.2 var(--mono); letter-spacing: .14em; color: var(--text); text-shadow: 0 1px 12px rgba(0, 0, 0, .9); }
 .render #net-labels .net-title b { padding: 7px 16px; border: 1px solid rgba(62, 224, 143, .55); border-radius: 99px; background: rgba(4, 12, 10, .6); color: var(--g2); font-size: 15px; letter-spacing: .16em; text-shadow: none; }
+/* ... and names it: DeepED, the authors' emulator of ED */
+.render #net-labels .net-title > b { display: none; }
+.render #net-labels .net-film { display: flex; flex-direction: column; align-items: center; gap: 9px; font-style: normal; }
+.render #net-labels .net-film b { display: flex; align-items: center; gap: 13px; padding: 9px 20px; font: 650 22px/1 var(--sans); letter-spacing: -0.015em; text-transform: none; color: var(--text); box-shadow: 0 0 30px rgba(62, 224, 143, .18); }
+.render #net-labels .net-film b i { padding-left: 13px; border-left: 1px solid rgba(62, 224, 143, .45); font: 500 12.5px/1 var(--mono); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: var(--g2); }
+.render #net-labels .net-film small { font: 500 11.5px/1.2 var(--mono); letter-spacing: .12em; color: var(--muted); text-shadow: 0 1px 10px rgba(0, 0, 0, .9); }
 .render .p-title b { font-size: 15px; letter-spacing: .16em; }
 .render .p-icon { width: 27px; height: 27px; }
 .t-card { position: absolute; visibility: hidden; text-shadow: 0 2px 28px rgba(0, 0, 0, .5); }
@@ -821,6 +833,13 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 .t-num { display: inline-block; font-variant-numeric: tabular-nums; }
 .t-sub { font: 450 clamp(16px, 1.95vw, 28px)/1.3 var(--sans); letter-spacing: -0.012em; color: var(--muted); }
 .t-sub em { color: var(--g1); }
+.t-card .t-sub.lit { color: var(--text); }
+.t-main em .w { margin-right: -.12em; padding-right: .12em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* the corner tag naming the model behind the picture, its light pulsing on the beat */
+.t-tag { position: absolute; top: max(24px, 4.4vh); right: max(24px, 3vw); visibility: hidden; display: flex; align-items: center; gap: 13px; padding: 11px 20px 11px 16px; border: 1px solid rgba(62, 224, 143, .55); border-radius: 99px; background: rgba(4, 12, 10, .66); box-shadow: 0 0 30px rgba(62, 224, 143, .14); font: 500 13px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #c3d3cc; white-space: nowrap; }
+.t-tag i { width: 9px; height: 9px; border-radius: 50%; background: var(--g2); box-shadow: 0 0 12px 2px rgba(62, 224, 143, .8); }
+.t-tag b { font: 650 19px/1 var(--sans); letter-spacing: -0.01em; text-transform: none; color: var(--text); }
+.t-tag span { padding-left: 13px; border-left: 1px solid rgba(62, 224, 143, .4); }
 /* a second line that lands the point: as large as the first, in the brand gradient */
 .t-card .t-sub.grad { margin-top: 2px; font: 650 clamp(30px, 4.3vw, 64px)/1.06 var(--sans); letter-spacing: -0.035em; color: transparent; text-shadow: none; }
 .t-left.t-brand { width: min(660px, 52vw); }

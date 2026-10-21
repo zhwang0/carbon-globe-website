@@ -205,22 +205,91 @@ export function createSky() {
   return sky;
 }
 
-// A satellite lidar pass over the fifteen-age forest, the way NASA's GEDI measures forests from orbit: a beam
-// crosses the plot along a ground track and leaves a footprint on top of the canopy every few metres, tracing
-// its height profile.
+// A satellite lidar pass over the fifteen-age forest, the way NASA's GEDI measures forests from orbit. GEDI
+// flies on the International Space Station, so the satellite is a small station: a truss with four pairs of
+// solar wings, radiators and modules. It crosses the frame along a ground track, its laser pulsing down onto
+// the canopy, where each shot leaves a footprint every few metres and the footprints trace the height profile.
+const SAT_H = 7;   // height (world units of 10 m) the station crosses at, near the top of the frame
+function createStation(uLight, uOpacity) {
+  const group = new THREE.Group();
+  // drawn with the scene's other see-through things, after its sky
+  const mat = (color, panel = 0) => new THREE.ShaderMaterial({
+    uniforms: {uColor: {value: new THREE.Color(...color)}, uPanel: {value: panel}, uLight, uOpacity},
+    vertexShader: `varying vec3 vN, vW; varying vec2 vUv;
+      void main(){ vN = normalize(mat3(modelMatrix) * normal); vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `uniform vec3 uColor, uLight; uniform float uPanel, uOpacity; varying vec3 vN, vW; varying vec2 vUv;
+      void main(){
+        vec3 n = normalize(vN) * (gl_FrontFacing ? 1.0 : -1.0), v = normalize(cameraPosition - vW);
+        float diff = max(dot(n, uLight), 0.0), rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+        float rv = max(dot(reflect(-uLight, n), v), 0.0);
+        vec3 c = uColor * (0.2 + 0.95 * diff) + vec3(0.35, 0.6, 0.65) * rim * 0.35;
+        if (uPanel > 0.5) {
+          // solar cells: deep blue tiles in a gold frame, with a sheen of sky; they flash with the sun's glint
+          // as the station passes the middle of the frame
+          vec2 g = abs(fract(vUv * vec2(3.0, 12.0)) - 0.5);
+          c = mix(c, vec3(0.8, 0.58, 0.26) * (0.35 + 0.8 * diff), step(0.42, max(g.x, g.y)) * 0.7);
+          c += vec3(0.1, 0.22, 0.34) * pow(rv, 6.0) * 0.6 + vec3(1.0, 0.93, 0.8) * pow(rv, 90.0) * 1.5;
+        } else c += vec3(1.0) * pow(rv, 24.0) * 0.5;
+        gl_FragColor = vec4(c, uOpacity);
+      }`,
+    transparent: true,
+  });
+  const box = (w, h, d, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); group.add(o); return o; };
+  const metal = mat([0.62, 0.63, 0.62]), white = mat([0.86, 0.87, 0.85]), cells = mat([0.09, 0.17, 0.42], 1), rad = mat([0.78, 0.8, 0.8]);
+  box(3.5, 0.07, 0.07, metal);
+  [-1.62, -1.24, 1.24, 1.62].forEach(x => {
+    // a pair of wings above and below the truss, tilted toward the sun
+    const pair = new THREE.Group();
+    pair.position.x = x;
+    pair.rotation.x = -0.42;
+    [1, -1].forEach(side => {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.02, 0.012), cells);
+      w.position.y = side * 0.58;
+      pair.add(w);
+    });
+    const mast = new THREE.Mesh(new THREE.BoxGeometry(0.02, 2.2, 0.02), metal);
+    pair.add(mast);
+    group.add(pair);
+  });
+  [-0.55, 0.55].forEach(x => { const r = box(0.26, 0.5, 0.01, rad, x, -0.33, -0.12); r.rotation.y = 1.2; });
+  const cyl = (r, l, m, x, y, z, axis) => {
+    const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 16), m);
+    if (axis === 'z') o.rotation.x = Math.PI / 2; else if (axis === 'x') o.rotation.z = Math.PI / 2;
+    o.position.set(x, y, z);
+    group.add(o);
+  };
+  cyl(0.075, 1.25, white, 0, -0.12, 0, 'z');       // the modules, end to end under the truss
+  cyl(0.07, 0.62, white, 0, -0.12, 0.42, 'x');     // the nodes and laboratories across them
+  cyl(0.06, 0.4, white, 0, -0.12, -0.45, 'x');
+  box(0.12, 0.09, 0.12, metal, 0.24, -0.22, 0.42); // GEDI, on the Japanese module's exposed facility
+  return group;
+}
+
 export function createLidar(px, count = 40) {
   const group = new THREE.Group();
-  const beamGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 8, 1, true);
+  const beamGeo = new THREE.CylinderGeometry(0.028, 0.028, 1, 8, 1, true);
   beamGeo.translate(0, 0.5, 0);
+  // the laser: pulses of light running down it, brightest where they reach the canopy
   const beamMat = new THREE.ShaderMaterial({
-    uniforms: {uOpacity: {value: 0}},
+    uniforms: {uOpacity: {value: 0}, uTime: {value: 0}, uLen: {value: 1}},
     vertexShader: `varying float vY; void main(){ vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `uniform float uOpacity; varying float vY;
-      void main(){ gl_FragColor = vec4(vec3(0.6, 1.0, 0.9), uOpacity * (1.0 - vY) * (1.0 - vY)); }`,
+    fragmentShader: `uniform float uOpacity, uTime, uLen; varying float vY;
+      void main(){ float pulse = pow(fract(vY * uLen * 0.9 + uTime * 9.0), 6.0);
+        gl_FragColor = vec4(vec3(0.6, 1.0, 0.9), uOpacity * (0.35 + 0.45 * (1.0 - vY) + 0.9 * pulse)); }`,
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   });
   const beam = new THREE.Mesh(beamGeo, beamMat);
   beam.frustumCulled = false;
+  // the footprint: a pool of laser light, about 25 m across, on top of the canopy under the beam
+  const spot = new THREE.Mesh(new THREE.CircleGeometry(1.25, 40).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({
+    uniforms: {uOpacity: {value: 0}},
+    vertexShader: `varying vec2 vP; void main(){ vP = position.xz / 1.25; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform float uOpacity; varying vec2 vP;
+      void main(){ float r = length(vP); gl_FragColor = vec4(vec3(0.55, 1.0, 0.85), uOpacity * (0.55 * exp(-r * r * 5.0) + 0.25 * smoothstep(0.08, 0.0, abs(r - 0.82)))); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  spot.frustumCulled = false;
   const pos = new Float32Array(count * 3), show = new Float32Array(count);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -238,26 +307,48 @@ export function createLidar(px, count = 40) {
   dots.frustumCulled = false;
   const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color: 0x7dffd8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending}));
   line.frustumCulled = false;
-  group.add(beam, line, dots);
+  const uLight = {value: new THREE.Vector3(0, 1, 0)}, uStation = {value: 0};
+  const station = createStation(uLight, uStation);
+  station.scale.setScalar(0.9);
+  group.add(beam, spot, line, dots, station);
   group.visible = false;
-  // k: progress of the pass (0..1); a: opacity; dir: unit direction of the ground track; top(x, z): canopy height there
-  function update(k, a, dir, top) {
+  const up = new THREE.Vector3(0, 1, 0), back = new THREE.Vector3(), basis = new THREE.Matrix4(), yaw = new THREE.Quaternion();
+  // k: progress of the pass (0..1); a: opacity; dir: unit direction of the ground track, left to right across
+  // the frame; top(x, z): canopy height there; time: seconds, for the laser's pulses
+  function update(k, a, dir, top, time = 0) {
     group.visible = a > 0.002;
     if (!group.visible) return;
-    const L = 17, s = -L + 2 * L * k;
+    // the station flies in from beyond the frame and on out of it; its laser fires once it is over the trees,
+    // clear of the chapter's title on the left, and the footprints run from there across the plot
+    const S0 = -9.5, S1 = 17, s = -21 + 42 * k;
     let passed = 0;
     for (let i = 0; i < count; i++) {
-      const si = -L + 2 * L * (i + 0.5) / count, x = dir.x * si, z = dir.z * si;
+      const si = S0 + (S1 - S0) * (i + 0.5) / count, x = dir.x * si, z = dir.z * si;
       pos.set([x, top(x, z) + 0.06, z], i * 3);
       show[i] = Math.min(1, Math.max(0, (s - si) / 1.5));
       if (s >= si) passed = i + 1;
     }
     geo.attributes.position.needsUpdate = geo.attributes.aShow.needsUpdate = true;
     geo.setDrawRange(0, passed);
-    const bx = dir.x * s, bz = dir.z * s;
-    beam.position.set(bx, top(bx, bz), bz);
-    beam.scale.set(1, 60, 1);
-    beamMat.uniforms.uOpacity.value = a * (k > 0.001 && k < 0.999 ? 1 : 0);
+    const bx = dir.x * s, bz = dir.z * s, ground = top(bx, bz), on = k > 0.001 && k < 0.999 ? a : 0;
+    station.visible = on > 0;
+    uStation.value = on;
+    const fire = on * Math.min(1, Math.max(0, (s - S0 + 0.6) / 0.6));
+    // the station's truss runs along the track, its wings face the camera, turned a little to show its depth
+    back.crossVectors(dir, up);
+    basis.makeBasis(dir, up, back);
+    station.quaternion.setFromRotationMatrix(basis).multiply(yaw.setFromAxisAngle(up, -0.38));
+    station.position.set(bx, SAT_H, bz);
+    // sunlight from high on the left, slightly in front
+    uLight.value.copy(dir).multiplyScalar(-0.55).addScaledVector(up, 0.7).addScaledVector(back, 0.45).normalize();
+    const len = SAT_H - 0.25 - ground;
+    beam.position.set(bx, ground, bz);
+    beam.scale.set(1, len, 1);
+    beamMat.uniforms.uLen.value = len;
+    beamMat.uniforms.uTime.value = time;
+    beamMat.uniforms.uOpacity.value = fire;
+    spot.position.set(bx, ground + 0.04, bz);
+    spot.material.uniforms.uOpacity.value = fire;
     dots.material.uniforms.uOpacity.value = a;
     line.material.opacity = 0.75 * a;
   }
