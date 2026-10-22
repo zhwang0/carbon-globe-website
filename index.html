@@ -136,13 +136,11 @@
 <main>
 <!-- ================================================================ THE FILM -->
 <section class="film-top" id="watch" aria-label="The CarbonGlobe film">
-  <div class="ft-heads">
-    <a class="ft-news" href="https://arxiv.org/abs/2609.08855" target="_blank" rel="noopener"><span class="ft-news-k">News</span><span>Our <b>Earth System World Model</b><span class="ft-long">, built on CarbonGlobe,</span> is accepted at <b>ACM SIGSPATIAL 2026</b></span><i aria-hidden="true">→</i></a>
-    <div class="pills">
-      <a class="venue" href="https://neurips.cc/virtual/2025/loc/san-diego/poster/121701" target="_blank" rel="noopener"><span class="dot"></span><b>NeurIPS 2025</b> · Datasets &amp; Benchmarks</a>
-      <a class="pill-new" href="#challenge"><b>New</b>IEEE BigData Cup 2026 challenge<i aria-hidden="true">→</i></a>
-    </div>
-  </div>
+  <nav class="ft-news" aria-label="News"><div class="ft-grid">
+    <a class="ft-item" style="--c: var(--g2)" href="https://neurips.cc/virtual/2025/loc/san-diego/poster/121701" target="_blank" rel="noopener"><span class="ft-k">NeurIPS 2025</span><span class="ft-t">Datasets &amp; Benchmarks Track</span><i aria-hidden="true">↗</i></a>
+    <a class="ft-item ft-new" style="--c: #35c6f4" href="https://arxiv.org/abs/2609.08855" target="_blank" rel="noopener"><span class="ft-k">ACM SIGSPATIAL 2026</span><span class="ft-t">Earth System World Model accepted</span><i aria-hidden="true">↗</i></a>
+    <a class="ft-item ft-new" style="--c: var(--g1)" href="#challenge"><span class="ft-k">IEEE BigData Cup 2026</span><span class="ft-t">Join the AI emulation challenge</span><i aria-hidden="true">→</i></a>
+  </div></nav>
   <div class="ft-player">
     <video id="ft-video" playsinline preload="none" poster="assets/film/carbonglobe-film.jpg" aria-label="The CarbonGlobe film, with sound"><source src="assets/film/carbonglobe-film.mp4" type="video/mp4"></video>
     <button class="ft-play" id="ft-play" type="button" aria-label="Play the film, with sound"><span class="ft-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg></span><span class="ft-label" aria-hidden="true">Watch the film<small><span id="film-secs">70</span> s · with sound</small></span></button>
