@@ -28,7 +28,7 @@ function getAtlas(name, age) {
   const key = `${name}_a${age}`;
   let p = atlases.get(key);
   if (p) atlases.delete(key);
-  else p = metaP.then(meta => loadAtlas(`assets/data/grid/${key}.png`, meta));
+  else p = metaP.then(meta => loadAtlas(`assets/data/grid/${key}.png`, meta, name));
   atlases.set(key, p);
   for (const [k, old] of atlases) {
     if (atlases.size <= MAX_ATLASES + 1) break;

@@ -22,10 +22,17 @@ export function createExplorer({canvas, meta, tex, ui, getAtlas, reduced}) {
   G.uniforms.uSpec.value = 0.08;
   scene.add(createStars(1500, 60), G.group);
 
-  // selection marker
-  const marker = new THREE.Mesh(new THREE.RingGeometry(0.018, 0.026, 40), new THREE.MeshBasicMaterial({color: 0xf2ffbf, transparent: true, depthTest: false}));
-  marker.renderOrder = 5;
+  // selection marker: a dark halo for contrast on any colour, a bright ring and dot, and a ripple.
+  // It lies flat on the surface, so it hides itself on the far side of the globe.
+  const mat = (color, opacity) => new THREE.MeshBasicMaterial({color, transparent: true, opacity, depthTest: false, depthWrite: false});
+  const marker = new THREE.Group();
+  const ripple = new THREE.Mesh(new THREE.RingGeometry(0.026, 0.031, 48), mat(0xf2ffbf, 0));
+  [new THREE.Mesh(new THREE.RingGeometry(0.014, 0.037, 48), mat(0x02080a, 0.6)),
+    new THREE.Mesh(new THREE.RingGeometry(0.02, 0.03, 48), mat(0xf2ffbf, 1)),
+    new THREE.Mesh(new THREE.CircleGeometry(0.0075, 24), mat(0xf2ffbf, 1)), ripple].forEach((m, i) => { m.renderOrder = 5 + i; marker.add(m); });
   G.spin.add(marker);
+  const UP = new THREE.Vector3(0, 0, 1);
+  let pickT = 0;
 
   const state = {var: 'height', age: 1, year: 40, row: 0, col: 0, lat: 0, lon: 0, atlas: null, playing: false};
   let rx = 0.12, ry = facing(0, -62).y, vy = 0, dist = 4.5, autoSpin = !reduced, visible = false;
@@ -62,12 +69,12 @@ export function createExplorer({canvas, meta, tex, ui, getAtlas, reduced}) {
   }
 
   function legend() {
-    const v = VARS[state.var], vmax = meta.vars[state.var].vmax;
+    const v = VARS[state.var], show = meta.vars[state.var].show;
     ui.legendLabel.textContent = `${v.label} · ${v.unit}`;
     ui.ramp.style.background = `linear-gradient(90deg, ${v.ramp.join(', ')})`;
     // Color uses a square-root scale: the midpoint of the ramp is a quarter of the maximum.
-    ui.legendMid.textContent = fmt(vmax / 4);
-    ui.legendMax.textContent = `${vmax}+`;
+    ui.legendMid.textContent = fmt(show / 4);
+    ui.legendMax.textContent = `${show}+`;
   }
 
   let token = 0;
@@ -99,7 +106,10 @@ export function createExplorer({canvas, meta, tex, ui, getAtlas, reduced}) {
     state.lat = 89.75 - c.row * 0.5; state.lon = -179.75 + c.col * 0.5;
     const p = latLonToVec3(state.lat, state.lon, 1.003);
     marker.position.copy(p);
-    marker.lookAt(p.clone().multiplyScalar(2));
+    marker.quaternion.setFromUnitVectors(UP, p.clone().normalize());
+    pickT = time;
+    // a new site replays its forty years from the start
+    if (state.playing) setYear(0);
     const z = tex.zones.data[c.row * 720 + c.col];
     ui.siteName.textContent = label || (z ? `${ZONES[z]} site` : 'No simulation here');
     ui.siteMeta.textContent = `${fmtLat(state.lat)}, ${fmtLon(state.lon)}${z ? ' · ' + ZONES[z].toLowerCase() : ''}`;
@@ -171,7 +181,7 @@ export function createExplorer({canvas, meta, tex, ui, getAtlas, reduced}) {
     pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
     canvas.setPointerCapture(e.pointerId);
     down = {x: e.clientX, y: e.clientY, t: performance.now(), moved: 0};
-    autoSpin = false;
+    autoSpin = false; vy = 0;
     if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
   });
   canvas.addEventListener('pointermove', e => {
@@ -194,7 +204,7 @@ export function createExplorer({canvas, meta, tex, ui, getAtlas, reduced}) {
   const up = e => {
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = 0;
-    if (down && down.moved < 6 && performance.now() - down.t < 500) {
+    if (down && down.moved < 8 && performance.now() - down.t < 800) {
       const p = hit(e.clientX, e.clientY);
       if (p) { const {lat, lon} = vec3ToLatLon(p); pickSite(lat, lon); }
     }
@@ -253,7 +263,11 @@ export function createExplorer({canvas, meta, tex, ui, getAtlas, reduced}) {
     cam.lookAt(0, 0, 0);
     G.uniforms.uTime.value = time;
     G.atmoUniforms.uOpacity.value = clamp((dist - 1.3) / 0.6);
-    marker.material.opacity = 0.65 + 0.35 * Math.sin(time * 3);
+    // the marker keeps one size on screen, pops when placed, then ripples
+    const pop = clamp((time - pickT) / 0.35), rip = ((time - pickT) % 1.6) / 1.6;
+    marker.scale.setScalar((dist - 1) / 3.5 * (1 + 0.9 * (1 - pop) ** 3));
+    ripple.scale.setScalar(1 + 1.4 * rip);
+    ripple.material.opacity = 0.75 * (1 - rip) * pop;
     renderer.render(scene, cam);
   }
 

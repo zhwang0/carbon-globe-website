@@ -65,8 +65,10 @@ async function decodePNG(url) {
 
 // A packed atlas (7 x 6 tiles of 720 x 360, one per year) -> raw bytes + RG8 array texture.
 // R holds the gamma-encoded value, G marks data coverage so filtering stays clean at coastlines.
-export async function loadAtlas(url, meta) {
-  const {width: W, height: H, cols, years} = meta.grid;
+// The bytes span the variable's full range (vmax); R is rescaled to its colour scale (show), saturating above.
+export async function loadAtlas(url, meta, name) {
+  const {width: W, height: H, cols, years, gamma} = meta.grid;
+  const v = meta.vars[name], k = Math.pow(v.vmax / (v.show || v.vmax), gamma) * 255 / 254;
   const img = await decodePNG(url);
   const raw = new Uint8Array(W * H * years);
   const rg = new Uint8Array(W * H * years * 2);
@@ -79,7 +81,7 @@ export async function loadAtlas(url, meta) {
       for (let c = 0; c < W; c++, s += 4, d++) {
         const b = src[s];
         raw[d] = b;
-        if (b) { rg[d * 2] = Math.round((b - 1) * 255 / 254); rg[d * 2 + 1] = 255; }
+        if (b) { rg[d * 2] = Math.min(255, Math.round((b - 1) * k)); rg[d * 2 + 1] = 255; }
       }
     }
   }
@@ -104,7 +106,7 @@ export async function loadTiles(url, W, H, n, where) {
       let s = (tr * H + r) * stride + tc * W * 4, d = (i * H + r) * W;
       for (let c = 0; c < W; c++, s += 4, d++) {
         const b = src[s];
-        if (b) { rg[d * 2] = Math.round((b - 1) * 255 / 254); rg[d * 2 + 1] = 255; }
+        if (b) { rg[d * 2] = Math.min(255, Math.round((b - 1) * k)); rg[d * 2 + 1] = 255; }
       }
     }
   }
