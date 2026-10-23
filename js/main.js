@@ -313,7 +313,9 @@ async function boot() {
     $('#ex-loading').textContent = 'The interactive globe needs WebGL 2.';
     return;
   }
-  const [{createStage}, tex, height, scen] = await Promise.all([import('./stage.js'), textures(), getAtlas('height', 1), scenP]);
+  // the page's planet starts every forest at age 1; the film's edit brings its own
+  const planet = RENDER ? import('./cut.js').then(m => m.planet()) : getAtlas('height', 1);
+  const [{createStage}, tex, height, scen] = await Promise.all([import('./stage.js'), textures(), planet, scenP]);
   // the emulator's forcing maps: six drivers x twelve months, needed only from chapter five on
   const M = scen.maps, nv = M.vars.length;
   const maps = loadTiles(M.file, M.tile[0], M.tile[1], nv * 12, i => [i % 12 % M.cols, 2 * Math.floor(i / 12) + Math.floor(i % 12 / M.cols)]);

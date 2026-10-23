@@ -303,7 +303,8 @@ html.no-webgl .stage-fallback {
 .growth { display: flex; align-items: flex-end; gap: 28px; }
 .legend { display: grid; grid-template-columns: auto auto; gap: 4px 0; width: 220px; font-size: 11px; color: var(--dim); }
 .legend small { grid-column: 1 / -1; }
-.legend span:last-child { text-align: right; }
+.legend span:last-of-type { text-align: right; }
+.legend .legend-note { margin-top: 6px; font: 11.5px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--dim); }
 .ramp { grid-column: 1 / -1; display: block; height: 8px; border-radius: 99px; }
 .ramp-height { background: var(--ramp-height); }
 
@@ -830,7 +831,7 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
 
 /* deterministic video rendering (scripts/render_film.py) */
 .render *, .render *::before, .render *::after { transition: none !important; animation: none !important; }
-.render .topbar, .render .film-top, .render .chapters, .render .film-pause, .render .film-bar, .render .scroll-cue, .render .hero .buttons, .render .numbers .btn, .render .skip { display: none !important; }
+.render .topbar, .render .film-top, .render .legend-note, .render .chapters, .render .film-pause, .render .film-bar, .render .scroll-cue, .render .hero .buttons, .render .numbers .btn, .render .skip { display: none !important; }
 /* the rendered film tells its story in short beat-timed titles (js/cut.js) instead of the page's captions and readouts */
 .titles, .film-fade { display: none; }
 .render .titles { display: block; position: absolute; inset: 0; z-index: 4; pointer-events: none; }

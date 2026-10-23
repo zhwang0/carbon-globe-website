@@ -50,7 +50,7 @@ export function loadTexture(url, {srgb = false, mips = true} = {}) {
   }, undefined, reject));
 }
 
-async function decodePNG(url) {
+export async function decodePNG(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
   const blob = await res.blob();
