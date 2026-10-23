@@ -14,7 +14,7 @@ test-results/
 !/scripts/validate_site.py
 /js/cut.js
 /assets/film/cut.json
-/assets/film/planet.webp
+/assets/film/private/
 /_site/
 
 # No dataset arrays, tables (the challenge's CSVs among them) or model weights
