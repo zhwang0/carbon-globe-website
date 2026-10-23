@@ -106,7 +106,7 @@ export async function loadTiles(url, W, H, n, where) {
       let s = (tr * H + r) * stride + tc * W * 4, d = (i * H + r) * W;
       for (let c = 0; c < W; c++, s += 4, d++) {
         const b = src[s];
-        if (b) { rg[d * 2] = Math.min(255, Math.round((b - 1) * k)); rg[d * 2 + 1] = 255; }
+        if (b) { rg[d * 2] = Math.round((b - 1) * 255 / 254); rg[d * 2 + 1] = 255; }
       }
     }
   }
