@@ -592,7 +592,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const amazon = story.ages;
 
   let last = performance.now(), time = 0;
-  // opt.intro: the sunrise's progress (0..1), when the rendered film times it to its music
+  // opt.intro: the sunrise's progress (0..1), when the rendered film times it to its music; opt.dry: update
+  // every state without drawing (a parallel renderer replays the film up to its first frame this way)
   function render(uNow, tFixed, opt = {}) {
     u = film ? filmU(uNow) : uNow;
     let dt;
@@ -780,6 +781,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     const ty = lerp(lerp(tyA, 1.5, b), 0, c);
     fCam.position.set(Math.cos(az) * r, cy, Math.sin(az) * r);
     fCam.lookAt(0, ty, 0);
+    fCam.updateMatrixWorld();   // the sideways shift below reads this frame's orientation, not the last drawn one
     mainTgt.set(0, ty, 0);
     keyLight(HU.uLight.value, az);
     if (!L.narrow) {
@@ -833,14 +835,16 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     });
 
     // ---------- draw
-    post?.begin();
-    renderer.clear();
-    if (fBase < 0.999) renderer.render(gScene, gCam);   // a dip fades the forest to dark, not to the globe
-    if (fA > 0.001) {
-      if (rects) drawPanels(rects);
-      else { renderer.clearDepth(); renderer.render(fScene, fCam); }
+    if (!opt.dry) {
+      post?.begin();
+      renderer.clear();
+      if (fBase < 0.999) renderer.render(gScene, gCam);   // a dip fades the forest to dark, not to the globe
+      if (fA > 0.001) {
+        if (rects) drawPanels(rects);
+        else { renderer.clearDepth(); renderer.render(fScene, fCam); }
+      }
+      post?.end();
     }
-    post?.end();
 
     // ---------- DOM overlays
     dom.panels.style.visibility = rects ? 'visible' : 'hidden';

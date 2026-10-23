@@ -338,13 +338,14 @@ async function boot() {
     const cut = await createCut({titles: $('#titles'), fade: $('#film-fade'), panels: $('#panels'), finale: $('.finale')});
     window.__cg = {
       duration: cut.duration,
-      frame(t) {
+      // dry: update every state without drawing, to replay the film up to a parallel renderer's first frame
+      frame(t, dry = false) {
         const {u, intro, lidar} = cut.at(t);
         const {vh, top} = filmMetrics();
         window.scrollTo(0, top + u * vh);
         applyFades(u);
         forecast.update(u);
-        stage.render(u, t, {intro, lidar});
+        stage.render(u, t, {intro, lidar, dry});
         cut.apply(t);
       },
     };
