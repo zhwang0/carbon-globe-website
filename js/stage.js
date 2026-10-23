@@ -130,7 +130,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   G.uniforms.uTarget.value.set(target.col, target.row);
   G.globe.renderOrder = 1; G.atmo.renderOrder = 2;
   // the planet chapter's forests in relief, rising over the globe as the years pass
-  const canopy = createCanopy({data: tex.height.tex, ramp: G.uniforms.uRamp, sun: G.uniforms.uSun, segments: mobile ? 180 : 360});
+  const canopy = createCanopy({data: tex.height.tex, ramp: G.uniforms.uRamp, sun: G.uniforms.uSun,
+    segments: tex.height.detail ? 1440 : mobile ? 180 : 360, detail: !!tex.height.detail});
   canopy.mesh.renderOrder = 1.5;
   G.spin.add(canopy.mesh);
   const stars = createStars(mobile ? 1400 : 2800);

@@ -216,11 +216,14 @@ void main() {
   vec2 duv = vec2(vUv.x, 1.0 - vUv.y);
   float t = 0.0, cov = 0.0;
   if (uHasData > 0.5) {
-    float y0 = floor(uYear);
-    float y1 = min(y0 + 1.0, 40.0);
+    // the data's layers span the forty years evenly: one per year, or a few key years
+    float last = float(textureSize(uData, 0).z - 1);
+    float yl = uYear * last / 40.0;
+    float y0 = floor(yl);
+    float y1 = min(y0 + 1.0, last);
     vec2 a = texture(uData, vec3(duv, y0)).rg;
     vec2 b = texture(uData, vec3(duv, y1)).rg;
-    vec2 d = mix(a, b, uYear - y0);
+    vec2 d = mix(a, b, yl - y0);
     cov = smoothstep(0.2, 0.75, d.g) * smoothstep(0.25, 0.65, land);
     t = d.r / max(d.g, 1e-3);
   }
@@ -370,14 +373,20 @@ export function createGlobe({day, mask, zones, data = null, segments = 192, clou
 const CANOPY_VERT = /* glsl */`
 precision highp sampler2DArray;
 uniform sampler2DArray uData;
-uniform float uYear, uLift;
+uniform float uYear, uLift, uGeoLod;
 varying float vT;
 varying float vH;
 varying vec3 vW;
+varying vec2 vUv;
+varying float vScale;
 void main() {
   vec2 duv = vec2(uv.x, 1.0 - uv.y);
-  float y0 = floor(uYear), y1 = min(y0 + 1.0, 40.0);
-  vec2 d = mix(texture(uData, vec3(duv, y0)).rg, texture(uData, vec3(duv, y1)).rg, uYear - y0);
+  float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0;
+  float y0 = floor(yl), y1 = min(y0 + 1.0, last);
+  // the shell's shape comes from a level of the data about as coarse as the mesh (mipmapped data only)
+  vec2 d = mix(textureLod(uData, vec3(duv, y0), uGeoLod).rg, textureLod(uData, vec3(duv, y1), uGeoLod).rg, yl - y0);
+  vUv = duv;
+  vScale = length((modelMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
   float cov = smoothstep(0.3, 0.85, d.g);
   vT = d.r / max(d.g, 1e-3);
   vH = vT * vT * cov;                       // canopy height / 35 m (values are stored as its square root)
@@ -386,13 +395,17 @@ void main() {
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
 const CANOPY_FRAG = /* glsl */`
+precision highp sampler2DArray;
+uniform sampler2DArray uData;
 uniform vec3 uSun;
 uniform vec3 uRamp[5];
 uniform vec3 uCenter;
-uniform float uOpacity;
+uniform float uOpacity, uYear, uLift, uDetail, uBump;
 varying float vT;
 varying float vH;
 varying vec3 vW;
+varying vec2 vUv;
+varying float vScale;
 vec3 ramp(float t) {
   t = clamp(t, 0.0, 1.0) * 4.0;
   float i = min(floor(t), 3.0);
@@ -404,17 +417,34 @@ vec3 ramp(float t) {
   return mix(a, b, f);
 }
 void main() {
-  float a = smoothstep(0.03, 0.2, vH) * uOpacity;
-  if (a < 0.01) discard;
+  float t = vT, h = vH;
   vec3 N = normalize(cross(dFdx(vW), dFdy(vW)));
   if (dot(N, vW - uCenter) < 0.0) N = -N;
+  // detail: colour, cover and relief shading from the data at each pixel instead of each vertex, the fine
+  // relief as a bump on the smooth shell (height gradients in screen space, after Mikkelsen 2010)
+  if (uDetail > 0.5) {
+    float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0;
+    float y0 = floor(yl), y1 = min(y0 + 1.0, last);
+    vec2 d = mix(texture(uData, vec3(vUv, y0)).rg, texture(uData, vec3(vUv, y1)).rg, yl - y0);
+    t = d.r / max(d.g, 1e-3);
+    h = t * t * smoothstep(0.3, 0.85, d.g);
+    float hw = h * uLift * vScale * uBump;   // the shell's lift exaggerates relief far too much for 5 km bumps
+    vec3 dpx = dFdx(vW), dpy = dFdy(vW), r1 = cross(dpy, N), r2 = cross(N, dpx);
+    float det = dot(dpx, r1);
+    vec3 grad = sign(det) * (dFdx(hw) * r1 + dFdy(hw) * r2);
+    N = normalize(abs(det) * N - grad);
+  }
+  float a = smoothstep(0.03, 0.2, h) * uOpacity;
+  if (a < 0.01) discard;
   float diff = max(dot(N, normalize(uSun)), 0.0);
-  gl_FragColor = vec4(ramp(0.25 + 0.7 * vT) * (0.12 + 1.05 * diff), a);
+  gl_FragColor = vec4(ramp(0.25 + 0.7 * t) * (0.12 + 1.05 * diff), a);
 }`;
 
-export function createCanopy({data, ramp, sun, segments = 360}) {
+// detail: the data is finer than the mesh (and mipmapped), so pixels carry it and the mesh follows a coarser level
+export function createCanopy({data, ramp, sun, segments = 360, detail = false}) {
   const uniforms = {uData: {value: data}, uYear: {value: 0}, uLift: {value: 0}, uOpacity: {value: 0},
-    uRamp: ramp, uSun: sun, uCenter: {value: new THREE.Vector3()}};
+    uRamp: ramp, uSun: sun, uCenter: {value: new THREE.Vector3()},
+    uDetail: {value: detail ? 1 : 0}, uBump: {value: 0.15}, uGeoLod: {value: detail ? Math.max(0, Math.log2(data.image.width / segments)) : 0}};
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), new THREE.ShaderMaterial({
     uniforms, vertexShader: CANOPY_VERT, fragmentShader: CANOPY_FRAG, transparent: true,
   }));
