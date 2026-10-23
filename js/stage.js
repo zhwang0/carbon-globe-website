@@ -1,6 +1,6 @@
 // The scroll-driven film: hero globe -> one forest -> four forcings -> fifteen ages -> planet -> emulator -> what if -> numbers.
 import * as THREE from '../assets/vendor/three.module.js';
-import {createGlobe, createCanopy, createStars, createFlare, facing, cellOf, latLonToVec3} from './globe.js';
+import {createGlobe, createCanopy, createForestCloud, createStars, createFlare, facing, cellOf, latLonToVec3} from './globe.js';
 import {createGround, createMotes, createWeather, createSky, createLidar} from './forest.js';
 import {mulberry32} from './random.js';
 import {growTrees, treePoints, createFlames, PRE_TAU} from './hero-tree.js';
@@ -12,6 +12,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const ss = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0)); return t * t * (3 - 2 * t); };
 const ease = t => (t < .5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
+const west = a => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);   // a turn toward the west, 0 to 2 pi
 const AGES = [1, 10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 const HERO_D = 4.2;        // camera distance (globe radii) of the opening globe
 const DIVE_ALT = 0.2;      // altitude (globe radii) the dive passes on its way down to the Amazon
@@ -117,6 +118,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const story = meta.story.amazon;
   const target = cellOf(story.lat, story.lon);
   const targetRot = facing(story.lat, story.lon), groundRot = facing(GROUND.lat, GROUND.lon);
+  const ASIA = facing(10, 122), AMERICAS = facing(10, -80);
 
   // globe scene
   const gScene = new THREE.Scene();
@@ -130,10 +132,16 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   G.uniforms.uTarget.value.set(target.col, target.row);
   G.globe.renderOrder = 1; G.atmo.renderOrder = 2;
   // the planet chapter's forests in relief, rising over the globe as the years pass
-  const canopy = createCanopy({data: tex.height.tex, ramp: G.uniforms.uRamp, sun: G.uniforms.uSun,
-    segments: tex.height.detail ? 1440 : mobile ? 180 : 360, detail: !!tex.height.detail});
+  const canopy = createCanopy({data: tex.height.tex, ramp: G.uniforms.uRamp, sun: G.uniforms.uSun, segments: mobile ? 180 : 360});
   canopy.mesh.renderOrder = 1.5;
   G.spin.add(canopy.mesh);
+  // data that brings its trees (the film's) shows the forest flat on the imagery, its trees standing only on the
+  // skyline at the planet's edge, and glowing as they grow
+  const forest = tex.height.trees && createForestCloud({data: tex.height.tex, trees: tex.height.trees, ramp: G.uniforms.uRamp, sun: G.uniforms.uSun});
+  if (forest) {
+    forest.group.children.forEach(o => { o.renderOrder = 1.5; });
+    G.spin.add(forest.group);
+  }
   const stars = createStars(mobile ? 1400 : 2800);
   stars.material.uniforms.uPx.value = px;
   gScene.add(stars, G.group);
@@ -604,9 +612,11 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       // pull back out to the planet, settling right of the caption
       const kOut = ease(ss(6.6, 7.3, u));
       alt = Math.exp(lerp(Math.log(DIVE_ALT), Math.log(L.planet.d - 1), kOut));
-      rx = lerp(targetRot.x, 0.32, kOut);
-      // one unhurried full turn while the forests grow, so every continent comes past
-      ry = targetRot.y + kOut * 0.7 + 2 * Math.PI * ss(7.3, 8.0, u) + Math.max(0, u - 7.3) * 0.3;
+      // swinging west across the Pacific as it rises, it settles on East Asia and Australia, then turns west
+      // while the forests grow, past India, Africa and Europe and over the Atlantic to the Americas in 2021
+      const kSpin = ss(7.32, 7.97, u), drift = Math.max(0, u - 7.3) * 0.3;
+      rx = lerp(lerp(targetRot.x, ASIA.x, kOut), AMERICAS.x, kSpin);
+      ry = targetRot.y + west(ASIA.y - targetRot.y) * ease(ss(6.75, 7.3, u)) + (west(AMERICAS.y - ASIA.y) - 0.2) * kSpin + drift;
       gx = lerp(0, L.planet.x, kOut); gy = lerp(0, L.planet.y, kOut); gs = lerp(1, L.planet.s, kOut);
     }
     let dist = 1 + alt;
@@ -666,10 +676,11 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     const near = ss(0.8, 1.5, u) * (1 - ss(6.8, 7.15, u));
     const growing = ss(6.9, 7.3, u) * (1 - ss(7.95, 8.4, u));
     const relief = ss(6.95, 7.3, u) * (1 - ss(7.95, 8.3, u));
-    U.uDataMix.value = (1 - 0.92 * near) * (1 - 0.85 * relief);
+    U.uDataMix.value = (1 - 0.92 * near) * (1 - (forest ? 0 : 0.85) * relief);
+    U.uGrowth.value = forest ? 0.6 * growing : 0;
     U.uExposure.value = 1 + 0.4 * near;
     U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing);
-    canopy.mesh.visible = relief > 0.002;
+    canopy.mesh.visible = !forest && relief > 0.002;
     const CU = canopy.uniforms;
     CU.uOpacity.value = relief;
     CU.uLift.value = 0.05 * relief;
@@ -677,6 +688,14 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     // the planet comes back in 1981, under the flash that ends the forest chapters, and grows to 2021
     U.uYear.value = u < 6.45 ? 40 : 40 * ss(7.32, 7.95, u);
     CU.uYear.value = U.uYear.value;
+    if (forest) {
+      const FU = forest.uniforms;
+      forest.group.visible = relief > 0.002;
+      FU.uOpacity.value = relief;
+      FU.uLift.value = 0.035 * relief;
+      FU.uYear.value = U.uYear.value;
+      FU.uPx.value = px;
+    }
     CU.uCenter.value.copy(G.group.position);
     // the dive goes straight down into the forest; the grid and its cell appear only on the way back up
     U.uGridMix.value = u > 6.6 && u < 7.05 ? 1 : 0;

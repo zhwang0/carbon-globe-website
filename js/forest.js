@@ -71,11 +71,11 @@ export function createGround(px) {
 }
 
 export function createMotes(count, px) {
-  const pos = new Float32Array(count * 3), rnd = new Float32Array(count);
+  const pos = new Float32Array(count * 3), rnd = new Float32Array(count), rng = mulberry32(31);
   for (let i = 0; i < count; i++) {
-    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 26;
-    pos.set([Math.cos(a) * r, Math.random() * 10, Math.sin(a) * r], i * 3);
-    rnd[i] = Math.random();
+    const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 26;
+    pos.set([Math.cos(a) * r, rng() * 10, Math.sin(a) * r], i * 3);
+    rnd[i] = rng();
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));

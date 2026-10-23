@@ -1,5 +1,6 @@
 // Shared globe: textures, data atlases and the luminous globe material.
 import * as THREE from '../assets/vendor/three.module.js';
+import {mulberry32} from './random.js';
 
 export const VARS = {
   height: {label: 'Canopy height', short: 'Height', unit: 'm', ramp: ['#06231f', '#0c4d3b', '#168257', '#5cc46c', '#dcf7a4']},
@@ -164,7 +165,7 @@ uniform sampler2D uClouds;
 uniform sampler2D uLights;
 uniform sampler2D uDetail, uDetail2, uDetail3;
 uniform sampler2DArray uData;
-uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight;
+uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight, uGrowth;
 uniform float uReal, uCloud, uCloudShift, uDetailMix, uExposure, uTwin, uTwinMix;
 uniform vec4 uDetailBox, uDetailBox2, uDetailBox3;
 uniform vec3 uSun;
@@ -257,6 +258,15 @@ void main() {
     real += (vec3(1.0, 0.95, 0.86) * pow(nh, 260.0) * 0.32 + vec3(0.45, 0.62, 0.85) * pow(nh, 14.0) * 0.035) * (1.0 - land) * lit * (1.0 - cl);
     real = mix(real, vec3(0.03) + vec3(1.02, 1.02, 1.0) * sun, cl);
     real *= uExposure;
+    // growth: forest glows softly by how much taller it has grown since the data's first year, read from a
+    // coarser level of the data (when it has one) so the simulation's cells don't show as blocks
+    if (uGrowth > 0.0) {
+      float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0, y0 = floor(yl);
+      vec2 gn = mix(textureLod(uData, vec3(duv, y0), 2.5).rg, textureLod(uData, vec3(duv, min(y0 + 1.0, last)), 2.5).rg, yl - y0);
+      vec2 g0 = textureLod(uData, vec3(duv, 0.0), 2.5).rg;
+      float tn = gn.r / max(gn.g, 1e-3), t0 = g0.r / max(g0.g, 1e-3);
+      real += ramp(0.95) * smoothstep(0.0, 0.25, max(tn * tn - t0 * t0, 0.0)) * cov * uGrowth * (0.35 + 0.65 * lit) * (1.0 - cl);
+    }
     float dark = 1.0 - smoothstep(-0.2, 0.06, ndl);
     real += vec3(1.0, 0.72, 0.4) * texture2D(uLights, vUv).r * dark * (1.0 - 0.8 * cl) * 1.2;
     float fh = pow(1.0 - max(dot(N, V), 0.0), 2.3);
@@ -342,7 +352,7 @@ export function createGlobe({day, mask, zones, data = null, segments = 192, clou
     uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0}, uExposure: {value: 1},
     uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
     uHasData: {value: data ? 1 : 0},
-    uYear: {value: 40}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
+    uYear: {value: 40}, uGrowth: {value: 0}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
     uTime: {value: 0}, uGridMix: {value: 0}, uTargetMix: {value: 0}, uDim: {value: 1}, uBase: {value: 1}, uSpec: {value: 0.22}, uNight: {value: 1},
     uSun: {value: new THREE.Vector3(-0.85, 0.38, 0.55).normalize()},
     uRamp: {value: rampUniform('height')},
@@ -373,20 +383,15 @@ export function createGlobe({day, mask, zones, data = null, segments = 192, clou
 const CANOPY_VERT = /* glsl */`
 precision highp sampler2DArray;
 uniform sampler2DArray uData;
-uniform float uYear, uLift, uGeoLod;
+uniform float uYear, uLift;
 varying float vT;
 varying float vH;
 varying vec3 vW;
-varying vec2 vUv;
-varying float vScale;
 void main() {
   vec2 duv = vec2(uv.x, 1.0 - uv.y);
   float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0;
   float y0 = floor(yl), y1 = min(y0 + 1.0, last);
-  // the shell's shape comes from a level of the data about as coarse as the mesh (mipmapped data only)
-  vec2 d = mix(textureLod(uData, vec3(duv, y0), uGeoLod).rg, textureLod(uData, vec3(duv, y1), uGeoLod).rg, yl - y0);
-  vUv = duv;
-  vScale = length((modelMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
+  vec2 d = mix(texture(uData, vec3(duv, y0)).rg, texture(uData, vec3(duv, y1)).rg, yl - y0);
   float cov = smoothstep(0.3, 0.85, d.g);
   vT = d.r / max(d.g, 1e-3);
   vH = vT * vT * cov;                       // canopy height / 35 m (values are stored as its square root)
@@ -394,18 +399,8 @@ void main() {
   vW = w.xyz;
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
-const CANOPY_FRAG = /* glsl */`
-precision highp sampler2DArray;
-uniform sampler2DArray uData;
-uniform vec3 uSun;
-uniform vec3 uRamp[5];
-uniform vec3 uCenter;
-uniform float uOpacity, uYear, uLift, uDetail, uBump;
-varying float vT;
-varying float vH;
-varying vec3 vW;
-varying vec2 vUv;
-varying float vScale;
+// the five-colour ramp of a variable, t from 0 to 1
+const RAMP = /* glsl */`
 vec3 ramp(float t) {
   t = clamp(t, 0.0, 1.0) * 4.0;
   float i = min(floor(t), 3.0);
@@ -415,36 +410,28 @@ vec3 ramp(float t) {
   else if (i > 1.5) { a = uRamp[2]; b = uRamp[3]; }
   else if (i > 0.5) { a = uRamp[1]; b = uRamp[2]; }
   return mix(a, b, f);
-}
+}`;
+const CANOPY_FRAG = /* glsl */`
+uniform vec3 uSun;
+uniform vec3 uRamp[5];
+uniform vec3 uCenter;
+uniform float uOpacity;
+varying float vT;
+varying float vH;
+varying vec3 vW;
+${RAMP}
 void main() {
-  float t = vT, h = vH;
+  float a = smoothstep(0.03, 0.2, vH) * uOpacity;
+  if (a < 0.01) discard;
   vec3 N = normalize(cross(dFdx(vW), dFdy(vW)));
   if (dot(N, vW - uCenter) < 0.0) N = -N;
-  // detail: colour, cover and relief shading from the data at each pixel instead of each vertex, the fine
-  // relief as a bump on the smooth shell (height gradients in screen space, after Mikkelsen 2010)
-  if (uDetail > 0.5) {
-    float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0;
-    float y0 = floor(yl), y1 = min(y0 + 1.0, last);
-    vec2 d = mix(texture(uData, vec3(vUv, y0)).rg, texture(uData, vec3(vUv, y1)).rg, yl - y0);
-    t = d.r / max(d.g, 1e-3);
-    h = t * t * smoothstep(0.3, 0.85, d.g);
-    float hw = h * uLift * vScale * uBump;   // the shell's lift exaggerates relief far too much for 5 km bumps
-    vec3 dpx = dFdx(vW), dpy = dFdy(vW), r1 = cross(dpy, N), r2 = cross(N, dpx);
-    float det = dot(dpx, r1);
-    vec3 grad = sign(det) * (dFdx(hw) * r1 + dFdy(hw) * r2);
-    N = normalize(abs(det) * N - grad);
-  }
-  float a = smoothstep(0.03, 0.2, h) * uOpacity;
-  if (a < 0.01) discard;
   float diff = max(dot(N, normalize(uSun)), 0.0);
-  gl_FragColor = vec4(ramp(0.25 + 0.7 * t) * (0.12 + 1.05 * diff), a);
+  gl_FragColor = vec4(ramp(0.25 + 0.7 * vT) * (0.12 + 1.05 * diff), a);
 }`;
 
-// detail: the data is finer than the mesh (and mipmapped), so pixels carry it and the mesh follows a coarser level
-export function createCanopy({data, ramp, sun, segments = 360, detail = false}) {
+export function createCanopy({data, ramp, sun, segments = 360}) {
   const uniforms = {uData: {value: data}, uYear: {value: 0}, uLift: {value: 0}, uOpacity: {value: 0},
-    uRamp: ramp, uSun: sun, uCenter: {value: new THREE.Vector3()},
-    uDetail: {value: detail ? 1 : 0}, uBump: {value: 0.15}, uGeoLod: {value: detail ? Math.max(0, Math.log2(data.image.width / segments)) : 0}};
+    uRamp: ramp, uSun: sun, uCenter: {value: new THREE.Vector3()}};
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), new THREE.ShaderMaterial({
     uniforms, vertexShader: CANOPY_VERT, fragmentShader: CANOPY_FRAG, transparent: true,
   }));
@@ -452,13 +439,85 @@ export function createCanopy({data, ramp, sun, segments = 360, detail = false}) 
   return {mesh, uniforms};
 }
 
+// A forest as a lidar point cloud: each tree a faint strand from the ground up to a glowing crown, its height and
+// colour read from the data (blended across its years) and lit by the sun. trees holds [u, v, seed] per tree, in
+// the data's coordinates (v = 0 at the north pole).
+const FOREST_VERT = /* glsl */`
+precision highp sampler2DArray;
+uniform sampler2DArray uData;
+uniform vec3 uSun;
+uniform float uYear, uLift, uPx, uCrown, uLimb;
+attribute float aEnd;
+varying float vT, vA, vDay, vEnd;
+void main() {
+  float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0;
+  float y0 = floor(yl), y1 = min(y0 + 1.0, last);
+  vec2 d = mix(textureLod(uData, vec3(position.xy, y0), 0.0).rg, textureLod(uData, vec3(position.xy, y1), 0.0).rg, yl - y0);
+  float t = d.r / max(d.g, 1e-3), h = t * t;
+  float phi = position.x * 6.2831853, theta = position.y * 3.1415927;
+  vec3 dir = vec3(-cos(phi) * sin(theta), cos(theta), sin(phi) * sin(theta));
+  float end = uCrown > 0.0 ? 1.0 : aEnd;
+  vec3 p = dir * (1.0015 + end * h * uLift * (0.7 + 0.6 * position.z));
+  vec3 nW = normalize((modelMatrix * vec4(dir, 0.0)).xyz);
+  vDay = smoothstep(-0.12, 0.35, dot(nW, normalize(uSun)));
+  // limb: trees show only where the view grazes the surface, so they stand against space at the planet's edge
+  float mu = dot(nW, normalize(cameraPosition - (modelMatrix * vec4(dir, 1.0)).xyz));
+  float limb = mix(1.0, 1.0 - smoothstep(0.08, 0.32, mu), uLimb);
+  vT = t;
+  vEnd = end;
+  vA = smoothstep(0.02, 0.12, h) * smoothstep(0.05, 0.35, d.g) * limb;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  gl_PointSize = uPx * (0.6 + 0.9 * t);
+}`;
+const FOREST_FRAG = /* glsl */`
+uniform vec3 uRamp[5];
+uniform float uOpacity, uCrown;
+varying float vT, vA, vDay, vEnd;
+${RAMP}
+void main() {
+  float a = vA * uOpacity;
+  if (uCrown > 0.0) a *= 0.6 * smoothstep(0.5, 0.1, length(gl_PointCoord - 0.5));
+  else a *= 0.35 * mix(0.1, 1.0, vEnd);
+  if (a < 0.01) discard;
+  vec3 c = ramp(0.25 + 0.7 * vT) * (0.15 + 1.05 * vDay) * (uCrown > 0.0 ? 1.2 : 0.75);
+  gl_FragColor = vec4(c, a);
+}`;
+
+export function createForestCloud({data, trees, ramp, sun}) {
+  const n = trees.length / 3;
+  const shared = {uData: {value: data}, uYear: {value: 0}, uLift: {value: 0}, uOpacity: {value: 0}, uPx: {value: 1}, uLimb: {value: 1},
+    uRamp: ramp, uSun: sun};
+  const make = (geo, crown, Kind) => {
+    const obj = new Kind(geo, new THREE.ShaderMaterial({uniforms: {...shared, uCrown: {value: crown}},
+      vertexShader: FOREST_VERT, fragmentShader: FOREST_FRAG, transparent: true, depthWrite: false}));
+    obj.frustumCulled = false;
+    return obj;
+  };
+  const strands = new THREE.BufferGeometry(), pos = new Float32Array(n * 6), end = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    pos.set(trees.subarray(i * 3, i * 3 + 3), i * 6);
+    pos.set(trees.subarray(i * 3, i * 3 + 3), i * 6 + 3);
+    end[i * 2 + 1] = 1;
+  }
+  strands.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  strands.setAttribute('aEnd', new THREE.BufferAttribute(end, 1));
+  const crowns = new THREE.BufferGeometry();
+  crowns.setAttribute('position', new THREE.BufferAttribute(trees, 3));
+  crowns.setAttribute('aEnd', new THREE.BufferAttribute(new Float32Array(n), 1));
+  const group = new THREE.Group();
+  group.add(make(strands, 0, THREE.LineSegments), make(crowns, 1, THREE.Points));
+  group.visible = false;
+  return {group, uniforms: shared};
+}
+
+// stars from a seeded generator, so every render of the film (and every parallel renderer) has the same sky
 export function createStars(count = 2400, radius = 60) {
-  const pos = new Float32Array(count * 3), size = new Float32Array(count), tw = new Float32Array(count);
+  const pos = new Float32Array(count * 3), size = new Float32Array(count), tw = new Float32Array(count), rng = mulberry32(5);
   for (let i = 0; i < count; i++) {
-    const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+    const u = rng() * 2 - 1, a = rng() * Math.PI * 2, s = Math.sqrt(1 - u * u);
     pos.set([Math.cos(a) * s * radius, u * radius, Math.sin(a) * s * radius], i * 3);
-    size[i] = Math.pow(Math.random(), 6) * 2.4 + 0.6;
-    tw[i] = Math.random() * 6.28;
+    size[i] = Math.pow(rng(), 6) * 2.4 + 0.6;
+    tw[i] = rng() * 6.28;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
