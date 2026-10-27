@@ -143,7 +143,7 @@
   </div></nav>
   <div class="ft-player">
     <video id="ft-video" playsinline preload="none" poster="assets/film/carbonglobe-film.jpg" aria-label="The CarbonGlobe film, with sound"><source src="assets/film/carbonglobe-film.mp4" type="video/mp4"></video>
-    <button class="ft-play" id="ft-play" type="button" aria-label="Play the film, with sound"><span class="ft-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg></span><span class="ft-label" aria-hidden="true">Watch the film<small><span id="film-secs">88</span> s · with sound</small></span></button>
+    <button class="ft-play" id="ft-play" type="button" aria-label="Play the film, with sound"><span class="ft-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M6 4.5v11l9-5.5z" fill="currentColor"/></svg></span><span class="ft-label" aria-hidden="true">Watch the film<small><span id="film-secs">83</span> s · with sound</small></span></button>
   </div>
   <p class="ft-note">Rendered frame by frame from this page, with a score generated in code. Free to use in talks and posts. <a href="assets/film/carbonglobe-film.mp4" download>Download</a></p>
   <a class="ft-next" href="#top"><span>Explore the story in 3D</span><i aria-hidden="true"></i></a>
@@ -198,7 +198,7 @@
       <span data-t="1.63" data-k="clear" data-pts="-9.5,-54"><b>Brazilian Amazon · 2020</b>Deforestation at its highest in a decade<sup class="ref"><a href="#r13">13</a></sup></span>
       <span data-t="1.71" data-k="clear" data-pts="-23,-61"><b>Gran Chaco · 1985–2013</b>A fifth of its forest turned into farms and pasture<sup class="ref"><a href="#r14">14</a></sup></span>
       <span data-t="1.79" data-k="clear" data-pts="-1.5,23.5"><b>Congo Basin · 2000–14</b>Smallholder clearing of primary forest doubled<sup class="ref"><a href="#r15">15</a></sup></span>
-      <span data-t="1.87" data-k="clear" data-pts="0.5,114" data-side="left"><b>Borneo · 1973–2015</b>18.7 Mha of old-growth forest cleared<sup class="ref"><a href="#r16">16</a></sup></span>
+      <span data-t="1.87" data-k="clear" data-pts="0.5,114" data-side="left" data-dy="76"><b>Borneo · 1973–2015</b>18.7 Mha of old-growth forest cleared<sup class="ref"><a href="#r16">16</a></sup></span>
     </div>
 
     <article class="cap cap-top cap-map cap-why" data-u="2.25,2.45,3.2,3.4">
@@ -298,10 +298,16 @@
     </figure>
 
     <!-- chapter 6 -->
-    <article class="cap cap-top" data-u="13.83,14.03,14.88,15.08">
+    <article class="cap cap-top cap-whatif" data-u="13.83,14.03,14.88,15.08">
       <p class="kicker"><span>Accelerate</span> What if?</p>
       <h2>Forty years ahead, <em>in about an hour</em>.</h2>
       <p>Rolled out year after year, an emulator answers what-if questions that took ED 40 days: other climates, other starting forests, future scenarios, finer maps.<sup class="ref"><a href="#r17">17</a></sup></p>
+      <div class="futures" role="img" aria-label="840 climate futures to 2100: DeepED ran them in about 21 hours on one GPU; ED would take an estimated two years on 1,000 CPUs.">
+        <p class="fu-h"><b>840</b> climate futures to 2100<span>56 pathways between the RCPs × 15 starting forests</span></p>
+        <p class="fu-row fu-ai"><span>DeepED</span><b>≈21 hours</b><small>on 1 GPU</small></p>
+        <p class="fu-row fu-ed"><span>ED</span><b>≈2 years</b><small>on 1,000 CPUs, estimated</small></p>
+        <p class="fu-src">The authors' unpublished experiment.<sup class="ref"><a href="#r27">27</a></sup></p>
+      </div>
     </article>
     <figure class="forecast" id="forecast" data-u="13.88,14.13,14.88,15.08" aria-hidden="true">
       <div class="fc-tabs"><span id="fc-tab-a" class="on">Climates</span><span id="fc-tab-b">Starting forests</span><span id="fc-tab-c">Future forcing</span></div>
@@ -372,7 +378,7 @@
     <div class="stats">
       <article class="stat reveal">
         <p class="stat-n">3.6<small>GtC/yr</small></p>
-        <p class="stat-t">taken up by the world's forests, 1990–2019: almost half of our fossil-fuel emissions.<sup class="ref"><a href="#r27">27</a></sup></p>
+        <p class="stat-t">taken up by the world's forests, 1990–2019: almost half of our fossil-fuel emissions.<sup class="ref"><a href="#r28">28</a></sup></p>
         <a class="src" href="https://doi.org/10.1038/s41586-024-07602-x" target="_blank" rel="noopener">Pan et al. · Nature 2024</a>
       </article>
       <article class="stat reveal">
@@ -390,7 +396,7 @@
     <div class="trust reveal">
       <p class="trust-k">ED, the model CarbonGlobe emulates, informs</p>
       <ul>
-        <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5S9.4 5.9 12 3.5z"/></svg><b>Global Carbon Budget<sup class="ref"><a href="#r22">22</a>,<a href="#r28">28</a></sup></b></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5S9.4 5.9 12 3.5z"/></svg><b>Global Carbon Budget<sup class="ref"><a href="#r22">22</a>,<a href="#r29">29</a></sup></b></li>
         <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 10 6l4 8 2-3 4 7z"/><circle cx="17.5" cy="5.5" r="1.6"/></svg><b>NASA Carbon Monitoring System<sup class="ref"><a href="#r17">17</a>,<a href="#r24">24</a>,<a href="#r25">25</a></sup></b></li>
         <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M9.3 20V5M14.6 20v-8M20 20V8"/></svg><b>U.S. Greenhouse Gas Center<sup class="ref"><a href="#r17">17</a></sup></b></li>
         <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3.4 3 5 6 5 9.2a5 5 0 0 1-10 0C7 9 8.6 6 12 3zM12 21v-7.5"/></svg><b>Maryland's forest carbon inventory<sup class="ref"><a href="#r17">17</a>,<a href="#r24">24</a></sup></b></li>
@@ -417,11 +423,11 @@
     <div class="analogy reveal" aria-label="From weather benchmarks to land benchmarks">
       <div class="lane">
         <span class="tag">Atmosphere</span>
-        <ol><li>Reanalysis<br><b>ERA5</b><sup class="ref"><a href="#r29">29</a></sup></li><li>Benchmark<br><b>WeatherBench</b><sup class="ref"><a href="#r30">30</a></sup></li><li>AI emulators<br><b>FourCastNet</b><sup class="ref"><a href="#r31">31</a></sup> <b>· GraphCast</b><sup class="ref"><a href="#r32">32</a></sup></li></ol>
+        <ol><li>Reanalysis<br><b>ERA5</b><sup class="ref"><a href="#r30">30</a></sup></li><li>Benchmark<br><b>WeatherBench</b><sup class="ref"><a href="#r31">31</a></sup></li><li>AI emulators<br><b>FourCastNet</b><sup class="ref"><a href="#r32">32</a></sup> <b>· GraphCast</b><sup class="ref"><a href="#r33">33</a></sup></li></ol>
       </div>
       <div class="lane lane-land">
         <span class="tag">Land &amp; forests</span>
-        <ol><li>Process model<br><b>Ecosystem Demography</b><sup class="ref"><a href="#r20">20</a>,<a href="#r21">21</a></sup></li><li>Benchmark<br><b class="grad">CarbonGlobe</b><sup class="ref"><a href="#r17">17</a></sup></li><li>AI emulators<br><b>DeepED</b><sup class="ref"><a href="#r33">33</a></sup> <b>· Transformers · yours</b></li></ol>
+        <ol><li>Process model<br><b>Ecosystem Demography</b><sup class="ref"><a href="#r20">20</a>,<a href="#r21">21</a></sup></li><li>Benchmark<br><b class="grad">CarbonGlobe</b><sup class="ref"><a href="#r17">17</a></sup></li><li>AI emulators<br><b>DeepED</b><sup class="ref"><a href="#r34">34</a></sup> <b>· Transformers · yours</b></li></ol>
       </div>
     </div>
 
@@ -446,7 +452,7 @@
           <figure style="--i:2"><img src="assets/data/layers/in_co2.png" alt="CO2 concentration map" loading="lazy"><figcaption>CO₂ · NOAA CarbonTracker</figcaption></figure>
           <figure style="--i:3"><img src="assets/data/layers/in_soil.png" alt="Soil water content map" loading="lazy"><figcaption>Soil hydraulics · ROSETTA</figcaption></figure>
         </div>
-        <p class="stack-note"><b>136 drivers</b> a month at 0.5°: weather, CO₂, soil and disturbance.<sup class="ref"><a href="#r18">18</a>,<a href="#r34">34</a>,<a href="#r35">35</a></sup></p>
+        <p class="stack-note"><b>136 drivers</b> a month at 0.5°: weather, CO₂, soil and disturbance.<sup class="ref"><a href="#r18">18</a>,<a href="#r35">35</a>,<a href="#r36">36</a></sup></p>
       </div>
       <div class="engine reveal">
         <p class="stack-title"><span>2</span>Simulate with ED</p>
@@ -501,7 +507,7 @@
         <div><dt>Period</dt><dd>1981–2021<small>40 annual steps of 12 months</small></dd></div>
         <div><dt>Starting forests</dt><dd>15 ages, 1 to 500 years<small>812,280 sequences</small></dd></div>
         <div><dt>Inputs</dt><dd>136 monthly drivers<small>weather and its daily cycle, CO₂, soil, disturbance</small></dd></div>
-        <div><dt>Sources</dt><dd>NASA MERRA-2<sup class="ref"><a href="#r18">18</a></sup> · NOAA CarbonTracker<sup class="ref"><a href="#r34">34</a></sup> · ROSETTA<sup class="ref"><a href="#r35">35</a></sup></dd></div>
+        <div><dt>Sources</dt><dd>NASA MERRA-2<sup class="ref"><a href="#r18">18</a></sup> · NOAA CarbonTracker<sup class="ref"><a href="#r35">35</a></sup> · ROSETTA<sup class="ref"><a href="#r36">36</a></sup></dd></div>
         <div><dt>Simulator</dt><dd>Ecosystem Demography v3.0<sup class="ref"><a href="#r21">21</a></sup><small>calibrated with lidar, flux towers and inventories</small></dd></div>
         <div><dt>Targets</dt><dd>7 carbon variables<small>height, AGB, soil C, LAI, GPP, NPP, Rh</small></dd></div>
         <div><dt>Evaluation</dt><dd>3 scenarios, 4 metrics<small>RMSE, MAE, delta and cumulative error</small></dd></div>
@@ -543,7 +549,7 @@
       </article>
       <article class="tile t-s2 spot reveal">
         <p class="card-k">Scenario 2</p><h3>Across climates</h3>
-        <p>Scores by Köppen–Geiger zone.<sup class="ref"><a href="#r36">36</a></sup> Where does an emulator break?</p>
+        <p>Scores by Köppen–Geiger zone.<sup class="ref"><a href="#r37">37</a></sup> Where does an emulator break?</p>
         <div class="zonebar" aria-hidden="true"><i style="--c:#3b82f6;--w:16.8"></i><i style="--c:#f59e0b;--w:28.5"></i><i style="--c:#4ade80;--w:10.8"></i><i style="--c:#a78bfa;--w:35.6"></i><i style="--c:#cbd5e1;--w:8.3"></i></div>
         <p class="zonekey" aria-hidden="true"><span style="--c:#3b82f6">Tropical</span><span style="--c:#f59e0b">Arid</span><span style="--c:#4ade80">Temperate</span><span style="--c:#a78bfa">Cold</span><span style="--c:#cbd5e1">Polar</span></p>
       </article>
@@ -571,7 +577,7 @@
       <article class="tile t-base spot reveal">
         <p class="card-k">Baselines</p><h3>Eight models, one repo.</h3>
         <p>Recurrent, attention, linear and simulator-specific, scored the same way.</p>
-        <ul class="models"><li>LSTM<sup class="ref"><a href="#r37">37</a></sup></li><li>LSTNet<sup class="ref"><a href="#r38">38</a></sup></li><li class="hot">DeepED<sup class="ref"><a href="#r33">33</a></sup></li><li>Transformer<sup class="ref"><a href="#r39">39</a></sup></li><li>Informer<sup class="ref"><a href="#r40">40</a></sup></li><li>DLinear<sup class="ref"><a href="#r41">41</a></sup></li><li>Crossformer<sup class="ref"><a href="#r42">42</a></sup></li><li>TimeXer<sup class="ref"><a href="#r43">43</a></sup></li></ul>
+        <ul class="models"><li>LSTM<sup class="ref"><a href="#r38">38</a></sup></li><li>LSTNet<sup class="ref"><a href="#r39">39</a></sup></li><li class="hot">DeepED<sup class="ref"><a href="#r34">34</a></sup></li><li>Transformer<sup class="ref"><a href="#r40">40</a></sup></li><li>Informer<sup class="ref"><a href="#r41">41</a></sup></li><li>DLinear<sup class="ref"><a href="#r42">42</a></sup></li><li>Crossformer<sup class="ref"><a href="#r43">43</a></sup></li><li>TimeXer<sup class="ref"><a href="#r44">44</a></sup></li></ul>
       </article>
     </div>
   </div>
@@ -693,7 +699,7 @@ x, y = X[i], Y[i]           <span class="c"># 40 years of climate; the forest, y
           <div class="hbars" id="bench-bars"></div>
         </div>
       </div>
-      <p class="bench-src">Overall evaluation with noise-perturbation training,<sup class="ref"><a href="#r44">44</a></sup> Table 1 of the paper.<sup class="ref"><a href="#r17">17</a></sup> Colors rank the eight models within each variable.</p>
+      <p class="bench-src">Overall evaluation with noise-perturbation training,<sup class="ref"><a href="#r45">45</a></sup> Table 1 of the paper.<sup class="ref"><a href="#r17">17</a></sup> Colors rank the eight models within each variable.</p>
     </div>
 
     <div class="runtime reveal">
@@ -723,7 +729,7 @@ x, y = X[i], Y[i]           <span class="c"># 40 years of climate; the forest, y
       <div class="ch-copy">
         <p class="eyebrow">IEEE BigData Cup 2026 · Challenge 05</p>
         <h2 class="display">Now forecast the future.</h2>
-        <p class="lead">Built on CarbonGlobe: train on today's climate, roll an emulator forty years into SSP1-2.6 and SSP5-8.5,<sup class="ref"><a href="#r45">45</a></sup> and be scored on where the forest ends up. Awards are available.</p>
+        <p class="lead">Built on CarbonGlobe: train on today's climate, roll an emulator forty years into SSP1-2.6 and SSP5-8.5,<sup class="ref"><a href="#r46">46</a></sup> and be scored on where the forest ends up. Awards are available.</p>
         <div class="buttons">
           <a class="btn btn-primary" href="https://www.kaggle.com/competitions/ieee-bigdata-cup-2026-ai-emulation-challenge/overview" target="_blank" rel="noopener">Join on Kaggle <span aria-hidden="true">↗</span></a>
           <a class="btn" href="https://bigdataieee.org/BigData2026/cup/" target="_blank" rel="noopener">IEEE Big Data Cup <span aria-hidden="true">↗</span></a>
@@ -808,10 +814,10 @@ x, y = X[i], Y[i]           <span class="c"># 40 years of climate; the forest, y
         <h3>From one emulator to world models.</h3>
       </div>
       <ol class="road-list">
-        <li><span class="when">2023</span><b>DeepED</b><p>The first deep emulator of ED, tested over the northeastern U.S.<sup class="ref"><a href="#r33">33</a></sup> <a href="https://par.nsf.gov/servlets/purl/10503425" target="_blank" rel="noopener">ACM SIGSPATIAL</a></p></li>
+        <li><span class="when">2023</span><b>DeepED</b><p>The first deep emulator of ED, tested over the northeastern U.S.<sup class="ref"><a href="#r34">34</a></sup> <a href="https://par.nsf.gov/servlets/purl/10503425" target="_blank" rel="noopener">ACM SIGSPATIAL</a></p></li>
         <li class="now"><span class="when">2025</span><b>CarbonGlobe</b><p>The first global, ML-ready dataset and benchmark for forest carbon.<sup class="ref"><a href="#r17">17</a></sup> <a href="https://proceedings.neurips.cc/paper_files/paper/2025/hash/0b82662b6c32e887bb252a74d8cb2d5e-Abstract-Datasets_and_Benchmarks_Track.html" target="_blank" rel="noopener">NeurIPS</a></p></li>
         <li><span class="when">2026</span><b>The AI Emulation Challenge</b><p>Forty-year forecasts under two future climates, open to everyone. <a href="#challenge">IEEE BigData Cup</a></p></li>
-        <li><span class="when">2026</span><b>Earth-system world models</b><p>An action-conditioned world model for what-if simulation, trained and evaluated on CarbonGlobe.<sup class="ref"><a href="#r46">46</a></sup> ACM SIGSPATIAL 2026 · <a href="https://arxiv.org/abs/2609.08855" target="_blank" rel="noopener">arXiv</a></p></li>
+        <li><span class="when">2026</span><b>Earth-system world models</b><p>An action-conditioned world model for what-if simulation, trained and evaluated on CarbonGlobe.<sup class="ref"><a href="#r47">47</a></sup> ACM SIGSPATIAL 2026 · <a href="https://arxiv.org/abs/2609.08855" target="_blank" rel="noopener">arXiv</a></p></li>
         <li class="next"><span class="when">Next</span><b>Future climates and more</b><p>CMIP6-driven runs to 2100, sub-annual and submodule outputs, and new learning tasks, as planned in the paper.</p></li>
       </ol>
     </div>
@@ -866,8 +872,8 @@ x, y = X[i], Y[i]           <span class="c"># 40 years of climate; the forest, y
     <div class="faq reveal">
       <details><summary>Why not just run ED?<i aria-hidden="true"></i></summary><p>ED stays the reference. But one 40-year global run at 0.5° takes 40.6 days on 20 CPU cores, a run at 0.1° would take about 25 times longer, and every new climate scenario or starting forest is another run.<sup class="ref"><a href="#r17">17</a></sup> An emulator trained on CarbonGlobe does each run in about an hour, so finer maps and many more futures become affordable.</p></details>
       <details><summary>What is an AI emulator?<i aria-hidden="true"></i></summary><p>A neural network trained to reproduce a simulator: the same inputs in, the same outputs out, orders of magnitude faster.</p></details>
-      <details><summary>How does CarbonGlobe relate to ERA5 and WeatherBench 2?<i aria-hidden="true"></i></summary><p>Its climate inputs are the same kind of gridded reanalysis (here NASA's MERRA-2). WeatherBench 2<sup class="ref"><a href="#r30">30</a></sup> asks a model to predict the atmosphere; CarbonGlobe asks what forests do with it. It is the land-carbon counterpart that can sit next to AI weather and climate models.</p></details>
-      <details><summary>Is it observations or simulation?<i aria-hidden="true"></i></summary><p>The inputs are observation-based products. The targets are simulations from ED, a process model calibrated and evaluated against lidar, flux towers, forest inventories and atmospheric inversions, whose results feed the Global Carbon Budget.<sup class="ref"><a href="#r22">22</a>,<a href="#r28">28</a></sup> An emulator trained on CarbonGlobe learns ED.</p></details>
+      <details><summary>How does CarbonGlobe relate to ERA5 and WeatherBench 2?<i aria-hidden="true"></i></summary><p>Its climate inputs are the same kind of gridded reanalysis (here NASA's MERRA-2). WeatherBench 2<sup class="ref"><a href="#r31">31</a></sup> asks a model to predict the atmosphere; CarbonGlobe asks what forests do with it. It is the land-carbon counterpart that can sit next to AI weather and climate models.</p></details>
+      <details><summary>Is it observations or simulation?<i aria-hidden="true"></i></summary><p>The inputs are observation-based products. The targets are simulations from ED, a process model calibrated and evaluated against lidar, flux towers, forest inventories and atmospheric inversions, whose results feed the Global Carbon Budget.<sup class="ref"><a href="#r22">22</a>,<a href="#r29">29</a></sup> An emulator trained on CarbonGlobe learns ED.</p></details>
       <details><summary>How big is it, and what hardware do I need?<i aria-hidden="true"></i></summary><p>29.3 GB of float32 NumPy arrays. Memory-map them and stream batches, as in the quick start. The paper's timings for global inference come from a single RTX A4500 GPU.<sup class="ref"><a href="#r17">17</a></sup></p></details>
       <details><summary>Does it cover future climates?<i aria-hidden="true"></i></summary><p>The dataset spans 1981–2021, so ED could be calibrated against real observations. The IEEE BigData Cup 2026 challenge adds two future scenarios, SSP1-2.6 and SSP5-8.5, and CMIP6-driven runs to 2100 are planned.</p></details>
       <details><summary>Can I use it in my own work?<i aria-hidden="true"></i></summary><p>Yes. Data and code are released under CC BY 4.0: use, share and adapt them with attribution. Please cite the NeurIPS 2025 paper.</p></details>
@@ -910,7 +916,7 @@ x, y = X[i], Y[i]           <span class="c"># 40 years of climate; the forest, y
     <header class="sec-head center reveal">
       <p class="eyebrow">References</p>
       <h2 class="display">Where the numbers come from.</h2>
-      <p class="lead">The sources behind the claims on this page, numbered as cited. All are peer-reviewed except FAO's official forest statistics and the authors' cloud-cost estimate.</p>
+      <p class="lead">The sources behind the claims on this page, numbered as cited. All are peer-reviewed except FAO's official forest statistics and the authors' cloud-cost estimate and scenario experiment.</p>
     </header>
     <ol class="refs reveal">
       <li id="r1">Cunningham, C. X., Williamson, G. J. &amp; Bowman, D. M. J. S. (2024). Increasing frequency and intensity of the most extreme wildfires on Earth. <i>Nature Ecology &amp; Evolution</i> 8, 1420–1425. <a href="https://doi.org/10.1038/s41559-024-02452-2" target="_blank" rel="noopener">doi:10.1038/s41559-024-02452-2</a></li>
@@ -939,26 +945,27 @@ x, y = X[i], Y[i]           <span class="c"># 40 years of climate; the forest, y
       <li id="r24">Hurtt, G. et al. (2019). Beyond MRV: high-resolution forest carbon modeling for climate mitigation planning over Maryland, USA. <i>Environmental Research Letters</i> 14, 045013. <a href="https://doi.org/10.1088/1748-9326/ab0bbe" target="_blank" rel="noopener">doi:10.1088/1748-9326/ab0bbe</a></li>
       <li id="r25">Ma, L. et al. (2021). High-resolution forest carbon modelling for climate mitigation planning over the RGGI region, USA. <i>Environmental Research Letters</i> 16, 045014. <a href="https://doi.org/10.1088/1748-9326/abe4f4" target="_blank" rel="noopener">doi:10.1088/1748-9326/abe4f4</a></li>
       <li id="r26">The authors' estimate, not peer-reviewed: one 40-year global run priced at AWS on-demand rates, ED on 20 vCPUs of an EC2 c6i.8xlarge instance for 974.4 hours (about $828) and DeepED on one NVIDIA A10G GPU for about 1.2 hours (about $2.05). Run times from the CarbonGlobe paper.</li>
-      <li id="r27">Pan, Y. et al. (2024). The enduring world forest carbon sink. <i>Nature</i> 631, 563–569. <a href="https://doi.org/10.1038/s41586-024-07602-x" target="_blank" rel="noopener">doi:10.1038/s41586-024-07602-x</a></li>
-      <li id="r28">Friedlingstein, P. et al. (2025). Global Carbon Budget 2024. <i>Earth System Science Data</i> 17, 965–1039. <a href="https://doi.org/10.5194/essd-17-965-2025" target="_blank" rel="noopener">doi:10.5194/essd-17-965-2025</a></li>
-      <li id="r29">Hersbach, H. et al. (2020). The ERA5 global reanalysis. <i>Quarterly Journal of the Royal Meteorological Society</i> 146, 1999–2049. <a href="https://doi.org/10.1002/qj.3803" target="_blank" rel="noopener">doi:10.1002/qj.3803</a></li>
-      <li id="r30">Rasp, S. et al. (2024). WeatherBench 2: a benchmark for the next generation of data-driven global weather models. <i>Journal of Advances in Modeling Earth Systems</i> 16, e2023MS004019. <a href="https://doi.org/10.1029/2023MS004019" target="_blank" rel="noopener">doi:10.1029/2023MS004019</a></li>
-      <li id="r31">Kurth, T. et al. (2023). FourCastNet: accelerating global high-resolution weather forecasting using adaptive Fourier neural operators. <i>Proceedings of the Platform for Advanced Scientific Computing Conference</i> (PASC '23), 1–11. <a href="https://doi.org/10.1145/3592979.3593412" target="_blank" rel="noopener">doi:10.1145/3592979.3593412</a></li>
-      <li id="r32">Lam, R. et al. (2023). Learning skillful medium-range global weather forecasting. <i>Science</i> 382, 1416–1421. <a href="https://doi.org/10.1126/science.adi2336" target="_blank" rel="noopener">doi:10.1126/science.adi2336</a></li>
-      <li id="r33">Wang, Z., Xie, Y., Jia, X., Ma, L. &amp; Hurtt, G. (2023). High-fidelity deep approximation of ecosystem simulation over long-term at large scale (DeepED). <i>Proceedings of ACM SIGSPATIAL 2023</i>, 1–10. <a href="https://doi.org/10.1145/3589132.3625577" target="_blank" rel="noopener">doi:10.1145/3589132.3625577</a></li>
-      <li id="r34">Peters, W. et al. (2007). An atmospheric perspective on North American carbon dioxide exchange: CarbonTracker. <i>Proceedings of the National Academy of Sciences</i> 104, 18925–18930. <a href="https://doi.org/10.1073/pnas.0708986104" target="_blank" rel="noopener">doi:10.1073/pnas.0708986104</a></li>
-      <li id="r35">Montzka, C., Herbst, M., Weihermüller, L., Verhoef, A. &amp; Vereecken, H. (2017). A global data set of soil hydraulic properties and sub-grid variability of soil water retention and hydraulic conductivity curves (ROSETTA). <i>Earth System Science Data</i> 9, 529–543. <a href="https://doi.org/10.5194/essd-9-529-2017" target="_blank" rel="noopener">doi:10.5194/essd-9-529-2017</a></li>
-      <li id="r36">Beck, H. E. et al. (2018). Present and future Köppen–Geiger climate classification maps at 1-km resolution. <i>Scientific Data</i> 5, 180214. <a href="https://doi.org/10.1038/sdata.2018.214" target="_blank" rel="noopener">doi:10.1038/sdata.2018.214</a></li>
-      <li id="r37">Hochreiter, S. &amp; Schmidhuber, J. (1997). Long short-term memory. <i>Neural Computation</i> 9, 1735–1780. <a href="https://doi.org/10.1162/neco.1997.9.8.1735" target="_blank" rel="noopener">doi:10.1162/neco.1997.9.8.1735</a></li>
-      <li id="r38">Lai, G., Chang, W.-C., Yang, Y. &amp; Liu, H. (2018). Modeling long- and short-term temporal patterns with deep neural networks (LSTNet). <i>Proceedings of ACM SIGIR 2018</i>, 95–104. <a href="https://doi.org/10.1145/3209978.3210006" target="_blank" rel="noopener">doi:10.1145/3209978.3210006</a></li>
-      <li id="r39">Vaswani, A. et al. (2017). Attention is all you need. <i>Advances in Neural Information Processing Systems</i> 30. <a href="https://papers.nips.cc/paper_files/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html" target="_blank" rel="noopener">NeurIPS proceedings</a></li>
-      <li id="r40">Zhou, H. et al. (2021). Informer: beyond efficient transformer for long sequence time-series forecasting. <i>Proceedings of the AAAI Conference on Artificial Intelligence</i> 35, 11106–11115. <a href="https://doi.org/10.1609/aaai.v35i12.17325" target="_blank" rel="noopener">doi:10.1609/aaai.v35i12.17325</a></li>
-      <li id="r41">Zeng, A., Chen, M., Zhang, L. &amp; Xu, Q. (2023). Are transformers effective for time series forecasting? (DLinear). <i>Proceedings of the AAAI Conference on Artificial Intelligence</i> 37, 11121–11128. <a href="https://doi.org/10.1609/aaai.v37i9.26317" target="_blank" rel="noopener">doi:10.1609/aaai.v37i9.26317</a></li>
-      <li id="r42">Zhang, Y. &amp; Yan, J. (2023). Crossformer: transformer utilizing cross-dimension dependency for multivariate time series forecasting. <i>International Conference on Learning Representations</i> (ICLR 2023). <a href="https://openreview.net/forum?id=vSVLM2j9eie" target="_blank" rel="noopener">OpenReview</a></li>
-      <li id="r43">Wang, Y. et al. (2024). TimeXer: empowering transformers for time series forecasting with exogenous variables. <i>Advances in Neural Information Processing Systems</i> 37, 469–498. <a href="https://arxiv.org/abs/2402.19072" target="_blank" rel="noopener">arXiv:2402.19072</a></li>
-      <li id="r44">Sanchez-Gonzalez, A. et al. (2020). Learning to simulate complex physics with graph networks. <i>Proceedings of the 37th International Conference on Machine Learning</i>, PMLR 119, 8459–8468. <a href="https://proceedings.mlr.press/v119/sanchez-gonzalez20a.html" target="_blank" rel="noopener">PMLR</a></li>
-      <li id="r45">O'Neill, B. C. et al. (2016). The Scenario Model Intercomparison Project (ScenarioMIP) for CMIP6. <i>Geoscientific Model Development</i> 9, 3461–3482. <a href="https://doi.org/10.5194/gmd-9-3461-2016" target="_blank" rel="noopener">doi:10.5194/gmd-9-3461-2016</a></li>
-      <li id="r46">Wang, Z., Wang, R., Li, R., Ma, L., Hurtt, G., Jia, X., Mai, G., Wang, S. &amp; Xie, Y. (2026). Earth system world model for what-if simulations: a case study for terrestrial ecosystems. <i>ACM SIGSPATIAL 2026</i>, accepted. <a href="https://arxiv.org/abs/2609.08855" target="_blank" rel="noopener">arXiv:2609.08855</a></li>
+      <li id="r27">The authors' unpublished experiment (Zhihao Wang's dissertation research), not peer-reviewed: 840 future scenarios to 2100, 56 climate pathways interpolated between the RCPs by radiative forcing, each from the 15 starting ages; DeepED ran all of them in about 21 hours on one GPU, while ED would take an estimated two years on 1,000 CPUs.</li>
+      <li id="r28">Pan, Y. et al. (2024). The enduring world forest carbon sink. <i>Nature</i> 631, 563–569. <a href="https://doi.org/10.1038/s41586-024-07602-x" target="_blank" rel="noopener">doi:10.1038/s41586-024-07602-x</a></li>
+      <li id="r29">Friedlingstein, P. et al. (2025). Global Carbon Budget 2024. <i>Earth System Science Data</i> 17, 965–1039. <a href="https://doi.org/10.5194/essd-17-965-2025" target="_blank" rel="noopener">doi:10.5194/essd-17-965-2025</a></li>
+      <li id="r30">Hersbach, H. et al. (2020). The ERA5 global reanalysis. <i>Quarterly Journal of the Royal Meteorological Society</i> 146, 1999–2049. <a href="https://doi.org/10.1002/qj.3803" target="_blank" rel="noopener">doi:10.1002/qj.3803</a></li>
+      <li id="r31">Rasp, S. et al. (2024). WeatherBench 2: a benchmark for the next generation of data-driven global weather models. <i>Journal of Advances in Modeling Earth Systems</i> 16, e2023MS004019. <a href="https://doi.org/10.1029/2023MS004019" target="_blank" rel="noopener">doi:10.1029/2023MS004019</a></li>
+      <li id="r32">Kurth, T. et al. (2023). FourCastNet: accelerating global high-resolution weather forecasting using adaptive Fourier neural operators. <i>Proceedings of the Platform for Advanced Scientific Computing Conference</i> (PASC '23), 1–11. <a href="https://doi.org/10.1145/3592979.3593412" target="_blank" rel="noopener">doi:10.1145/3592979.3593412</a></li>
+      <li id="r33">Lam, R. et al. (2023). Learning skillful medium-range global weather forecasting. <i>Science</i> 382, 1416–1421. <a href="https://doi.org/10.1126/science.adi2336" target="_blank" rel="noopener">doi:10.1126/science.adi2336</a></li>
+      <li id="r34">Wang, Z., Xie, Y., Jia, X., Ma, L. &amp; Hurtt, G. (2023). High-fidelity deep approximation of ecosystem simulation over long-term at large scale (DeepED). <i>Proceedings of ACM SIGSPATIAL 2023</i>, 1–10. <a href="https://doi.org/10.1145/3589132.3625577" target="_blank" rel="noopener">doi:10.1145/3589132.3625577</a></li>
+      <li id="r35">Peters, W. et al. (2007). An atmospheric perspective on North American carbon dioxide exchange: CarbonTracker. <i>Proceedings of the National Academy of Sciences</i> 104, 18925–18930. <a href="https://doi.org/10.1073/pnas.0708986104" target="_blank" rel="noopener">doi:10.1073/pnas.0708986104</a></li>
+      <li id="r36">Montzka, C., Herbst, M., Weihermüller, L., Verhoef, A. &amp; Vereecken, H. (2017). A global data set of soil hydraulic properties and sub-grid variability of soil water retention and hydraulic conductivity curves (ROSETTA). <i>Earth System Science Data</i> 9, 529–543. <a href="https://doi.org/10.5194/essd-9-529-2017" target="_blank" rel="noopener">doi:10.5194/essd-9-529-2017</a></li>
+      <li id="r37">Beck, H. E. et al. (2018). Present and future Köppen–Geiger climate classification maps at 1-km resolution. <i>Scientific Data</i> 5, 180214. <a href="https://doi.org/10.1038/sdata.2018.214" target="_blank" rel="noopener">doi:10.1038/sdata.2018.214</a></li>
+      <li id="r38">Hochreiter, S. &amp; Schmidhuber, J. (1997). Long short-term memory. <i>Neural Computation</i> 9, 1735–1780. <a href="https://doi.org/10.1162/neco.1997.9.8.1735" target="_blank" rel="noopener">doi:10.1162/neco.1997.9.8.1735</a></li>
+      <li id="r39">Lai, G., Chang, W.-C., Yang, Y. &amp; Liu, H. (2018). Modeling long- and short-term temporal patterns with deep neural networks (LSTNet). <i>Proceedings of ACM SIGIR 2018</i>, 95–104. <a href="https://doi.org/10.1145/3209978.3210006" target="_blank" rel="noopener">doi:10.1145/3209978.3210006</a></li>
+      <li id="r40">Vaswani, A. et al. (2017). Attention is all you need. <i>Advances in Neural Information Processing Systems</i> 30. <a href="https://papers.nips.cc/paper_files/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html" target="_blank" rel="noopener">NeurIPS proceedings</a></li>
+      <li id="r41">Zhou, H. et al. (2021). Informer: beyond efficient transformer for long sequence time-series forecasting. <i>Proceedings of the AAAI Conference on Artificial Intelligence</i> 35, 11106–11115. <a href="https://doi.org/10.1609/aaai.v35i12.17325" target="_blank" rel="noopener">doi:10.1609/aaai.v35i12.17325</a></li>
+      <li id="r42">Zeng, A., Chen, M., Zhang, L. &amp; Xu, Q. (2023). Are transformers effective for time series forecasting? (DLinear). <i>Proceedings of the AAAI Conference on Artificial Intelligence</i> 37, 11121–11128. <a href="https://doi.org/10.1609/aaai.v37i9.26317" target="_blank" rel="noopener">doi:10.1609/aaai.v37i9.26317</a></li>
+      <li id="r43">Zhang, Y. &amp; Yan, J. (2023). Crossformer: transformer utilizing cross-dimension dependency for multivariate time series forecasting. <i>International Conference on Learning Representations</i> (ICLR 2023). <a href="https://openreview.net/forum?id=vSVLM2j9eie" target="_blank" rel="noopener">OpenReview</a></li>
+      <li id="r44">Wang, Y. et al. (2024). TimeXer: empowering transformers for time series forecasting with exogenous variables. <i>Advances in Neural Information Processing Systems</i> 37, 469–498. <a href="https://arxiv.org/abs/2402.19072" target="_blank" rel="noopener">arXiv:2402.19072</a></li>
+      <li id="r45">Sanchez-Gonzalez, A. et al. (2020). Learning to simulate complex physics with graph networks. <i>Proceedings of the 37th International Conference on Machine Learning</i>, PMLR 119, 8459–8468. <a href="https://proceedings.mlr.press/v119/sanchez-gonzalez20a.html" target="_blank" rel="noopener">PMLR</a></li>
+      <li id="r46">O'Neill, B. C. et al. (2016). The Scenario Model Intercomparison Project (ScenarioMIP) for CMIP6. <i>Geoscientific Model Development</i> 9, 3461–3482. <a href="https://doi.org/10.5194/gmd-9-3461-2016" target="_blank" rel="noopener">doi:10.5194/gmd-9-3461-2016</a></li>
+      <li id="r47">Wang, Z., Wang, R., Li, R., Ma, L., Hurtt, G., Jia, X., Mai, G., Wang, S. &amp; Xie, Y. (2026). Earth system world model for what-if simulations: a case study for terrestrial ecosystems. <i>ACM SIGSPATIAL 2026</i>, accepted. <a href="https://arxiv.org/abs/2609.08855" target="_blank" rel="noopener">arXiv:2609.08855</a></li>
     </ol>
   </div>
 </section>

@@ -1022,7 +1022,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     // pops; a phone shows only the latest one. The caption's legend lights each kind with its first event.
     const latest = whyLabels.reduce((m, L, i) => (p >= L.t ? i : m), -1), map = L.map;
     whyLabels.forEach((L, i) => {
-      const a = marks.points.visible && (!L.narrow || i === latest) ? ss(L.t + 0.02, L.t + 0.1, p) * (1 - ss(L.t + 0.42, L.t + 0.52, p)) * KU.uOut.value : 0;
+      const a = marks.points.visible && (!L.narrow || i === latest) ? ss(L.t + 0.02, L.t + 0.1, p) * (1 - ss(L.t + 0.3, L.t + 0.38, p)) * KU.uOut.value : 0;
       if (a < 0.01) { if (L.on) { L.el.style.opacity = 0; L.on = false; } return; }
       const q = markOf[i] * 3, f = marks.flat;
       G.spin.localToWorld(tmp.set(marks.positions[q], marks.positions[q + 1], marks.positions[q + 2]));
@@ -1032,7 +1032,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       L.el.style.opacity = (a * ss(0.15, 0.35, mu)).toFixed(3);
       const w = L.w || (L.w = L.el.offsetWidth), h = L.h || (L.h = L.el.offsetHeight);
       const x = clamp(L.el.dataset.side === 'left' || s.x + 20 + w > W - 8 ? s.x - 20 - w : s.x + 20, 8, W - w - 8);
-      L.el.style.transform = `translate(${x.toFixed(1)}px, ${(s.y - h / 2).toFixed(1)}px)`;
+      L.el.style.transform = `translate(${x.toFixed(1)}px, ${(s.y - h / 2 + (+L.el.dataset.dy || 0)).toFixed(1)}px)`;   // dy: moved down, clear of a neighbour
       L.on = true;
     });
     kindEls.forEach(K => K.el.classList.toggle('on', p >= K.t));
@@ -1067,7 +1067,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     }
 
     // annotations appear with the parts they name; the forcing's names the map at the front of the deck
-    const nlA = ss(8.4, 8.65, u) * (1 - ss(9.3, 9.5, u));
+    const nlA = ss(8.4, 8.65, u) * (1 - ss(9.3, 9.5, u)) * (1 - speedA);
     if (nlA > 0.01 && netVar) {
       const t = net.frontLabel();
       if (t !== netVar.textContent) { netVar.textContent = t; netVar.style.color = scen.maps.vars[net.deck.front].ramp[3]; }

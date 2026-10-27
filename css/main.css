@@ -314,6 +314,19 @@ html.no-webgl .stage-fallback {
 .speed-next { margin: 16px 0 0; color: var(--text); font-size: clamp(14.5px, 1.1vw, 17px); }
 .speed-src { margin: 6px 0 0; color: var(--dim); font: 10.5px/1.45 var(--mono); }
 
+/* ... and what the time saved buys: many futures */
+.futures { margin-top: 18px; padding: 12px 16px 10px; border-radius: 14px; border: 1px solid rgba(62, 224, 143, .3); background: rgba(5, 10, 12, .62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-family: var(--mono); opacity: clamp(0, calc(var(--k, 1) * 2.4 - 1.4), 1); }
+.futures p { margin: 0 !important; font: 11.5px/1.5 var(--mono) !important; color: var(--muted) !important; text-shadow: none !important; opacity: 1 !important; }
+.fu-h { margin-bottom: 8px !important; text-transform: uppercase; letter-spacing: .08em; }
+.fu-h b { margin-right: 6px; color: var(--text); font: 650 22px/1 var(--sans); letter-spacing: -0.02em; }
+.fu-h span { display: block; margin-top: 3px; color: var(--dim); font-size: 10.5px; text-transform: none; letter-spacing: .02em; }
+.fu-row { display: grid; grid-template-columns: 64px 104px 1fr; align-items: baseline; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); }
+.fu-row b { font: 600 16px/1.2 var(--sans); }
+.fu-ai b { color: var(--g1); }
+.fu-ed b { color: #ffb36b; }
+.fu-row small { color: var(--dim); font-size: 10.5px; }
+.fu-src { margin-top: 4px !important; font-size: 10px !important; color: var(--dim) !important; }
+
 /* the primer in one frame: one forest, four forcings, fifteen ages, each view with a header and its readout */
 .cap-views { width: min(640px, calc(100vw - 48px)); }
 .cap-views h2 { font-size: clamp(28px, 3vw, 44px); margin-bottom: 10px; }
@@ -934,6 +947,8 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
   #why-labels > span { max-width: 200px; padding: 5px 8px 6px; font-size: 10.5px; }
   #why-labels b { font-size: 9.5px; }
   .hud-globe { display: none; }
+  .cap-whatif > p:not(.kicker), .fu-h span, .fu-src { display: none; }
+  .futures { margin-top: 10px; padding: 8px 12px 6px; }
   .speed { top: 76px; left: 12px; right: 12px; width: auto; transform: none; padding: 16px 14px 12px; }
   .speed-grid { grid-template-columns: 1fr; gap: 10px; }
   .speed-sub, .speed-next { display: none; }
