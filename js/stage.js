@@ -1,6 +1,8 @@
-// The scroll-driven film: hero globe -> one forest -> four forcings -> fifteen ages -> planet -> emulator -> what if -> numbers.
+// The scroll-driven film: hero globe -> why emulators (forests under pressure, a slow simulator, the case for
+// emulators) -> the primer (one forest, four forcings, fifteen ages) -> planet -> emulator -> what if -> numbers.
 import * as THREE from '../assets/vendor/three.module.js';
-import {createGlobe, createCanopy, createForestCloud, createStars, createFlare, facing, cellOf, latLonToVec3} from './globe.js';
+import {createGlobe, createCanopy, createForestCloud, createStars, createFlare, createMarkers, facing, cellOf, latLonToVec3} from './globe.js';
+import {WHY, storyU} from './timeline.js';
 import {createGround, createMotes, createWeather, createSky, createLidar} from './forest.js';
 import {mulberry32} from './random.js';
 import {growTrees, treePoints, createFlames, PRE_TAU} from './hero-tree.js';
@@ -18,6 +20,29 @@ const HERO_D = 4.2;        // camera distance (globe radii) of the opening globe
 const DIVE_ALT = 0.2;      // altitude (globe radii) the dive passes on its way down to the Amazon
 const GROUND_ALT = 0.002;  // ... and where it ends, about 13 km above the forest
 const GROUND = {lat: -3.29, lon: -63.68};   // the forest at the head of a lake, by the chapter's site
+
+// The opening globe's path through the case for emulators, [p, lat, lon], always turning west: the Atlantic,
+// with three of the events in view, over the Pacific to Australia, then on over Asia and Africa back to the
+// Atlantic while the planet is simulated. REVEAL: where the simulation runs, its cells landing one by one.
+const WHY_PATH = [[0.75, 24, -45], [1.3, 24, -45], [1.62, -25, 140], [1.95, -25, 140], [3.0, 12, -45], [WHY[1], 8, -55]];
+const REVEAL = [2.02, 2.62];
+const whyKeys = (() => {
+  let y = 0;
+  return WHY_PATH.map(([p, lat, lon], i) => {
+    const f = facing(lat, lon), d = west(f.y - y);
+    y = i ? y + (d > 2 * Math.PI - 1e-6 ? 0 : d) : f.y;
+    return {p, x: f.x, y};
+  });
+})();
+function whyRot(p) {
+  const K = whyKeys;
+  for (let i = 1; i < K.length; i++) {
+    if (p > K[i].p) continue;
+    const t = ease(clamp((p - K[i - 1].p) / (K[i].p - K[i - 1].p)));
+    return {x: lerp(K[i - 1].x, K[i].x, t), y: lerp(K[i - 1].y, K[i].y, t)};
+  }
+  return K[K.length - 1];
+}
 
 // Interpolate a 41-element annual series at fractional year index.
 const at = (series, y) => { const i = Math.floor(y), f = y - i; return i >= 40 ? series[40] : series[i] * (1 - f) + series[i + 1] * f; };
@@ -156,6 +181,13 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const flare = createFlare();
   flare.renderOrder = 5;
   gScene.add(flare);
+  // the opening's events: markers on the globe, named by the page's labels (each lists its points as lat,lon;...)
+  const whyLabels = [...dom.whyLabels.children].map(el => ({el, t: +el.dataset.t, color: el.dataset.c,
+    pts: el.dataset.pts.split(';').map(q => q.split(',').map(Number))}));
+  const marks = createMarkers(whyLabels.flatMap(L => L.pts.map(([lat, lon]) => ({lat, lon, color: L.color, t: L.t}))), px);
+  G.spin.add(marks.points);
+  const markOf = whyLabels.map((L, i) => whyLabels.slice(0, i).reduce((n, M) => n + M.pts.length, 0));
+  let whyFrom = null;   // the hero's rotation as the case began
   const net = createEmulator(px, scen.maps, tex.mask);
   gScene.add(net.group);
   maps?.then(t => net.setMaps(t)).catch(() => {});
@@ -452,14 +484,14 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   // interaction: drag the hero globe
   const drag = {active: false, x: 0, y: 0, vy: 0, dy: 0, tilt: 0};
   let heroY = facing(15, -35).y, heroTilt = 0.3;
-  let u = 0;
+  let u = 0, p = 0;   // the story's clock, and the scroll position it comes from (js/timeline.js)
   canvas.addEventListener('pointerdown', e => {
-    if (u > 0.5) return;
+    if (p > WHY[0]) return;
     drag.active = true; drag.x = e.clientX; drag.y = e.clientY;
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
-    canvas.style.cursor = u < 0.5 ? (drag.active ? 'grabbing' : 'grab') : '';
+    canvas.style.cursor = p < WHY[0] ? (drag.active ? 'grabbing' : 'grab') : '';
     if (!drag.active) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag.x = e.clientX; drag.y = e.clientY;
@@ -489,6 +521,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     L.hero = narrow ? {x: 0, y: hh * 0.55, s: Math.min(0.82, hw * 0.78), d: dh} : {x: hw * 0.5, y: 0, s: 0.95, d: dh};
     // (the film's planet is a little smaller, clear of its corner tag)
     L.planet = narrow ? {x: 0, y: -hh * 0.18, s: Math.min(0.9, hw * 0.85), d: dh} : {x: hw * 0.36, y: 0, s: film ? 0.92 : 1, d: dh};
+    // the case for emulators: the globe right of its captions, as the planet chapter's
+    L.why = narrow ? {x: 0, y: -hh * 0.2, s: Math.min(0.86, hw * 0.8)} : aspect < 1.5 ? {x: hw * 0.42, y: 0, s: 0.88} : {x: hw * 0.36, y: 0, s: 1};
     // emulator: globe left, network right
     const dn = 4.4, nh = dn * t, nw = nh * aspect;
     L.net = narrow
@@ -518,6 +552,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     const de = 4.3, eh = de * t, ew = eh * aspect, er = narrow ? ew * 1.9 : Math.max(ew * 1.05, eh * 1.7);
     L.end = {d: de, s: er, y: -eh * (narrow ? 0.4 : 0.27) - er};
     L.narrow = narrow;
+    whyLabels.forEach(M => { M.w = M.h = 0; M.narrow = narrow; });
     const cap = dom.forcingCap;
     L.capBottom = cap ? cap.offsetTop + cap.offsetHeight : 0;
     // narrow views get a one-line readout, and the narrowest drop their maps
@@ -527,7 +562,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   }
   resize();
 
-  const tmp = new THREE.Vector3(), mainTgt = new THREE.Vector3(), sunSide = new THREE.Vector3();
+  const tmp = new THREE.Vector3(), mainTgt = new THREE.Vector3(), sunSide = new THREE.Vector3(), nrm = new THREE.Vector3(), eye = new THREE.Vector3();
   const PANEL_VIEW = 4.8;   // world units (10 m) of height each forcing view shows
   const PANEL_TGT = 2.2;    // height the views look at, leaving room for the headers above the crowns
   // key light from the upper left of a camera at azimuth az, slightly in front of the subject
@@ -594,8 +629,10 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   let last = performance.now(), time = 0;
   // opt.intro: the sunrise's progress (0..1), when the rendered film times it to its music; opt.dry: update
   // every state without drawing (a parallel renderer replays the film up to its first frame this way)
-  function render(uNow, tFixed, opt = {}) {
-    u = film ? filmU(uNow) : uNow;
+  function render(pNow, tFixed, opt = {}) {
+    p = pNow;
+    u = storyU(p);
+    if (film) u = filmU(u);
     let dt;
     if (tFixed !== undefined) { dt = Math.max(0, tFixed - time); time = tFixed; }
     else { const now = performance.now(); dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt; }
@@ -604,11 +641,21 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     // Turn to the Amazon first, fly straight down onto the highlighted cell, then on into the forest inside it.
     const kDive = ease(ss(0.55, 1.62, u)), kRot = ease(ss(0.55, 1.45, u)), kGround = ss(1.62, 1.96, u);
     if (!drag.active) { heroY += (reduced ? 0 : dt * 0.06 * (1 - kRot)) + drag.vy; drag.vy *= 0.92; }
+    // the case for emulators turns the globe along its own path, from wherever the hero left it; the dive then
+    // sets off from where the path ends
+    if (p > WHY[0] && p < WHY[1]) {
+      if (!whyFrom) whyFrom = {x: heroTilt, y: heroY};
+      const P = whyRot(p), k = ease(ss(WHY[0], whyKeys[0].p, p));
+      heroY = whyFrom.y + wrapPi(P.y - whyFrom.y) * k;
+      heroTilt = lerp(whyFrom.x, P.x, k);
+      drag.vy = 0;
+    } else if (p <= WHY[0]) whyFrom = null;
     let rx = lerp(heroTilt, targetRot.x, kRot) + (groundRot.x - targetRot.x) * kGround;
     let ry = heroY + wrapPi(targetRot.y - heroY) * kRot + (groundRot.y - targetRot.y) * kGround;
     let alt = Math.exp(lerp(Math.log(L.hero.d - 1), Math.log(DIVE_ALT), kDive));
     alt = Math.exp(lerp(Math.log(alt), Math.log(GROUND_ALT), kGround));
-    let gx = lerp(L.hero.x, 0, kRot), gy = lerp(L.hero.y, 0, kRot), gs = lerp(L.hero.s, 1, kRot);
+    const kWhy = ease(ss(WHY[0], WHY[0] + 0.3, p)), H0 = {x: lerp(L.hero.x, L.why.x, kWhy), y: lerp(L.hero.y, L.why.y, kWhy), s: lerp(L.hero.s, L.why.s, kWhy)};
+    let gx = lerp(H0.x, 0, kRot), gy = lerp(H0.y, 0, kRot), gs = lerp(H0.s, 1, kRot);
     if (u > 6.45) {
       // pull back out to the planet, settling right of the caption
       const kOut = ease(ss(6.6, 7.3, u));
@@ -642,6 +689,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     G.spin.rotation.set(rx, ry, 0, 'XYZ');
     gCam.position.set(0, 0, dist);
     gCam.lookAt(0, 0, 0);
+    gCam.updateMatrixWorld();
     gCam.near = Math.max(0.0002, (dist - gs) * 0.3);
     gCam.updateProjectionMatrix();
 
@@ -680,7 +728,12 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     U.uDataMix.value = (1 - 0.92 * near) * (1 - (forest ? 0 : 0.85) * relief);
     U.uGrowth.value = forest ? 0.6 * growing : 0;
     U.uExposure.value = 1 + 0.4 * near;
-    U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing);
+    U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing) * (1 - 0.25 * ss(1.9, 2.1, p) * (1 - ss(4.2, WHY[1], p)));
+    // the opening's events, then the planet simulated cell by cell; from then on every cell shows
+    U.uReveal.value = p < REVEAL[0] ? 0 : p > REVEAL[1] ? 2 : 1.05 * (p - REVEAL[0]) / (REVEAL[1] - REVEAL[0]);
+    const KU = marks.uniforms;
+    KU.uP.value = p; KU.uTime.value = time; KU.uOut.value = 1 - ss(1.95, 2.1, p);
+    marks.points.visible = p > 0.6 && p < 2.1;
     canopy.mesh.visible = !forest && relief > 0.002;
     const CU = canopy.uniforms;
     CU.uOpacity.value = relief;
@@ -701,7 +754,8 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     // the dive goes straight down into the forest; the grid and its cell appear only on the way back up
     U.uGridMix.value = u > 6.6 && u < 7.05 ? 1 : 0;
     U.uTargetMix.value = ss(6.55, 6.7, u) * (1 - ss(6.75, 7, u));
-    U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kDim), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum));
+    U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kDim), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum))
+      * (film ? 1 - 0.65 * ss(3.66, 3.78, p) * (1 - ss(4.28, 4.45, p)) : 1);   // the film's big number on the case
     // the photographic Earth gives way to its digital twin behind a scan line, and comes back for the end card
     U.uTwin.value = -1.25 + 2.5 * ss(10.68, 10.95, u);
     U.uTwinMix.value = u > 10.6 ? 1 - ss(11.7, 12.15, u) : 0;
@@ -883,6 +937,31 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     dom.treeLai.textContent = lai.toFixed(1);
     cohorts.forEach((c, i) => { barEls[i].style.height = `${clamp(c.h / 34) * 100}%`; });
     dom.globeYear.textContent = 1981 + Math.round(U.uYear.value);
+
+    // the events' labels sit by their markers while they face the camera, kept on screen; a phone shows only the
+    // latest one
+    const latest = whyLabels.reduce((m, L, i) => (p >= L.t ? i : m), -1);
+    whyLabels.forEach((L, i) => {
+      const a = marks.points.visible && (!L.narrow || i === latest) ? ss(L.t + 0.02, L.t + 0.1, p) * KU.uOut.value : 0;
+      if (a < 0.01) { if (L.on) { L.el.style.opacity = 0; L.on = false; } return; }
+      const q = markOf[i] * 3;
+      G.spin.localToWorld(tmp.set(marks.positions[q], marks.positions[q + 1], marks.positions[q + 2]));
+      const mu = nrm.copy(tmp).sub(G.group.position).normalize().dot(eye.copy(gCam.position).sub(tmp).normalize());
+      const s = project(tmp, gCam);
+      L.el.style.opacity = (a * ss(0.15, 0.35, mu)).toFixed(3);
+      const w = L.w || (L.w = L.el.offsetWidth), h = L.h || (L.h = L.el.offsetHeight);
+      const x = clamp(L.el.dataset.side === 'left' || s.x + 20 + w > W - 8 ? s.x - 20 - w : s.x + 20, 8, W - w - 8);
+      L.el.style.transform = `translate(${x.toFixed(1)}px, ${(s.y - h / 2).toFixed(1)}px)`;
+      L.on = true;
+    });
+    // the clock of one global run, counting while the cells land
+    if (p > 1.9 && p < 3.3) {
+      const k = clamp((p - REVEAL[0]) / (REVEAL[1] - REVEAL[0]));
+      dom.simDays.textContent = (40.6 * k).toFixed(1);
+      dom.simBar.style.transform = `scaleX(${k.toFixed(4)})`;
+      dom.sim.style.setProperty('--r1', ss(2.64, 2.76, p).toFixed(3));
+      dom.sim.style.setProperty('--r2', ss(2.78, 2.9, p).toFixed(3));
+    }
 
     const labA = ss(5.55, 5.8, u) * (1 - ss(6.25, 6.4, u));
     cohorts.forEach((c, i) => {

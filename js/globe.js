@@ -166,7 +166,7 @@ uniform sampler2D uLights;
 uniform sampler2D uDetail, uDetail2, uDetail3;
 uniform sampler2DArray uData;
 uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight, uGrowth;
-uniform float uReal, uCloud, uCloudShift, uDetailMix, uExposure, uTwin, uTwinMix;
+uniform float uReal, uCloud, uCloudShift, uDetailMix, uExposure, uTwin, uTwinMix, uReveal;
 uniform vec4 uDetailBox, uDetailBox2, uDetailBox3;
 uniform vec3 uSun;
 uniform vec3 uRamp[5];
@@ -228,6 +228,15 @@ void main() {
     cov = smoothstep(0.2, 0.75, d.g) * smoothstep(0.25, 0.65, land);
     t = d.r / max(d.g, 1e-3);
   }
+  // the story's opening simulates the planet: its cells land in a random order as uReveal runs from 0 to 1,
+  // each flashing as it lands (uReveal above 1 shows them all)
+  uvec2 rc = uvec2(floor(duv * vec2(720.0, 360.0)));
+  uint rk = (rc.x * 1597334677u) ^ (rc.y * 3812015801u);
+  rk = (rk ^ (rk >> 16u)) * 2246822519u;
+  rk ^= rk >> 13u;
+  float rh = (float(rk & 0xFFFFFFu) + 0.5) / 16777216.0;
+  float shown = step(rh, uReveal), fresh = shown * (1.0 - smoothstep(0.0, 0.05, uReveal - rh)) * cov;
+  cov *= shown;
   vec3 dc = ramp(t);
   vec3 dataCol = dc * mix(0.22 * uNight, 1.0, day) * (0.82 + 0.3 * t) + dc * t * t * 0.22 * (1.0 - day) * uNight;
   col = mix(col, dataCol, cov * uDataMix * 0.94);
@@ -267,6 +276,7 @@ void main() {
       float tn = gn.r / max(gn.g, 1e-3), t0 = g0.r / max(g0.g, 1e-3);
       real += ramp(0.95) * smoothstep(0.0, 0.25, max(tn * tn - t0 * t0, 0.0)) * cov * uGrowth * (0.35 + 0.65 * lit) * (1.0 - cl);
     }
+    real += vec3(0.62, 1.0, 0.7) * fresh * (0.25 + 0.75 * lit) * 0.6;
     float dark = 1.0 - smoothstep(-0.2, 0.06, ndl);
     real += vec3(1.0, 0.72, 0.4) * texture2D(uLights, vUv).r * dark * (1.0 - 0.8 * cl) * 1.2;
     float fh = pow(1.0 - max(dot(N, V), 0.0), 2.3);
@@ -349,7 +359,7 @@ export function createGlobe({day, mask, zones, data = null, segments = 192, clou
     uDetail: {value: details[0]?.tex || mask}, uDetail2: {value: details[1]?.tex || mask}, uDetail3: {value: details[2]?.tex || mask},
     uDetailBox: {value: boxVec(details[0])}, uDetailBox2: {value: boxVec(details[1])}, uDetailBox3: {value: boxVec(details[2])},
     uDetailMix: {value: details.length ? 1 : 0}, uTwin: {value: -2}, uTwinMix: {value: 0},
-    uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0}, uExposure: {value: 1},
+    uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0}, uExposure: {value: 1}, uReveal: {value: 2},
     uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
     uHasData: {value: data ? 1 : 0},
     uYear: {value: 40}, uGrowth: {value: 0}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
@@ -556,4 +566,52 @@ export function createFlare() {
   m.frustumCulled = false;
   m.visible = false;
   return m;
+}
+
+// Places on the globe that pulse: a hot point with a ring rippling out from it, sized in screen pixels and fading
+// toward the limb. points: [{lat, lon, color, t}]; each lights up as uP passes its t, with a flash, and all fade
+// with uOut. Children of the globe's spin group, drawn over it.
+export function createMarkers(points, px) {
+  const n = points.length, v = new THREE.Vector3(), c = new THREE.Color();
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), t0 = new Float32Array(n), ph = new Float32Array(n);
+  points.forEach((m, i) => {
+    latLonToVec3(m.lat, m.lon, 1.004, v);
+    pos.set([v.x, v.y, v.z], i * 3);
+    c.set(m.color);
+    col.set([c.r, c.g, c.b], i * 3);
+    t0[i] = m.t;
+    ph[i] = (i * 0.37) % 1;
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aCol', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('aT', new THREE.BufferAttribute(t0, 1));
+  geo.setAttribute('aPh', new THREE.BufferAttribute(ph, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {uP: {value: 0}, uOut: {value: 1}, uTime: {value: 0}, uPx: {value: px}},
+    vertexShader: `attribute vec3 aCol; attribute float aT; attribute float aPh;
+      uniform float uP, uOut, uPx; varying vec3 vCol; varying float vA, vPop, vPh;
+      void main(){
+        vec3 w = (modelMatrix * vec4(position, 1.0)).xyz, nW = normalize((modelMatrix * vec4(position, 0.0)).xyz);
+        float mu = dot(nW, normalize(cameraPosition - w));
+        vA = smoothstep(0.04, 0.3, mu) * smoothstep(aT, aT + 0.05, uP) * uOut;
+        vPop = smoothstep(aT, aT + 0.03, uP) * (1.0 - smoothstep(aT + 0.03, aT + 0.2, uP));
+        vCol = aCol; vPh = aPh;
+        gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
+        gl_PointSize = uPx * (30.0 + 26.0 * vPop);
+      }`,
+    fragmentShader: `uniform float uTime; varying vec3 vCol; varying float vA, vPop, vPh;
+      void main(){
+        float r = length(gl_PointCoord - 0.5) * 2.0;
+        float core = smoothstep(0.24, 0.12, r), glow = exp(-r * r * 9.0) * (0.45 + 0.8 * vPop);
+        float ring = fract(uTime * 0.5 + vPh), wave = smoothstep(0.07, 0.0, abs(r - ring)) * (1.0 - ring) * 0.9;
+        float a = (core + glow + wave) * vA;
+        gl_FragColor = vec4(mix(vCol, vec3(1.0), core * 0.55) * a, 1.0);
+      }`,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  pts.renderOrder = 4;
+  return {points: pts, uniforms: mat.uniforms, positions: pos};
 }

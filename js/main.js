@@ -2,6 +2,7 @@
 import {loadTexture, loadAtlas, loadZones, loadTiles} from './globe.js';
 import {createForecast} from './forecast.js';
 import {createBench} from './bench.js';
+import {storyU} from './timeline.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -12,7 +13,7 @@ const RENDER = PARAMS.has('render');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (RENDER) document.documentElement.classList.add('render');
 const mobile = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
-const U_END = 12.6;
+const U_END = 16.6;
 
 function webgl2() {
   try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
@@ -126,6 +127,7 @@ function applyFades(u) {
     f.el.style.opacity = o.toFixed(3);
     // Captions stay in the accessibility tree; blocks with links are hidden so focus never lands on them.
     if (!f.isCap) f.el.style.visibility = vis ? 'visible' : 'hidden';
+    else f.el.classList.toggle('off', !vis);   // a hidden caption's links and buttons can't be clicked
     if (!reduced) f.el.style.translate = `0 ${((1 - o) * (u < (b + c) / 2 ? 18 : -18)).toFixed(1)}px`;
   }
   fades.forEach((f, i) => {
@@ -135,7 +137,8 @@ function applyFades(u) {
     const e = 1 - Math.pow(1 - k, 3);
     counters[i].forEach(({el, n}) => { el.textContent = fmtN(Math.round(n * e)); });
   });
-  const marks = [0, 2.0, 3.55, 5.25, 6.75, 8.2, 9.55, 10.85, 11.9];
+  // where each chapter button takes over: the case for emulators, the primer, then CarbonGlobe
+  const marks = [0, 0.55, 1.9, 3.25, 4.55, 7.55, 9.25, 10.75, 12.2, 13.55, 14.85, 15.9];
   let cur = 0;
   marks.forEach((m, i) => { if (u >= m - 0.05) cur = i; });
   chapterBtns.forEach((b, i) => b.classList.toggle('on', i === cur));
@@ -150,6 +153,7 @@ function goto(u) {
   window.scrollTo({top: top + u * vh, behavior: 'instant'});
 }
 chapterBtns.forEach(b => b.addEventListener('click', () => { stopPlay(); goto(+b.dataset.goto); }));
+$$('.skip-primer').forEach(b => b.addEventListener('click', () => { stopPlay(); goto(+b.dataset.goto); }));
 
 // Play in 3D: scroll the story at a steady pace, stop on any user input.
 const pauseBtn = $('#film-pause');
@@ -178,7 +182,7 @@ function loop(now) {
     const {vh, top} = filmMetrics();
     // Linger while a caption is fully on screen, move faster through transitions and the years
     // of growth.
-    const growing = (uS > 2.15 && uS < 3.45) || (uS > 5.4 && uS < 6.4);
+    const s = storyU(uS), growing = (s > 2.15 && s < 3.45) || (s > 5.4 && s < 6.4);
     const speed = (growing ? 1.45 : 1) * vh / (3.8 + 3.0 * captionShown);
     playY += speed * dt;
     window.scrollTo(0, playY);
@@ -195,7 +199,7 @@ function loop(now) {
   const filmVisible = !below && scrollY < film.offsetTop + film.offsetHeight;
   if (!filmVisible) { topbar.classList.add('show'); return; }
   applyFades(uS);
-  forecast?.update(uS);
+  forecast?.update(storyU(uS));
   stage?.render(uS);
 }
 
@@ -326,6 +330,7 @@ async function boot() {
       flash: $('#flash'), bars: $('#cohort-bars'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'),
       treeYear: $('#tree-year'), cohortYear: $('#cohort-year'), treeH: $('#tree-h'), treeAgb: $('#tree-agb'), treeLai: $('#tree-lai'),
       globeYear: $('#globe-year'), panels: $('#panels'),
+      whyLabels: $('#why-labels'), sim: $('#sim'), simDays: $('#sim-days'), simBar: $('#sim-bar'),
       forcingCap: $('.cap-forcing'), netCap: $('.cap-net'),
     },
   });
@@ -344,7 +349,7 @@ async function boot() {
         const {vh, top} = filmMetrics();
         window.scrollTo(0, top + u * vh);
         applyFades(u);
-        forecast.update(u);
+        forecast.update(storyU(u));
         stage.render(u, t, {intro, lidar, dry});
         cut.apply(t);
       },

@@ -124,7 +124,7 @@ b { font-weight: 650; }
 @media (max-width: 640px) { .ft-label small { display: none; } .ft-note { font-size: 12px; } }
 
 /* ------------------------------------------------------------------ film */
-.film { position: relative; height: 1460vh; background: var(--bg); }
+.film { position: relative; height: 1860vh; background: var(--bg); }
 .stage { position: sticky; top: 0; height: 100vh; height: 100lvh; overflow: hidden; isolation: isolate; }
 #stage-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; touch-action: pan-y; }
 .stage-fallback { display: none; }
@@ -149,6 +149,7 @@ html.no-webgl .stage-fallback {
 [data-u] { position: absolute; z-index: 3; opacity: 0; visibility: hidden; will-change: opacity, translate; pointer-events: none; }
 .cap[data-u] { visibility: visible; }
 [data-u] a, [data-u] button { pointer-events: auto; }
+.cap.off a, .cap.off button { visibility: hidden; }
 #stage-canvas { opacity: 0; transition: opacity 1.4s ease; }
 #stage-canvas.ready { opacity: 1; }
 
@@ -219,7 +220,48 @@ html.no-webgl .stage-fallback {
 .cap p { margin: 0; color: #c5d3cd; font-size: clamp(15.5px, 1.15vw, 17.5px); line-height: 1.6; text-shadow: 0 1px 16px rgba(0,0,0,.6); }
 .cap p b { color: var(--text); }
 .kicker { display: flex; align-items: center; gap: 12px; margin: 0; color: var(--g2) !important; font: 500 12.5px/1 var(--mono) !important; letter-spacing: .14em; text-transform: uppercase; }
-.kicker span { display: inline-grid; place-items: center; width: 30px; height: 22px; border: 1px solid rgba(62,224,143,.45); border-radius: 999px; font-size: 11px; letter-spacing: 0; }
+.kicker span { display: inline-grid; place-items: center; height: 22px; padding: 0 9px; border: 1px solid rgba(62,224,143,.45); border-radius: 999px; font-size: 10.5px; letter-spacing: .1em; }
+/* the story's three parts: why emulators, the primer on process-based models, CarbonGlobe */
+.cap-why .kicker { color: #ffb36b !important; }
+.cap-why .kicker span { border-color: rgba(255, 179, 107, .5); }
+.cap-why h2 em { color: #ffcf8a; }
+.cap-primer .kicker { color: var(--g3) !important; }
+.cap-primer .kicker span { border-color: rgba(53, 198, 244, .5); }
+.cap-primer h2 em { color: #8fe3ff; }
+.skip-primer { margin-top: 20px; pointer-events: auto; opacity: clamp(0, calc(var(--k, 1) * 2.4 - 1.25), 1); }
+
+/* part one: the events' labels by their markers */
+#why-labels > span { max-width: 250px; padding: 7px 11px 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: rgba(5, 10, 12, .62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #d3dfda; font: 12px/1.4 var(--sans); white-space: normal; }
+#why-labels b { display: block; margin-bottom: 1px; color: var(--c); font: 500 10.5px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+#why-labels sup.ref a { color: var(--c); }
+/* ... the clock of one global run */
+.hud-sim { right: max(24px, 6vw); bottom: 9vh; width: 320px; padding: 16px 18px 14px; border-radius: 16px; border: 1px solid rgba(255, 179, 107, .3); background: rgba(5, 10, 12, .66); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.hud-sim > small { color: #ffb36b; }
+.sim-clock { margin: 8px 0 10px; color: var(--muted); font: 500 15px var(--mono); }
+.sim-clock b { margin-right: 4px; color: var(--text); font: 650 clamp(38px, 3.6vw, 52px)/1 var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.sim-bar { display: block; height: 5px; border-radius: 99px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.sim-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff8f5a, #f3b65b); transform-origin: left; transform: scaleX(0); }
+.hud-sim .hud-note { margin-top: 8px; }
+.sim-more { list-style: none; margin: 4px 0 0; padding: 0; }
+/* each row unfolds in turn (--r) */
+.sim-more li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; max-height: calc(var(--r) * 40px); margin-top: calc(var(--r) * 8px); padding-top: calc(var(--r) * 8px); overflow: hidden; opacity: var(--r); border-top: 1px solid var(--line-2); font-size: 11.5px; color: var(--muted); }
+.sim-more b { color: #ffcf8a; font-size: 13px; white-space: nowrap; }
+/* ... and what an emulator saves: one global run, two ways */
+.cap-cost { width: min(500px, calc(100vw - 48px)); }
+.cost { margin-top: 22px; padding: 14px 16px 12px; border-radius: 16px; border: 1px solid var(--line-2); background: rgba(5, 10, 12, .62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-family: var(--mono); opacity: clamp(0, calc(var(--k, 1) * 2.4 - 1.4), 1); }
+.cost-h { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 10px !important; color: var(--dim) !important; font: 10.5px/1.4 var(--mono) !important; letter-spacing: .06em; text-transform: uppercase; text-shadow: none !important; }
+.cost-h span:first-child { flex-basis: 100%; color: var(--muted); }
+.cost-h .c-ed::before, .cost-h .c-ai::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 2px; vertical-align: -1px; }
+.c-ed::before, .cost-bars i.c-ed { background: linear-gradient(90deg, #ff8f5a, #f3b65b); }
+.c-ai::before, .cost-bars i.c-ai { background: var(--g1); box-shadow: 0 0 10px rgba(185, 244, 107, .7); }
+.cost-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 84px; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.cost-k { color: var(--muted); font-size: 11px; }
+.cost-bars { display: grid; grid-template-columns: minmax(0, 1fr) 46px; align-items: center; gap: 4px 8px; }
+.cost-bars i { display: block; height: 8px; border-radius: 3px; width: max(3px, calc(var(--w) * 100%)); transform-origin: left; transform: scaleX(clamp(0, calc(var(--k, 1) * 1.6 - .5), 1)); }
+.cost-bars b { color: var(--text); font-size: 11.5px; font-weight: 500; text-align: right; white-space: nowrap; }
+.cost-x { color: var(--g1); font: 650 21px/1 var(--sans); letter-spacing: -0.02em; text-align: right; }
+.cost-x small { display: block; margin-top: 3px; color: var(--muted); font: 10.5px var(--mono); letter-spacing: .04em; }
+.cost-src { margin: 8px 0 0 !important; color: var(--dim) !important; font: 10.5px/1.45 var(--mono) !important; text-shadow: none !important; opacity: 1 !important; }
 
 /* HUDs */
 .hud { pointer-events: none; font-family: var(--mono); }
@@ -375,6 +417,7 @@ html.no-webgl .stage-fallback {
 .chapters span { order: -1; font: 11px var(--mono); color: var(--muted); opacity: 0; transform: translateX(6px); transition: all .25s; pointer-events: none; }
 .chapters button:hover span, .chapters button:focus-visible span { opacity: 1; transform: none; }
 .chapters button.on i { background: var(--g2); box-shadow: 0 0 10px var(--g2); transform: scale(1.35); }
+.chapters button.part { margin-top: 10px; }
 .film-bar { position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255,255,255,.06); }
 .film-bar i { display: block; height: 100%; width: 0; background: var(--grad); }
 .film-pause { position: absolute; z-index: 6; left: 50%; bottom: 22px; transform: translateX(-50%); padding: 8px 16px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(5,10,12,.7); color: var(--text); font: 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
@@ -391,6 +434,13 @@ html.no-webgl .stage-fallback {
 .reveal { opacity: 0; transform: translateY(28px); transition: opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1); }
 .reveal.in { opacity: 1; transform: none; }
 html.no-js .reveal { opacity: 1; transform: none; }
+
+/* what emulators need: fast, accurate, knowledge-grounded */
+.triad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 1040px; margin: 0 auto 14px; }
+.tri { position: relative; padding: 24px 24px 22px; border-radius: var(--radius); border: 1px solid var(--line); background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .012)); }
+.tri-n { margin: 10px 0 10px; font-size: clamp(34px, 3.4vw, 46px); line-height: 1; letter-spacing: -0.04em; font-weight: 700; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tri p:last-child { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+@media (max-width: 860px) { .triad { grid-template-columns: 1fr; } }
 
 /* analogy */
 .analogy { display: grid; gap: 14px; max-width: 1040px; margin: 0 auto; }
@@ -437,6 +487,26 @@ html.no-js .reveal { opacity: 1; transform: none; }
 .orb i:nth-child(3) { inset: 34px; border: 0; background: radial-gradient(circle at 35% 35%, #f2ffbf, var(--g2) 45%, #0b5a3c); box-shadow: 0 0 40px rgba(62,224,143,.6); animation: pulse 3s ease-in-out infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(62,224,143,.8); } }
+
+/* the framework's fourth step: the emulator takes over the run */
+.emulate { margin-top: clamp(16px, 2.4vw, 32px); display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); grid-template-areas: "copy cmp" "src src"; gap: 6px 36px; align-items: center; padding: 24px 26px 18px; border-radius: var(--radius); border: 1px solid rgba(185, 244, 107, .3); background: radial-gradient(60% 120% at 85% 50%, rgba(185, 244, 107, .07), transparent 70%), var(--panel); }
+.em-copy { grid-area: copy; }
+.em-copy p:last-child { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+.em-cmp { grid-area: cmp; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.em-k { margin: 0 0 10px; color: var(--g2); font: 500 11.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+.em-row { display: grid; grid-template-columns: minmax(0, 1fr) 54px; grid-template-areas: "lab lab" "bar val"; gap: 3px 10px; align-items: center; margin-bottom: 9px; }
+.em-row span { grid-area: lab; color: var(--dim); font: 11px var(--mono); }
+.em-row i { grid-area: bar; display: block; height: 10px; border-radius: 3px; width: max(3px, calc(var(--w) * 100%)); transform-origin: left; transform: scaleX(0); transition: transform 1.6s cubic-bezier(.2, .7, .2, 1) .3s; }
+.in .em-row i, html.no-js .em-row i { transform: none; }
+.em-row.c-ed i { background: linear-gradient(90deg, #ff8f5a, #f3b65b); }
+.em-row.c-ai i { background: var(--g1); box-shadow: 0 0 10px rgba(185, 244, 107, .7); }
+.em-row b { grid-area: val; font: 500 13.5px var(--mono); text-align: right; white-space: nowrap; }
+.em-row.c-ai b { color: var(--g1); }
+.em-x { margin: 4px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.em-x small { font-size: 13px; font-weight: 500; letter-spacing: 0; -webkit-text-fill-color: var(--muted); }
+.em-src { grid-area: src; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--dim); font: 11.5px var(--mono); }
+@media (max-width: 960px) { .emulate { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "cmp" "src"; gap: 18px; } }
+@media (max-width: 560px) { .em-cmp { grid-template-columns: minmax(0, 1fr); } }
 
 /* tensors */
 .tensors { margin-top: clamp(28px, 4vw, 44px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -739,6 +809,12 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
   .road-list li::before { top: 3px; }
 }
 
+/* the closing call: build with CarbonGlobe */
+.build { padding-top: clamp(60px, 9vh, 100px); padding-bottom: clamp(60px, 9vh, 100px); background: radial-gradient(60% 80% at 50% 50%, rgba(62, 224, 143, .09), transparent 70%), var(--bg); }
+.build-card { max-width: 980px; margin: 0 auto; text-align: center; }
+.build-card .display { font-size: clamp(32px, 4.2vw, 60px); line-height: 1.05; }
+.build-card .display .grad { display: inline-block; }
+
 /* the team */
 .people { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .person { display: flex; align-items: center; gap: 14px; min-height: 92px; padding: 16px 20px; border-radius: 20px; border: 1px solid var(--line); background: var(--panel); }
@@ -808,6 +884,12 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
   .hud-cohort { left: 24px; right: 24px; width: auto; bottom: 6vh; }
   .hud-globe { flex-direction: column; align-items: flex-start; bottom: 5vh; }
   .forecast { left: 16px; right: 16px; width: auto; top: auto; bottom: 4vh; transform: none; padding: 14px; }
+  .hud-sim { left: 16px; right: 16px; width: auto; bottom: 4vh; padding: 12px 14px 10px; }
+  .sim-clock b { font-size: 34px; }
+  #why-labels > span { max-width: 200px; padding: 5px 8px 6px; font-size: 10.5px; }
+  #why-labels b { font-size: 9.5px; }
+  .cap-cost > p:not(.kicker) { display: none; }
+  .cost { margin-top: 14px; }
   .num-grid { grid-template-columns: repeat(2, 1fr); margin: 18px 0; }
   .num-grid span { font-size: 12.5px; }
   .numbers .btn { display: none; }
@@ -840,6 +922,8 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
 .render .hud-tree .hud-row, .render .hud-note, .render .p-title span, .render .p-clim, .render .p-map, .render .p-note, .render .p-stats,
 .render .finale .kicker span { display: none !important; }
 .render .cap { visibility: hidden !important; }
+.render #why-labels sup { display: none; }
+.render .hud-sim .hud-note { display: block !important; }
 .render .p-head { opacity: 0; transform-origin: 0 50%; }
 /* the film names the emulator and its three blocks, and nothing else */
 .render #net-labels > span:not([data-k="title"]):not([data-k="enc"]):not([data-k="core"]):not([data-k="heads"]) { display: none !important; }
