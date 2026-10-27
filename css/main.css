@@ -124,7 +124,7 @@ b { font-weight: 650; }
 @media (max-width: 640px) { .ft-label small { display: none; } .ft-note { font-size: 12px; } }
 
 /* ------------------------------------------------------------------ film */
-.film { position: relative; height: 1860vh; background: var(--bg); }
+.film { position: relative; height: 1843vh; background: var(--bg); }
 .stage { position: sticky; top: 0; height: 100vh; height: 100lvh; overflow: hidden; isolation: isolate; }
 #stage-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; touch-action: pan-y; }
 .stage-fallback { display: none; }
@@ -139,10 +139,10 @@ html.no-webgl .stage-fallback {
     radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(3, 7, 8, .75) 100%),
     linear-gradient(180deg, rgba(5, 10, 12, .55), transparent 18%, transparent 78%, rgba(5, 10, 12, .7));
 }
+/* the opening's alarm: a warm glow from the edges that pulses as each event pops and stays while the planet warms */
+.alarm { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; background: radial-gradient(120% 95% at 62% 50%, transparent 52%, rgba(255, 72, 38, .26) 82%, rgba(255, 50, 30, .5)); }
 .flash { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
   background: radial-gradient(60% 60% at 50% 52%, rgba(240, 255, 236, .9), rgba(130, 220, 175, .32) 45%, rgba(5, 10, 12, 0) 100%); }
-.rewind { left: 50%; bottom: 14vh; transform: translateX(-50%); padding: 10px 18px; border-radius: 99px; border: 1px solid var(--line-2); background: rgba(5, 10, 12, .6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font: 12.5px var(--mono); letter-spacing: .06em; color: var(--text); white-space: nowrap; }
-.rewind span { color: var(--g1); margin-right: 6px; }
 .cell-label { left: 50%; top: calc(50% + 70px); transform: translateX(-50%); text-align: center; font: 12px/1.6 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text); text-shadow: 0 1px 12px rgba(0,0,0,.8); }
 .cell-label b { display: block; font: 600 22px var(--sans); letter-spacing: -0.01em; text-transform: none; }
 
@@ -232,7 +232,22 @@ html.no-webgl .stage-fallback {
 
 /* part one: the events' labels by their markers */
 #why-labels > span { max-width: 250px; padding: 7px 11px 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: rgba(5, 10, 12, .62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #d3dfda; font: 12px/1.4 var(--sans); white-space: normal; }
-#why-labels b { display: block; margin-bottom: 1px; color: var(--c); font: 500 10.5px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+#why-labels b { display: flex; align-items: center; gap: 6px; margin-bottom: 1px; color: var(--c); font: 500 10.5px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.ev-icon { flex: none; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+/* the kinds of pressure, each lit as its first event pops */
+.kinds { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px !important; }
+.kinds span { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 5px 8px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, .12); color: var(--dim); font: 500 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; text-shadow: none; transition: color .4s, border-color .4s, box-shadow .4s, background .4s; }
+.kinds span.on { color: var(--c); border-color: color-mix(in srgb, var(--c) 60%, transparent); background: color-mix(in srgb, var(--c) 10%, rgba(5, 10, 12, .5)); box-shadow: 0 0 18px color-mix(in srgb, var(--c) 30%, transparent); }
+/* ... the warming, forest by forest */
+.hud-heat { right: max(24px, 6vw); bottom: 9vh; width: 300px; padding: 16px 18px 14px; border-radius: 16px; border: 1px solid rgba(255, 110, 90, .3); background: rgba(5, 10, 12, .66); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.hud-heat > small { color: #ff9a7a; }
+.heat-now { display: flex; align-items: baseline; justify-content: space-between; margin: 8px 0 10px; color: var(--muted); font: 500 14px var(--mono); }
+.heat-now b { color: var(--text); font: 650 clamp(38px, 3.6vw, 52px)/1 var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.heat-now b i { margin-left: 4px; color: var(--muted); font: 500 15px var(--mono); font-style: normal; letter-spacing: 0; }
+.heat-ramp { display: block; height: 7px; border-radius: 99px; background: linear-gradient(90deg, #387aff 0%, #8c9eb3 24%, #ffd173 26%, #ff731f 48%, #eb1a1f 70%, #ff8cb3 100%); }
+.heat-scale { position: relative; height: 13px; margin: 5px 0 0; color: var(--dim); font-size: 10.5px; }
+.heat-scale span { position: absolute; top: 0; left: var(--x); transform: translateX(-50%); white-space: nowrap; }
+.heat-scale span:last-child { transform: translateX(-100%); }
 #why-labels sup.ref a { color: var(--c); }
 /* ... the clock of one global run */
 .hud-sim { right: max(24px, 6vw); bottom: 9vh; width: 320px; padding: 16px 18px 14px; border-radius: 16px; border: 1px solid rgba(255, 179, 107, .3); background: rgba(5, 10, 12, .66); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
@@ -268,25 +283,27 @@ html.no-webgl .stage-fallback {
 .hud small { display: block; color: var(--dim); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
 .hud b { font-weight: 500; }
 .hud-year b { font-size: clamp(34px, 3.6vw, 52px); letter-spacing: -0.03em; font-family: var(--sans); font-weight: 650; font-variant-numeric: tabular-nums; }
-.hud-tree { right: max(24px, 6vw); top: 50%; transform: translateY(-50%); width: 230px; display: grid; gap: 16px; }
-.hud-row { border-top: 1px solid var(--line-2); padding-top: 10px; }
-.hud-row b { font-size: 19px; color: var(--text); font-variant-numeric: tabular-nums; }
 .hud-note { margin: 4px 0 0; color: var(--dim); font-size: 11px; letter-spacing: .04em; }
-.hud-cohort { right: max(24px, 6vw); bottom: 9vh; width: min(360px, 40vw); }
 .bars { display: flex; align-items: flex-end; gap: 4px; height: 96px; margin: 12px 0 6px; border-bottom: 1px solid var(--line-2); }
 .bars > div { flex: 1; position: relative; height: 100%; display: flex; align-items: flex-end; }
 .bars > div i { display: block; width: 100%; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, var(--g1), #1fa060); box-shadow: 0 0 12px rgba(185,244,107,.25); }
 .bars > div span { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 9px; color: var(--dim); }
-.hud-cohort .hud-note { margin-top: 26px; }
 
-/* chapter 2: four views of the same start under different forcing */
-.cap-forcing { width: min(600px, calc(100vw - 48px)); }
-.cap-forcing h2 { font-size: clamp(28px, 3.1vw, 46px); margin-bottom: 10px; }
+/* the primer in one frame: one forest, four forcings, fifteen ages, each view with a header and its readout */
+.cap-views { width: min(640px, calc(100vw - 48px)); }
+.cap-views h2 { font-size: clamp(28px, 3vw, 44px); margin-bottom: 10px; }
+.cap-views p { font-size: clamp(14.5px, 1.05vw, 16.5px); }
 .panels { position: absolute; inset: 0; z-index: 3; pointer-events: none; font-family: var(--mono); }
 .panels > div { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform, opacity; }
 .panel { border: 1px solid color-mix(in srgb, var(--pc) 26%, transparent); border-radius: 14px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
 .panel > p { margin: 0; position: absolute; left: 14px; right: 14px; }
 .panel.p-wet { z-index: 1; }
+.v-tree .p-top, .v-cohort .p-top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head"; }
+.v-tree .p-stats { flex-wrap: wrap; gap: 6px 16px; }
+.p-bars { position: absolute; left: 14px; right: 14px; bottom: 26px; height: min(70px, 18%); gap: 3px; margin: 0; }
+.p-bars > div i { background: linear-gradient(180deg, var(--g2), #138a52); }
+.v-label { position: absolute; left: 0; top: 0; opacity: 0; display: flex; align-items: center; gap: 9px; margin: 0; color: var(--text); font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; text-shadow: 0 1px 8px rgba(0, 0, 0, .8); }
+.v-label i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(53, 198, 244, .6); color: #8fe3ff; font-style: normal; font-size: 10.5px; letter-spacing: 0; }
 .p-top { position: absolute; left: 12px; right: 12px; top: 11px; text-shadow: 0 1px 6px rgba(0, 0, 0, .75); display: grid; grid-template-columns: minmax(0, 1fr) clamp(96px, 36%, 150px); grid-template-areas: "head map" "clim map"; column-gap: 10px; row-gap: 9px; align-items: start; }
 .p-head { grid-area: head; display: flex; gap: 8px; align-items: flex-start; min-width: 0; }
 .p-icon { flex: none; width: 22px; height: 22px; margin-top: -3px; fill: none; stroke: var(--pc); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: filter .4s; }
@@ -878,10 +895,14 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
   .cap-left, .cap-top { top: 84px; transform: none; }
   .cap h2 { font-size: 28px; }
   .cap p { font-size: 14.5px; }
-  .hud-tree { top: auto; bottom: 7vh; right: 24px; left: 24px; width: auto; transform: none; grid-template-columns: repeat(2, 1fr); gap: 10px 18px; }
-  .hud-tree .hud-year { grid-column: 1 / -1; }
-  .hud-tree .hud-row b { font-size: 15px; }
-  .hud-cohort { left: 24px; right: 24px; width: auto; bottom: 6vh; }
+  .hud-heat { left: 16px; right: 16px; width: auto; bottom: 4vh; padding: 12px 14px 10px; }
+  .heat-now b { font-size: 34px; }
+  .kinds { gap: 6px; margin-top: 12px !important; }
+  .kinds span { padding: 4px 9px 4px 7px; font-size: 10px; }
+  .v-label { font-size: 10px; gap: 7px; }
+  .v-label i { width: 17px; height: 17px; font-size: 9.5px; }
+  .p-bars { left: 8px; right: 8px; bottom: 20px; }
+  .p-bars > div span { display: none; }
   .hud-globe { flex-direction: column; align-items: flex-start; bottom: 5vh; }
   .forecast { left: 16px; right: 16px; width: auto; top: auto; bottom: 4vh; transform: none; padding: 14px; }
   .hud-sim { left: 16px; right: 16px; width: auto; bottom: 4vh; padding: 12px 14px 10px; }
@@ -897,13 +918,13 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
   #net-labels > span { max-width: 150px; font-size: 9.5px; }
   #net-labels b { font-size: 9.5px; }
   #net-labels [data-k="enc"], #net-labels [data-k="core"], #net-labels [data-k="heads"], #net-labels [data-k="tree"], #net-labels [data-k="next"], #net-labels [data-k="forcing"] { display: none; }
-  .cap-forcing p:not(.kicker) { display: none; }
+  .cap-views p:not(.kicker) { display: none; }
   .p-title span { display: none; }
   .p-icon { width: 18px; height: 18px; }
   .p-note { font-size: 9.5px; }
   .panels-year b { font-size: 30px; }
 }
-@media (max-width: 760px) and (max-height: 760px) { .hud-tree .hud-row small { font-size: 9.5px; } .cap p { display: none; } }
+@media (max-width: 760px) and (max-height: 760px) { .cap p:not(.kinds) { display: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal { transition: none; opacity: 1; transform: none; }
@@ -918,11 +939,15 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
 .titles, .film-fade { display: none; }
 .render .titles { display: block; position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .render .film-fade { display: block; position: absolute; inset: 0; z-index: 6; background: #000; opacity: 0; pointer-events: none; }
-.render .hero, .render .cell-label, .render .rewind, .render .numbers, .render .panels-year, .render .fc-tabs, .render .forecast figcaption,
-.render .hud-tree .hud-row, .render .hud-note, .render .p-title span, .render .p-clim, .render .p-map, .render .p-note, .render .p-stats,
+.render .hero, .render .cell-label, .render .numbers, .render .panels-year, .render .fc-tabs, .render .forecast figcaption,
+.render .hud-note, .render .p-title span, .render .p-clim, .render .p-map, .render .p-note, .render .p-stats,
 .render .finale .kicker span { display: none !important; }
 .render .cap { visibility: hidden !important; }
 .render #why-labels sup { display: none; }
+/* the film names each event by place and year only: its markers pop faster than a sentence can be read */
+.render #why-labels > span { font-size: 0; padding: 7px 12px; }
+.render #why-labels b { margin: 0; font-size: 13px; }
+.render #why-labels .ev-icon { width: 17px; height: 17px; }
 .render .hud-sim .hud-note { display: block !important; }
 .render .p-head { opacity: 0; transform-origin: 0 50%; }
 /* the film names the emulator and its three blocks, and nothing else */

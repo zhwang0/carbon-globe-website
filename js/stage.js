@@ -1,8 +1,9 @@
-// The scroll-driven film: hero globe -> why emulators (forests under pressure, a slow simulator, the case for
-// emulators) -> the primer (one forest, four forcings, fifteen ages) -> planet -> emulator -> what if -> numbers.
+// The scroll-driven film: hero globe -> why emulators (forests under pressure, a warming planet, a slow
+// simulator, the case for emulators) -> the primer (a dive to the Amazon, one forest, four forcings and fifteen
+// ages in one frame, the satellite lidar's planet) -> planet -> emulator -> what if -> numbers.
 import * as THREE from '../assets/vendor/three.module.js';
-import {createGlobe, createCanopy, createForestCloud, createStars, createFlare, createMarkers, facing, cellOf, latLonToVec3} from './globe.js';
-import {WHY, storyU} from './timeline.js';
+import {createGlobe, createCanopy, createForestCloud, createStars, createFlare, createMarkers, createGedi, facing, cellOf, latLonToVec3} from './globe.js';
+import {WHY, VIEWS, VIEW, storyU} from './timeline.js';
 import {createGround, createMotes, createWeather, createSky, createLidar} from './forest.js';
 import {mulberry32} from './random.js';
 import {growTrees, treePoints, createFlames, PRE_TAU} from './hero-tree.js';
@@ -21,11 +22,17 @@ const DIVE_ALT = 0.2;      // altitude (globe radii) the dive passes on its way 
 const GROUND_ALT = 0.002;  // ... and where it ends, about 13 km above the forest
 const GROUND = {lat: -3.29, lon: -63.68};   // the forest at the head of a lake, by the chapter's site
 
-// The opening globe's path through the case for emulators, [p, lat, lon], always turning west: the Atlantic,
-// with three of the events in view, over the Pacific to Australia, then on over Asia and Africa back to the
-// Atlantic while the planet is simulated. REVEAL: where the simulation runs, its cells landing one by one.
-const WHY_PATH = [[0.75, 24, -45], [1.3, 24, -45], [1.62, -25, 140], [1.95, -25, 140], [3.0, 12, -45], [WHY[1], 8, -55]];
-const REVEAL = [2.02, 2.62];
+// The opening globe's path through the case for emulators, [p, lat, lon], always turning west: from Africa and
+// Europe over the Atlantic to South and North America, across the Pacific to Australia and Asia (the events
+// pop as they come into view), on over Asia to Africa while the planet warms, then to the Atlantic while it is
+// simulated. HEAT: where the warming plays, its five-year windows in turn; REVEAL: where the simulation runs, its
+// cells landing one by one.
+const WHY_PATH = [[0.7, 10, 40], [0.95, 22, 12], [1.08, -6, -42], [1.3, -10, -58], [1.42, 34, -92], [1.62, 40, -104],
+  [1.76, -4, 166], [1.98, 14, 130], [2.3, 18, 112], [3.35, 20, 22], [4.55, 12, -45], [WHY[1], 8, -55]];
+const HEAT = [2.22, 2.45, 3.2, 3.4, 3.58];   // fade in, windows from 1981-85 to 2016-20, fade out
+const REVEAL = [3.57, 4.17];
+// the forest-area mean of each window against 1981-90 (scripts/export_pressure.py)
+const HEAT_MEAN = [-0.22, 0.22, 0.15, 0.38, 0.66, 0.46, 0.67, 0.82];
 const whyKeys = (() => {
   let y = 0;
   return WHY_PATH.map(([p, lat, lon], i) => {
@@ -47,27 +54,16 @@ function whyRot(p) {
 // Interpolate a 41-element annual series at fractional year index.
 const at = (series, y) => { const i = Math.floor(y), f = y - i; return i >= 40 ? series[40] : series[i] * (1 - f) + series[i + 1] * f; };
 
-// Year index (0..40) of the forest chapters as a function of film position u. Each return to 1981
-// happens at the bottom of a short dip to dark, so trees never visibly shrink.
-const DIPS = [3.5, 5.32];
-const dipAt = u => DIPS.reduce((m, c) => Math.max(m, ss(c - 0.06, c, u) * (1 - ss(c, c + 0.09, u))), 0);
-function forestYear(u) {
-  if (u < 2.15) return 0;
-  if (u < 3.45) return 40 * (u - 2.15) / 1.3;          // one forest
-  if (u < DIPS[0]) return 40;
-  if (u < 3.9) return 0;
-  if (u < 4.9) return 40 * (u - 3.9);                  // four forcings
-  if (u < DIPS[1]) return 40;                          // the views merge back into one
-  if (u < 5.4) return 0;
-  return 40 * clamp(u - 5.4);                          // fifteen ages
-}
+// The primer's forest runs on its own clock v (js/timeline.js): a sapling sprouts in the full frame, which splits
+// into three views (one forest, four forcings, fifteen ages), forty years run in all of them at once, and the
+// fifteen-age view then takes the whole frame for the satellite's pass.
+const {sprout: SPROUT, split: SPLIT, years: YEARS, merge: MERGE} = VIEW;
+const viewYear = v => 40 * clamp((v - YEARS[0]) / (YEARS[1] - YEARS[0]));
 // Year of a forcing view's own story at progress k (0..1): [[k, year], ...], linear in between.
 const storyYear = (keys, k) => {
   for (let i = 1; i < keys.length; i++) if (k <= keys[i][0]) return lerp(keys[i - 1][1], keys[i][1], (k - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0]));
   return keys[keys.length - 1][1];
 };
-// Split of the forest view into four: 0 = one view, 1 = four.
-const splitK = u => ease(ss(3.5, 3.8, u)) * (1 - ease(ss(5.0, 5.25, u)));
 
 // The page's dive comes to rest over the region, where the page names the site, before it goes on down
 // to the forest. The film dives in one motion: its u runs through the dive (0.55 to 1.96) linearly in log
@@ -82,6 +78,23 @@ function filmU(u) {
   while (hi - lo > 1) { const m = (lo + hi) >> 1; if (diveTable[m] > l) lo = m; else hi = m; }
   return lerp(DIVE[0], DIVE[1], (lo + (diveTable[lo] - l) / (diveTable[lo] - diveTable[hi])) / DIVE_N);
 }
+
+// Icons (24 x 24, stroked): the forcing views', the opening's kinds of event, and the primer's two other views.
+const ICONS = {
+  wet: '<path d="M6.8 15.2h9.9a3.7 3.7 0 0 0 .4-7.4 5.3 5.3 0 0 0-10.2-1.1 4.3 4.3 0 0 0-.1 8.5z"/><path d="M8.6 18 7.7 20.3M12.4 18l-.9 2.3M16.2 18l-.9 2.3"/>',
+  drought: '<circle cx="12" cy="9.2" r="3.3"/><path d="M12 2.6v1.5M12 14.3v1.5M5.4 9.2H3.9M20.1 9.2h-1.5M7.3 4.5l1.1 1.1M16.7 4.5l-1.1 1.1M7.3 13.9l1.1-1.1M16.7 13.9l-1.1-1.1"/><path d="M3 19.6h18M6.8 19.6l1.7-1.5 1 1.1 1.6-1.6M14.6 19.6l1.3-1.2 1 .9"/>',
+  fire: '<path d="M12 2.8c.7 3.3 5 5.3 5 10.1a5 5 0 0 1-10 0c0-2.3 1.1-3.9 2.3-5.1.2 1.6.9 2.6 2 3.1-.6-2.6-.1-5.5.7-8.1z"/><path d="M12 20.5a2.1 2.1 0 0 1-2.1-2.1c0-1.3 1.1-2.1 2.1-3.4 1 1.3 2.1 2.1 2.1 3.4a2.1 2.1 0 0 1-2.1 2.1z"/>',
+  cold: [0, 60, 120, 180, 240, 300].map(a => {
+    const r = Math.PI * a / 180, u = [Math.sin(r), -Math.cos(r)], v = [Math.cos(r), Math.sin(r)];
+    const P2 = (d, w) => `${(12 + u[0] * d + v[0] * w).toFixed(2)} ${(12 + u[1] * d + v[1] * w).toFixed(2)}`;
+    return `M12 12L${P2(9, 0)}M${P2(4.6, -2.4)}L${P2(6.6, 0)}L${P2(4.6, 2.4)}`;
+  }).reduce((d, x) => d + x, '<path d="') + '"/><circle cx="12" cy="12" r="1.2"/>',
+  heat: '<path d="M10 14.6V5.2a2 2 0 0 1 4 0v9.4a4 4 0 1 1-4 0z"/><path d="M12 9.5v7"/><path d="M17.2 5.5h2.6M17.2 8.8h2.6M17.2 12.1h1.8"/>',
+  clear: '<path d="M4 20.5h16"/><path d="M8 20.5v-7h7v7"/><ellipse cx="11.5" cy="13.5" rx="3.5" ry="1.4"/><path d="M14 12.5l5.2-8"/><path d="M16.7 3.6l3.9 2.6-1.4 2.1"/>',
+  tree: '<path d="M12 21v-6.2"/><path d="M12 14.8c-3.5 0-5.9-2.2-5.9-5.2 0-3.2 2.7-6.1 5.9-6.1s5.9 2.9 5.9 6.1c0 3-2.4 5.2-5.9 5.2z"/><path d="M9.5 20.8h5"/>',
+  cohort: '<path d="M3 20.5h18M6 20.5v-4M12 20.5v-6.5M18 20.5v-3.4"/><circle cx="6" cy="13.8" r="2.6"/><circle cx="12" cy="8.6" r="4.4"/><circle cx="18" cy="14.9" r="2.1"/>',
+};
+const KIND_COLOR = {fire: '#ff7a45', drought: '#f5b544', heat: '#ff5a6e', clear: '#c99bff'};
 
 // Particles flowing from land cells on the globe to the same place on the emulator's front map.
 function createStreams(zones, net, px, count) {
@@ -181,13 +194,28 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const flare = createFlare();
   flare.renderOrder = 5;
   gScene.add(flare);
-  // the opening's events: markers on the globe, named by the page's labels (each lists its points as lat,lon;...)
-  const whyLabels = [...dom.whyLabels.children].map(el => ({el, t: +el.dataset.t, color: el.dataset.c,
-    pts: el.dataset.pts.split(';').map(q => q.split(',').map(Number))}));
-  const marks = createMarkers(whyLabels.flatMap(L => L.pts.map(([lat, lon]) => ({lat, lon, color: L.color, t: L.t}))), px);
+  // the opening's events: markers on the globe, named by the page's labels (each lists its kind and its points as
+  // lat,lon;...), with the kind's icon and colour; the caption's legend lights each kind as its first event pops
+  const whyLabels = [...dom.whyLabels.children].map(el => {
+    const kind = el.dataset.k, color = KIND_COLOR[kind];
+    el.style.setProperty('--c', color);
+    el.querySelector('b').insertAdjacentHTML('afterbegin', `<svg class="ev-icon" viewBox="0 0 24 24">${ICONS[kind]}</svg>`);
+    return {el, t: +el.dataset.t, kind, color, pts: el.dataset.pts.split(';').map(q => q.split(',').map(Number))};
+  });
+  const marks = createMarkers(whyLabels.flatMap(L => L.pts.map(([lat, lon]) => ({lat, lon, color: L.color, t: L.t, kind: L.kind}))), px);
   G.spin.add(marks.points);
   const markOf = whyLabels.map((L, i) => whyLabels.slice(0, i).reduce((n, M) => n + M.pts.length, 0));
+  const kindEls = [...(dom.kinds?.children ?? [])].map(el => {
+    const kind = el.dataset.k;
+    el.style.setProperty('--c', KIND_COLOR[kind]);
+    el.insertAdjacentHTML('afterbegin', `<svg class="ev-icon" viewBox="0 0 24 24">${ICONS[kind]}</svg>`);
+    return {el, t: Math.min(...whyLabels.filter(L => L.kind === kind).map(L => L.t))};
+  });
   let whyFrom = null;   // the hero's rotation as the case began
+  // the warming of the forests (CarbonGlobe's air temperature against 1981-90), and GEDI's tracks over the planet
+  if (tex.heat) G.uniforms.uHeat.value = tex.heat;
+  const gedi = createGedi(tex.zones.data, px);
+  G.spin.add(gedi.group);
   const net = createEmulator(px, scen.maps, tex.mask);
   gScene.add(net.group);
   maps?.then(t => net.setMaps(t)).catch(() => {});
@@ -404,16 +432,6 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
 
   // Each view's header: an icon, the site, a regional climate map with the site pinned, and a strip of
   // its forcing year by year (rain bars, temperature-anomaly stripes) that fills in as the years pass.
-  const ICONS = {
-    wet: '<path d="M6.8 15.2h9.9a3.7 3.7 0 0 0 .4-7.4 5.3 5.3 0 0 0-10.2-1.1 4.3 4.3 0 0 0-.1 8.5z"/><path d="M8.6 18 7.7 20.3M12.4 18l-.9 2.3M16.2 18l-.9 2.3"/>',
-    drought: '<circle cx="12" cy="9.2" r="3.3"/><path d="M12 2.6v1.5M12 14.3v1.5M5.4 9.2H3.9M20.1 9.2h-1.5M7.3 4.5l1.1 1.1M16.7 4.5l-1.1 1.1M7.3 13.9l1.1-1.1M16.7 13.9l-1.1-1.1"/><path d="M3 19.6h18M6.8 19.6l1.7-1.5 1 1.1 1.6-1.6M14.6 19.6l1.3-1.2 1 .9"/>',
-    fire: '<path d="M12 2.8c.7 3.3 5 5.3 5 10.1a5 5 0 0 1-10 0c0-2.3 1.1-3.9 2.3-5.1.2 1.6.9 2.6 2 3.1-.6-2.6-.1-5.5.7-8.1z"/><path d="M12 20.5a2.1 2.1 0 0 1-2.1-2.1c0-1.3 1.1-2.1 2.1-3.4 1 1.3 2.1 2.1 2.1 3.4a2.1 2.1 0 0 1-2.1 2.1z"/>',
-    cold: [0, 60, 120, 180, 240, 300].map(a => {
-      const r = Math.PI * a / 180, u = [Math.sin(r), -Math.cos(r)], v = [Math.cos(r), Math.sin(r)];
-      const P2 = (d, w) => `${(12 + u[0] * d + v[0] * w).toFixed(2)} ${(12 + u[1] * d + v[1] * w).toFixed(2)}`;
-      return `M12 12L${P2(9, 0)}M${P2(4.6, -2.4)}L${P2(6.6, 0)}L${P2(4.6, 2.4)}`;
-    }).reduce((d, x) => d + x, '<path d="') + '"/><circle cx="12" cy="12" r="1.2"/>',
-  };
   const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
   const rampCss = (stops, t) => {
     const x = clamp(t) * (stops.length - 1), i = Math.min(Math.floor(x), stops.length - 2), f = x - i;
@@ -440,16 +458,31 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     return `<figure class="p-map"><span><img src="${R.file}" alt="" width="300" height="200" decoding="async"><i class="pin" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%"></i><b>${R.title}</b></span>
       <figcaption><i style="background:linear-gradient(90deg,${R.ramp.join(',')})"></i><small>${end(R.lo)}</small><small>${R.unit}</small><small>${end(R.hi)}</small></figcaption></figure>`;
   }
-  dom.panels.innerHTML = '<div class="panels-year"><small>Year</small><b>1981</b></div>' + panels.map(P => `<div class="panel p-${P.key}" style="--pc:${P.color}">
+  // the primer's frame: the tree's view (one forest), the four forcing views and the fifteen-age view, each with
+  // its header and readout, under a label per column
+  const frame = (cls, color, icon, title, lines, foot) => `<div class="panel ${cls}" style="--pc:${color}">
+    <div class="p-top"><div class="p-head"><svg class="p-icon" viewBox="0 0 24 24">${ICONS[icon]}</svg>
+      <p class="p-title"><b>${title}</b>${lines.map(l => `<span>${l}</span>`).join('')}</p></div></div>${foot}</div>`;
+  dom.panels.innerHTML = '<div class="panels-year"><small>Year</small><b>1981</b></div>'
+    + frame('v-tree', '#b9f46b', 'tree', 'Central Amazon', [`${where(story)} · age 1 in 1981`, 'ED reference run'],
+      '<p class="p-stats"><span><small>Height</small><b>0</b> m</span><span><small>Biomass</small><b>0</b> kgC m⁻²</span><span><small>Leaf area</small><b>0</b> LAI</span></p>')
+    + panels.map(P => `<div class="panel p-${P.key}" style="--pc:${P.color}">
     <div class="p-top"><div class="p-head"><svg class="p-icon" viewBox="0 0 24 24">${ICONS[P.key]}</svg>
       <p class="p-title"><b>${P.title}${P.tag ? `<i>${P.tag}</i>` : ''}</b><span>${P.lines[0]}</span><span>${P.lines[1]}</span></p></div>
       <div class="p-clim"><span class="p-key"><i>rain</i><i>temp</i></span><span class="p-strip">${strip(P)}<i class="p-cur"></i></span></div>
       ${map(P)}</div>
     <p class="p-note"></p>
-    <p class="p-stats"><span><small>Canopy height</small><b>0</b> m</span><span><small>Biomass</small><b>0</b> kgC m⁻²</span></p></div>`).join('');
+    <p class="p-stats"><span><small>Canopy height</small><b>0</b> m</span><span><small>Biomass</small><b>0</b> kgC m⁻²</span></p></div>`).join('')
+    + frame('v-cohort', '#3ee08f', 'cohort', 'Central Amazon', ['stands aged 1 to 500 years', 'canopy height by starting age'],
+      `<div class="bars p-bars">${AGES.map(a => `<div><i></i><span>${a}</span></div>`).join('')}</div>`)
+    + ['One forest', 'Four forcings', 'Fifteen ages'].map((t, i) => `<p class="v-label"><i>${i + 1}</i>${t}</p>`).join('');
   const panelYear = dom.panels.firstElementChild;
+  const treeFrame = dom.panels.querySelector('.v-tree'), cohortFrame = dom.panels.querySelector('.v-cohort');
+  const [treeH, treeAgb, treeLai] = treeFrame.querySelectorAll('.p-stats b');
+  const barEls = [...cohortFrame.querySelectorAll('.p-bars i')];
+  const colLabels = [...dom.panels.querySelectorAll('.v-label')];
   panels.forEach((P, i) => {
-    P.el = dom.panels.children[i + 1];
+    P.el = dom.panels.children[i + 2];
     [P.hEl, P.agbEl] = P.el.querySelectorAll('.p-stats b');
     P.noteEl = P.el.querySelector('.p-note');
     P.iconEl = P.el.querySelector('.p-icon');
@@ -457,26 +490,41 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     P.pastEl = P.el.querySelector('.p-past');
     P.cur = -1;
   });
-  // where each view sits: one shrinks out of the full screen, the others slide in after it
-  function panelRects(k) {
-    const cols = L.narrow ? 2 : 4, rows = L.narrow ? 2 : 1, gap = L.narrow ? 10 : 14;
-    // the views fill the space below the chapter's caption
-    const ax = L.narrow ? 16 : Math.round(W * 0.03), ay = Math.max(Math.round(H * (L.narrow ? 0.3 : 0.27)), L.capBottom + 18);
-    const aw = W - 2 * ax, ah = H - ay - Math.round(H * 0.045);
-    const w = (aw - gap * (cols - 1)) / cols, h = (ah - gap * (rows - 1)) / rows;
-    return panels.map((_, i) => {
-      const fin = {x: ax + (i % cols) * (w + gap), y: ay + Math.floor(i / cols) * (h + gap), w, h};
-      const ki = i === 0 ? k : ss(0.15 + 0.12 * i, 0.7 + 0.1 * i, k);
-      const from = i === 0 ? {x: 0, y: 0, w: W, h: H} : {...fin, x: fin.x + W * 0.3};
-      return {x: lerp(from.x, fin.x, ki), y: lerp(from.y, fin.y, ki), w: lerp(from.w, fin.w, ki), h: lerp(from.h, fin.h, ki), k: ki};
-    });
+  // Where the views sit: the tree's view shrinks out of the full frame into the left column while the forcing views
+  // slide in to a 2 x 2 grid in the middle and the fifteen-age view to the right (kS); then the fifteen-age view
+  // grows back over the others to the full frame (kM). Phones put the tree and the fifteen ages over the grid.
+  function viewRects(kS, kM) {
+    const n = L.narrow, gap = n ? 8 : 10, cg = n ? 10 : 22, lab = n ? 22 : 30;
+    // the views fill the space below the caption (in the film, below its one-line title)
+    const ax = n ? 12 : Math.round(W * 0.03), ay = (film ? Math.round(H * 0.25) : Math.max(Math.round(H * (n ? 0.3 : 0.27)), L.capBottom + 14)) + lab;
+    const aw = W - 2 * ax, ah = H - ay - Math.round(H * 0.04);
+    let tree, grid, coh;
+    if (n) {
+      const h1 = Math.round((ah - cg - lab) * 0.42), wT = Math.round((aw - cg) * 0.4);
+      tree = {x: ax, y: ay, w: wT, h: h1};
+      coh = {x: ax + wT + cg, y: ay, w: aw - wT - cg, h: h1};
+      grid = {x: ax, y: ay + h1 + cg + lab, w: aw, h: ah - h1 - cg - lab};
+    } else {
+      const wT = Math.round((aw - 2 * cg) * 0.22), wG = Math.round((aw - 2 * cg) * 0.42);
+      tree = {x: ax, y: ay, w: wT, h: ah};
+      grid = {x: ax + wT + cg, y: ay, w: wG, h: ah};
+      coh = {x: grid.x + wG + cg, y: ay, w: aw - wT - wG - 2 * cg, h: ah};
+    }
+    const pw = (grid.w - gap) / 2, ph = (grid.h - gap) / 2, full = {x: 0, y: 0, w: W, h: H};
+    const slide = (fin, k) => ({...fin, x: lerp(fin.x + W * 0.3, fin.x, k), k});
+    const grow = (a, b, k) => ({x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k), k: 1});
+    return {
+      tree: grow(full, tree, ease(kS)),
+      panels: [0, 1, 2, 3].map(i => slide({x: grid.x + (i % 2) * (pw + gap), y: grid.y + Math.floor(i / 2) * (ph + gap), w: pw, h: ph}, ss(0.2 + 0.1 * i, 0.62 + 0.08 * i, kS))),
+      cohort: kM > 0 ? grow(coh, full, ease(kM)) : slide(coh, ss(0.5, 1, kS)),
+      cols: [tree, grid, coh], lab,
+    };
   }
 
-  // cohort bars + labels (DOM)
-  dom.bars.innerHTML = AGES.map(a => `<div><i></i><span>${a}</span></div>`).join('');
-  const barEls = [...dom.bars.querySelectorAll('i')];
+  // the fifteen-age forest's labels: a few of its ages
   dom.cohortLabels.innerHTML = AGES.map(a => `<span>${a} yr</span>`).join('');
   const labelEls = [...dom.cohortLabels.children];
+  const LABELLED = new Set([1, 30, 100, 500]);
   const netLabelEls = Object.fromEntries([...dom.netLabels.children].map(el => [el.dataset.k, el]));
   const netVar = dom.netLabels.querySelector('.net-var');
   const BELOW = new Set(['state', 'heads', 'loop']);
@@ -553,18 +601,19 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     L.end = {d: de, s: er, y: -eh * (narrow ? 0.4 : 0.27) - er};
     L.narrow = narrow;
     whyLabels.forEach(M => { M.w = M.h = 0; M.narrow = narrow; });
-    const cap = dom.forcingCap;
+    const cap = dom.viewsCap;
     L.capBottom = cap ? cap.offsetTop + cap.offsetHeight : 0;
     // narrow views get a one-line readout, and the narrowest drop their maps
-    const pw = panelRects(1)[0].w;
+    const pw = viewRects(1, 0).panels[0].w;
     dom.panels.classList.toggle('compact', narrow || pw < 300);
     dom.panels.classList.toggle('nomap', pw < 236);
   }
   resize();
 
-  const tmp = new THREE.Vector3(), mainTgt = new THREE.Vector3(), sunSide = new THREE.Vector3(), nrm = new THREE.Vector3(), eye = new THREE.Vector3();
+  const tmp = new THREE.Vector3(), sunSide = new THREE.Vector3(), nrm = new THREE.Vector3(), eye = new THREE.Vector3();
   const PANEL_VIEW = 4.8;   // world units (10 m) of height each forcing view shows
   const PANEL_TGT = 2.2;    // height the views look at, leaving room for the headers above the crowns
+  const TREE_VIEW = 3.9;    // ... and the height the tree's view shows
   // key light from the upper left of a camera at azimuth az, slightly in front of the subject
   const keyLight = (v, az) => v.set(-Math.sin(az) * 0.55 + Math.cos(az) * 0.4, 0.75, Math.cos(az) * 0.55 + Math.sin(az) * 0.4).normalize();
   // Set the sky, ground and weather of a view: its climate state st, blended in by k.
@@ -586,39 +635,40 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       w.material.uniforms.uProj.value = proj;
     }
   }
-  // Draw each forcing view into its own viewport, with only its tree visible. Chapter one's view goes
-  // last, so as it shrinks into the first panel it uncovers the others, and covers them as it grows back.
-  const DRAW_ORDER = [1, 2, 3, 0];
-  function drawPanels(rects) {
-    const full = H * 0.5 / Math.tan(THREE.MathUtils.degToRad(fCam.fov) / 2);
-    const trees = panels.map(P => P.tree), opacity = bg.material.uniforms.uOpacity.value;
+  // Draw each view into its own viewport, with only its trees visible. A view filling the frame keeps what is
+  // drawn behind it (the globe, while the forest fades in or out); the others clear their box first.
+  const treeCam = new THREE.PerspectiveCamera(40, 1, 0.05, 400), cohortCam = new THREE.PerspectiveCamera(40, 1, 0.05, 400);
+  const cohortTrees = cohorts.flatMap(c => c.trees);
+  const allTrees = [hero, ...panels.slice(1).map(P => P.tree), ...cohortTrees];
+  let lidarOn = false;
+  function drawViews(views) {
+    const opacity = bg.material.uniforms.uOpacity.value;
     renderer.setScissorTest(true);
-    DRAW_ORDER.forEach(i => {
-      const R = rects[i];
-      if (R.k < 0.002 || R.x >= W || R.w < 2) return;
-      const P = panels[i];
+    views.forEach(V => {
+      const R = V.R;
+      if (R.k < 0.002 || R.x >= W || R.x + R.w <= 0 || R.w < 2 || R.h < 2) return;
       renderer.setViewport(R.x, H - R.y - R.h, R.w, R.h);
       renderer.setScissor(R.x, H - R.y - R.h, R.w, R.h);
-      renderer.clear();
-      trees.forEach(t => { t.visible = t === P.tree && (i === 0 ? heroReady : panelsReady); });
-      P.cam.aspect = R.w / R.h;
-      P.cam.updateProjectionMatrix();
-      const proj = R.h * 0.5 / Math.tan(THREE.MathUtils.degToRad(P.cam.fov) / 2);
-      P.tree.material.uniforms.uProj.value = proj;
+      if (R.w >= W - 0.5 && R.h >= H - 0.5) renderer.clearDepth(); else renderer.clear();
+      allTrees.forEach(t => { t.visible = false; });
+      V.trees.forEach(t => { t.visible = true; });
+      lidar.group.visible = !!V.lidar && lidarOn;
+      V.cam.aspect = R.w / R.h;
+      V.cam.updateProjectionMatrix();
+      const proj = R.h * 0.5 / Math.tan(THREE.MathUtils.degToRad(V.cam.fov) / 2);
+      V.trees.forEach(t => { t.material.uniforms.uProj.value = proj; });
       motes.material.uniforms.uProj.value = proj;
-      if (P.flames) P.flames.material.uniforms.uProj.value = proj;
-      ground.material.uniforms.uShade.value = Math.max(0.2, P.h(P.y) * 0.034);
+      if (V.flames) V.flames.material.uniforms.uProj.value = proj;
+      ground.material.uniforms.uShade.value = V.shade;
       bg.material.uniforms.uOpacity.value = opacity;   // a view keeps its sky while it slides, never a black box
-      applyClimate(P.state, R.k, R.w / R.h, proj, opacity);
-      renderer.render(fScene, P.cam);
+      applyClimate(V.state, R.k, R.w / R.h, proj, opacity);
+      renderer.render(fScene, V.cam);
     });
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, W, H);
-    hero.material.uniforms.uProj.value = full;
-    motes.material.uniforms.uProj.value = full;
     bg.material.uniforms.uOpacity.value = opacity;
-    applyClimate(CALM, 0, aspect, full, 0);
-    trees.forEach(t => { t.visible = false; });
+    applyClimate(CALM, 0, aspect, H * 0.5 / Math.tan(THREE.MathUtils.degToRad(fCam.fov) / 2), 0);
+    allTrees.forEach(t => { t.visible = false; });
   }
   function project(v, cam) {
     tmp.copy(v).project(cam);
@@ -728,12 +778,21 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     U.uDataMix.value = (1 - 0.92 * near) * (1 - (forest ? 0 : 0.85) * relief);
     U.uGrowth.value = forest ? 0.6 * growing : 0;
     U.uExposure.value = 1 + 0.4 * near;
-    U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing) * (1 - 0.25 * ss(1.9, 2.1, p) * (1 - ss(4.2, WHY[1], p)));
+    // ... and thin a little while the planet warms and while it is simulated
+    const heatA = ss(HEAT[0], HEAT[1], p) * (1 - ss(HEAT[3], HEAT[4], p));
+    U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing)
+      * (1 - 0.3 * Math.max(heatA, ss(REVEAL[0] - 0.12, REVEAL[0] + 0.08, p) * (1 - ss(WHY[1] - 0.3, WHY[1], p))));
+    U.uHeatMix.value = heatA;
+    U.uHeatT.value = 7 * ss(HEAT[1], HEAT[2], p);
     // the opening's events, then the planet simulated cell by cell; from then on every cell shows
     U.uReveal.value = p < REVEAL[0] ? 0 : p > REVEAL[1] ? 2 : 1.05 * (p - REVEAL[0]) / (REVEAL[1] - REVEAL[0]);
     const KU = marks.uniforms;
-    KU.uP.value = p; KU.uTime.value = time; KU.uOut.value = 1 - ss(1.95, 2.1, p);
-    marks.points.visible = p > 0.6 && p < 2.1;
+    KU.uP.value = p; KU.uTime.value = time; KU.uOut.value = 1 - ss(HEAT[3] - 0.05, HEAT[4] - 0.05, p);
+    KU.uGain.value = 1 - 0.55 * ss(HEAT[0], HEAT[1], p);   // the events step back while the planet warms
+    marks.points.visible = p > 0.6 && p < HEAT[4];
+    // the satellite lidar's tracks build up as the planet pulls back from the forest: the station's pass over the
+    // site, then orbit after orbit, faster and faster; they leave as the planet's own forests begin to grow
+    gedi.update(0.06 * ss(6.62, 6.84, u) + (gedi.orbits - 0.06) * ss(6.82, 7.28, u) ** 1.7, ss(6.6, 6.68, u) * (1 - ss(7.28, 7.42, u)));
     canopy.mesh.visible = !forest && relief > 0.002;
     const CU = canopy.uniforms;
     CU.uOpacity.value = relief;
@@ -755,7 +814,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     U.uGridMix.value = u > 6.6 && u < 7.05 ? 1 : 0;
     U.uTargetMix.value = ss(6.55, 6.7, u) * (1 - ss(6.75, 7, u));
     U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kDim), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum))
-      * (film ? 1 - 0.65 * ss(3.66, 3.78, p) * (1 - ss(4.28, 4.45, p)) : 1);   // the film's big number on the case
+      * (film ? 1 - 0.65 * ss(5.21, 5.33, p) * (1 - ss(5.83, 6, p)) : 1);   // the film's big number on the case
     // the photographic Earth gives way to its digital twin behind a scan line, and comes back for the end card
     U.uTwin.value = -1.25 + 2.5 * ss(10.68, 10.95, u);
     U.uTwinMix.value = u > 10.6 ? 1 - ss(11.7, 12.15, u) : 0;
@@ -787,11 +846,14 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     streams.material.uniforms.uNetM.value.copy(net.group.matrixWorld);
 
     // ---------- forest state
-    const fBase = ss(1.9, 2.06, u) * (1 - ss(6.53, 6.71, u)), fA = fBase * (1 - dipAt(u));
-    const year = forestYear(u);
+    // the forest fades in at the end of the dive and out as the camera rises; in between it runs on its own clock
+    const v = p - VIEWS[0], fA = ss(1.9, 2.06, u) * (1 - ss(6.53, 6.71, u));
+    const kS = ss(SPLIT[0], SPLIT[1], v), kM = ss(MERGE[0], MERGE[1], v);
+    const year = viewYear(v);
     const hMain = at(amazon['1'].height, year), lai = at(amazon['1'].lai, year);
     const Hm = hMain / 10;
-    const cohortA = ss(DIPS[1], 5.55, u);
+    const rects = fA > 0.001 ? viewRects(kS, kM) : null;
+    const cohortA = rects ? rects.cohort.k : 0;
     cohorts.forEach(c => {
       const series = amazon[String(c.age)], h = at(series.height, year), r = leafRatio(series.lai, year);
       c.h = h;
@@ -803,62 +865,52 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
         U.uStress.value = clamp((1 - r) * 3.5);
         U.uOpacity.value = cohortA * fA;
         t.scale.setScalar(0.1 * Math.max(1, H / VAR_HMAX));
-        t.visible = cohortsReady && cohortA * fA > 0.002;
       });
     });
     const sharedT = fScene.children;
     for (const o of sharedT) if (o.material?.uniforms?.uTime) o.material.uniforms.uTime.value = time;
-    // each view's year: its own story in the film, the scroll's shared years on the page
-    const kF = clamp(forestYear(u) / 40);
-    panels.forEach(P => { P.y = film && P.story ? storyYear(P.story, kF) : forestYear(u); P.state = P.clim(P.y); });
-    // the hero tree: sprouts during the dive, then follows the simulated years
-    const HU = hero.material.uniforms;
-    HU.uT.value = u < 2.15 ? lerp(PRE_TAU, 0, ss(1.9, 2.15, u)) : year / 40;
-    HU.uTop.value = Math.max(0.5, u < 2.15 ? hMain * ss(1.9, 2.15, u) : hMain);
+    // each view's year: its own story in the film, the shared years on the page
+    const kF = year / 40;
+    panels.forEach(P => { P.y = film && P.story ? storyYear(P.story, kF) : year; P.state = P.clim(P.y); });
+    // the tree: sprouts as the forest appears, then follows the simulated years
+    const HU = hero.material.uniforms, sprout = ss(SPROUT[0], SPROUT[1], v);
+    HU.uT.value = v < YEARS[0] ? lerp(PRE_TAU, 0, sprout) : year / 40;
+    HU.uTop.value = Math.max(0.5, hMain * (v < YEARS[0] ? sprout : 1));
     const leafR = leafRatio(amazon['1'].lai, year);
     HU.uLeaf.value = clamp(leafR * leafR, 0.35, 1);
     HU.uStress.value = clamp((1 - leafR) * 3.5);
     HU.uOpacity.value = fA;
-    hero.visible = heroReady && fA > 0.002;
     ground.material.uniforms.uOpacity.value = fA;
-    ground.material.uniforms.uShade.value = Math.max(0.2, hMain * 0.034);
     motes.material.uniforms.uOpacity.value = fA;
     bg.material.uniforms.uOpacity.value = fA;
 
-    // forest camera
-    const az = 0.5 + (u - 1.9) * 0.42;
-    // on phones, pull back so the tree fits between the caption above and the readout below
-    const rA = L.narrow ? 1.6 + Hm * 4.6 : 1.3 + Hm * 2.4, cyA = 0.25 + Hm * 0.42, tyA = Hm * 0.5 + (L.narrow ? rA * 0.035 : 0);
-    const b = ease(ss(5.3, 5.85, u)), c = ease(ss(6.3, 6.7, u));
-    const r = lerp(lerp(rA, mobile ? 27 : 22, b), 3, c);
-    const cy = lerp(lerp(cyA, 8, b), 48, c);
-    const ty = lerp(lerp(tyA, 1.5, b), 0, c);
-    fCam.position.set(Math.cos(az) * r, cy, Math.sin(az) * r);
-    fCam.lookAt(0, ty, 0);
-    fCam.updateMatrixWorld();   // the sideways shift below reads this frame's orientation, not the last drawn one
-    mainTgt.set(0, ty, 0);
+    // cameras, all slowly circling the site: the tree's view starts as the full frame's close-up of the sapling and
+    // pulls back to frame a grown tree; the fifteen-age view looks over the whole stand, from further away in its
+    // column, and at the end rises straight up away from the forest
+    const az = 0.5 + 0.3 * v;
+    const tyA = Hm * 0.5;
+    const rA = L.narrow ? 1.6 + Hm * 4.6 : 1.3 + Hm * 2.4, cyA = 0.25 + Hm * 0.42;
+    const viewDist = PANEL_VIEW / (2 * Math.tan(THREE.MathUtils.degToRad(fCam.fov) / 2)), kT = ease(kS);
+    const treeDist = viewDist * TREE_VIEW / PANEL_VIEW;   // the tree's own column, without a header to clear, frames it closer
+    treeCam.position.set(Math.cos(az) * lerp(rA, treeDist, kT), lerp(cyA, 1.0, kT), Math.sin(az) * lerp(rA, treeDist, kT));
+    treeCam.lookAt(0, lerp(tyA, 1.75, kT), 0);
     keyLight(HU.uLight.value, az);
-    if (!L.narrow) {
-      // slide camera and target sideways so the subject sits right of the caption
-      const shift = Math.hypot(r, cy - ty) * Math.tan(THREE.MathUtils.degToRad(fCam.fov) / 2) * aspect * 0.15 * (1 - c);
-      tmp.setFromMatrixColumn(fCam.matrixWorld, 0).multiplyScalar(-shift);
-      fCam.position.add(tmp);
-      mainTgt.add(tmp);
-      fCam.lookAt(mainTgt);
-    }
-    // a satellite lidar pass over the grown fifteen-age forest, across the screen
+    const cR = rects ? rects.cols[2] : {w: 1, h: 1}, rC = clamp(9.5 / (cR.w / cR.h * 0.364), 18, 34);
+    const kC = ease(kM), c = ease(ss(6.3, 6.7, u));
+    const rF = lerp(lerp(rC, mobile ? 27 : 22, kC), 3, c), cyF = lerp(lerp(rC * 0.36, 8, kC), 48, c), tyF = lerp(lerp(1.2, 1.5, kC), 0, c);
+    cohortCam.position.set(Math.cos(az) * rF, cyF, Math.sin(az) * rF);
+    cohortCam.lookAt(0, tyF, 0);
+    cohortCam.updateMatrixWorld();
+    // a satellite lidar pass over the grown fifteen-age forest, across the frame
     const lk = opt.lidar ?? ss(6.2, 6.42, u);
-    const lidarA = (lk > 0.001 ? 1 : 0) * cohortA * fA * (1 - ss(6.45, 6.6, u));
-    if (lidarA > 0.002) {
-      fCam.updateMatrixWorld();
-      lidarDir.setFromMatrixColumn(fCam.matrixWorld, 0).setY(0).normalize();
-    }
+    const lidarA = (lk > 0.001 ? 1 : 0) * fA * kM * (1 - ss(6.45, 6.6, u));
+    if (lidarA > 0.002) lidarDir.setFromMatrixColumn(cohortCam.matrixWorld, 0).setY(0).normalize();
     lidar.update(lk, lidarA, lidarDir, canopyTop, time);
+    lidarOn = lidarA > 0.002;
 
     // four forcings: every view shares one scale so heights compare directly
-    const kS = splitK(u), rects = kS > 0.001 ? panelRects(kS) : null;
     panels.forEach((P, i) => {
-      const U = P.tree.material.uniforms, pa = az + i * 0.9;
+      const U = P.tree.material.uniforms, pa = az + (i + 1) * 0.9;
       if (i > 0) {
         const y = P.y;
         U.uT.value = P.clock ? P.clock(y) : y / 40;
@@ -869,56 +921,72 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
         U.uDieback.value = P.dieback ? P.dieback(y) : 0;
         U.uFall.value = P.fall ? P.fall(y) : 0;
         U.uKeep.value = P.keep ? P.keep(y) : 1;
-        U.uOpacity.value = fA * (rects ? rects[i].k : 0);
+        U.uOpacity.value = fA * (rects ? rects.panels[i].k : 0);
         keyLight(U.uLight.value, pa);
         if (P.flames) {
           const F = P.flames.material.uniforms;
           F.uT.value = y / 40; F.uTime.value = time; F.uH.value = young.height[FIRE]; F.uOpacity.value = U.uOpacity.value;
         }
       }
-      if (!rects) return;
-      const dist = PANEL_VIEW / (2 * Math.tan(THREE.MathUtils.degToRad(P.cam.fov) / 2));
-      P.cam.position.set(Math.cos(pa) * dist, 1.15, Math.sin(pa) * dist);
-      tmp.set(0, PANEL_TGT, 0);
-      if (i === 0) {
-        // the first view keeps chapter one's camera until the split completes
-        P.cam.position.lerpVectors(fCam.position, P.cam.position, kS);
-        tmp.lerpVectors(mainTgt, tmp, kS);
-      }
-      P.cam.lookAt(tmp);
+      P.cam.position.set(Math.cos(pa) * viewDist, 1.15, Math.sin(pa) * viewDist);
+      P.cam.lookAt(0, PANEL_TGT, 0);
     });
+
+    // the views, drawn in order: the tree's last while it shrinks out of the full frame, the fifteen-age view last
+    // while it grows back over the others; once it fills the frame, only it
+    let views = null;
+    if (rects) {
+      const hs = Math.max(0.2, hMain * 0.034);
+      const tv = {R: rects.tree, cam: treeCam, state: CALM, trees: heroReady ? [hero] : [], shade: hs};
+      const pv = panels.map((P, i) => ({R: rects.panels[i], cam: P.cam, state: P.state, flames: P.flames, shade: Math.max(0.2, P.h(P.y) * 0.034),
+        trees: (i === 0 ? heroReady : panelsReady) ? [P.tree] : []}));
+      const cv = {R: rects.cohort, cam: cohortCam, state: CALM, lidar: true, shade: hs,
+        trees: [...(heroReady ? [hero] : []), ...(cohortsReady ? cohortTrees : [])]};
+      views = kM >= 1 ? [cv] : kM > 0 ? [tv, ...pv, cv] : [...pv, cv, tv];
+    }
 
     // ---------- draw
     if (!opt.dry) {
       post?.begin();
       renderer.clear();
-      if (fBase < 0.999) renderer.render(gScene, gCam);   // a dip fades the forest to dark, not to the globe
-      if (fA > 0.001) {
-        if (rects) drawPanels(rects);
-        else { renderer.clearDepth(); renderer.render(fScene, fCam); }
-      }
+      if (fA < 0.999) renderer.render(gScene, gCam);   // the globe, until the forest covers it
+      if (views) drawViews(views);
       post?.end();
     }
 
     // ---------- DOM overlays
     dom.panels.style.visibility = rects ? 'visible' : 'hidden';
     if (rects) {
-      // the year sits above the final row of views, wherever they are sliding
-      const yr = Math.round(year), fin = panelRects(1), last = fin[fin.length - 1];
-      panelYear.style.opacity = (ss(0.6, 1, kS) * fA).toFixed(3);
-      panelYear.style.transform = `translate(${(last.x + last.w - panelYear.offsetWidth).toFixed(1)}px, ${(fin[0].y - panelYear.offsetHeight - 10).toFixed(1)}px)`;
-      panelYear.lastChild.textContent = 1981 + yr;
-      panels.forEach((P, i) => {
-        const R = rects[i], el = P.el;
-        // headers show only once the views have settled, so they never overlap as views move
-        el.style.opacity = (ss(0.9, 1, kS) * ss(0.55, 1, i === 0 ? kS : R.k) * fA).toFixed(3);
+      // frames and headers show once the views have settled, so they never overlap as views move, and leave as the
+      // fifteen-age view takes the frame
+      const out = 1 - ss(0, 0.3, kM), settled = ss(0.9, 1, kS) * fA * out;
+      const place = (el, R, a) => {
+        el.style.opacity = a.toFixed(3);
         el.style.transform = `translate(${R.x.toFixed(1)}px, ${R.y.toFixed(1)}px)`;
         el.style.width = `${R.w.toFixed(1)}px`;
         el.style.height = `${R.h.toFixed(1)}px`;
+      };
+      place(treeFrame, rects.tree, settled);
+      place(cohortFrame, rects.cohort, settled * ss(0.55, 1, cohortA));
+      const cols = rects.cols;
+      colLabels.forEach((el, i) => {
+        el.style.opacity = (settled * (i === 1 ? ss(0.55, 1, rects.panels[0].k) : i === 2 ? ss(0.55, 1, cohortA) : 1)).toFixed(3);
+        el.style.transform = `translate(${cols[i].x.toFixed(1)}px, ${(cols[i].y - rects.lab).toFixed(1)}px)`;
+      });
+      panelYear.style.opacity = (ss(0.6, 1, kS) * fA * out).toFixed(3);
+      panelYear.style.transform = `translate(${(cols[2].x + cols[2].w - panelYear.offsetWidth).toFixed(1)}px, ${(cols[0].y - rects.lab - panelYear.offsetHeight - 4).toFixed(1)}px)`;
+      panelYear.lastChild.textContent = 1981 + Math.round(year);
+      treeH.textContent = hMain.toFixed(1);
+      treeAgb.textContent = at(amazon['1'].agb, year).toFixed(1);
+      treeLai.textContent = lai.toFixed(1);
+      cohorts.forEach((c, i) => { barEls[i].style.height = `${clamp(c.h / 34) * 100}%`; });
+      // the climate strip fills in up to the current year
+      const cur = Math.round(clamp(year / 40) * 1000) / 10;
+      panels.forEach((P, i) => {
+        const R = rects.panels[i], el = P.el;
+        place(el, R, settled * ss(0.55, 1, R.k));
         P.hEl.textContent = P.h(P.y).toFixed(1);
         P.agbEl.textContent = P.agb(P.y).toFixed(1);
-        // the climate strip fills in up to the current year
-        const cur = Math.round(clamp(year / 40) * 1000) / 10;
         if (cur !== P.cur) { P.cur = cur; P.curEl.style.left = `${cur}%`; P.pastEl.style.clipPath = `inset(-2px ${(100 - cur).toFixed(1)}% -2px 0)`; }
         P.iconEl.classList.toggle('on', P.state.on);
         if (P.note) {
@@ -929,20 +997,27 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       });
     }
     dom.flash.style.opacity = (ss(1.93, 1.975, u) * (1 - ss(1.99, 2.25, u)) * 0.55 + ss(6.47, 6.59, u) * (1 - ss(6.63, 6.85, u)) * 0.3).toFixed(3);
-    const yr = Math.round(year);
-    dom.treeYear.textContent = 1981 + yr;
-    dom.cohortYear.textContent = 1981 + yr;
-    dom.treeH.textContent = at(amazon['1'].height, year).toFixed(1);
-    dom.treeAgb.textContent = at(amazon['1'].agb, year).toFixed(1);
-    dom.treeLai.textContent = lai.toFixed(1);
-    cohorts.forEach((c, i) => { barEls[i].style.height = `${clamp(c.h / 34) * 100}%`; });
     dom.globeYear.textContent = 1981 + Math.round(U.uYear.value);
 
-    // the events' labels sit by their markers while they face the camera, kept on screen; a phone shows only the
-    // latest one
+    // the fifteen-age forest's ages by their stands: a few in its column, all of them once it fills the frame,
+    // gone before the satellite passes
+    const labA = rects ? ss(0.75, 1, kS) * fA * (1 - ss(MERGE[1] - 0.3, MERGE[1] - 0.05, v)) : 0;
+    cohorts.forEach((co, i) => {
+      const el = labelEls[i], R = rects?.cohort;
+      const a = labA * (LABELLED.has(co.age) ? 1 : ss(0.6, 1, kM));
+      if (a < 0.01) { el.style.opacity = 0; return; }
+      tmp.set(co.cx, co.h / 10 + 0.5, co.cz).project(cohortCam);
+      const x = R.x + (tmp.x * 0.5 + 0.5) * R.w, y = R.y + (-tmp.y * 0.5 + 0.5) * R.h;
+      const inside = tmp.z < 1 && x > R.x + 24 && x < R.x + R.w - 24 && y > R.y + 60 && y < R.y + R.h - 8;
+      el.style.opacity = inside ? a.toFixed(3) : 0;
+      el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`;
+    });
+
+    // the events' labels sit by their markers while they face the camera, kept on screen, each for a while after it
+    // pops; a phone shows only the latest one. The caption's legend lights each kind with its first event.
     const latest = whyLabels.reduce((m, L, i) => (p >= L.t ? i : m), -1);
     whyLabels.forEach((L, i) => {
-      const a = marks.points.visible && (!L.narrow || i === latest) ? ss(L.t + 0.02, L.t + 0.1, p) * KU.uOut.value : 0;
+      const a = marks.points.visible && (!L.narrow || i === latest) ? ss(L.t + 0.02, L.t + 0.1, p) * (1 - ss(L.t + 0.42, L.t + 0.52, p)) * KU.uOut.value : 0;
       if (a < 0.01) { if (L.on) { L.el.style.opacity = 0; L.on = false; } return; }
       const q = markOf[i] * 3;
       G.spin.localToWorld(tmp.set(marks.positions[q], marks.positions[q + 1], marks.positions[q + 2]));
@@ -954,23 +1029,24 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       L.el.style.transform = `translate(${x.toFixed(1)}px, ${(s.y - h / 2).toFixed(1)}px)`;
       L.on = true;
     });
+    kindEls.forEach(K => K.el.classList.toggle('on', p >= K.t));
+    const pulse = whyLabels.reduce((m, L) => (p >= L.t ? Math.max(m, Math.exp(-(p - L.t) / 0.035)) : m), 0) * KU.uOut.value;
+    dom.alarm.style.opacity = Math.min(1, 0.5 * pulse + 0.55 * heatA * ss(0.5, 1, U.uHeatT.value / 7)).toFixed(3);
+    // the warming's period and its mean over forests
+    if (p > HEAT[0] && p < HEAT[4]) {
+      const t = U.uHeatT.value, i = Math.min(6, Math.floor(t)), f = t - i, y0 = 1981 + 5 * Math.round(t);
+      const m = lerp(HEAT_MEAN[i], HEAT_MEAN[i + 1], f);
+      dom.heatYears.textContent = `${y0}–${String(y0 + 4).slice(2)}`;
+      dom.heatMean.textContent = `${m < 0 ? '−' : '+'}${Math.abs(m).toFixed(2)}`;
+    }
     // the clock of one global run, counting while the cells land
-    if (p > 1.9 && p < 3.3) {
+    if (p > REVEAL[0] - 0.15 && p < REVEAL[1] + 0.7) {
       const k = clamp((p - REVEAL[0]) / (REVEAL[1] - REVEAL[0]));
       dom.simDays.textContent = (40.6 * k).toFixed(1);
       dom.simBar.style.transform = `scaleX(${k.toFixed(4)})`;
-      dom.sim.style.setProperty('--r1', ss(2.64, 2.76, p).toFixed(3));
-      dom.sim.style.setProperty('--r2', ss(2.78, 2.9, p).toFixed(3));
+      dom.sim.style.setProperty('--r1', ss(REVEAL[1] + 0.02, REVEAL[1] + 0.14, p).toFixed(3));
+      dom.sim.style.setProperty('--r2', ss(REVEAL[1] + 0.16, REVEAL[1] + 0.28, p).toFixed(3));
     }
-
-    const labA = ss(5.55, 5.8, u) * (1 - ss(6.25, 6.4, u));
-    cohorts.forEach((c, i) => {
-      const el = labelEls[i];
-      if (labA < 0.01) { el.style.opacity = 0; return; }
-      const p = project(tmp.set(c.cx, c.h / 10 + 0.5, c.cz), fCam);
-      el.style.opacity = p.z < 1 ? labA : 0;
-      el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -100%)`;
-    });
 
     // annotations appear with the parts they name; the forcing's names the map at the front of the deck
     const nlA = ss(8.4, 8.65, u) * (1 - ss(9.3, 9.5, u));

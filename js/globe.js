@@ -165,6 +165,8 @@ uniform sampler2D uClouds;
 uniform sampler2D uLights;
 uniform sampler2D uDetail, uDetail2, uDetail3;
 uniform sampler2DArray uData;
+uniform sampler2DArray uHeat;
+uniform float uHeatMix, uHeatT;
 uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight, uGrowth;
 uniform float uReal, uCloud, uCloudShift, uDetailMix, uExposure, uTwin, uTwinMix, uReveal;
 uniform vec4 uDetailBox, uDetailBox2, uDetailBox3;
@@ -277,6 +279,21 @@ void main() {
       real += ramp(0.95) * smoothstep(0.0, 0.25, max(tn * tn - t0 * t0, 0.0)) * cov * uGrowth * (0.35 + 0.65 * lit) * (1.0 - cl);
     }
     real += vec3(0.62, 1.0, 0.7) * fresh * (0.25 + 0.75 * lit) * 0.6;
+    // the opening's warming: each cell's air temperature against its 1981-90 mean, through eight five-year windows
+    // (uHeatT 0..7), strongest where forest stands; cooler cells blue, the hottest glowing
+    if (uHeatMix > 0.001) {
+      float h0 = floor(uHeatT), h1 = min(h0 + 1.0, 7.0);
+      vec2 hv = mix(texture(uHeat, vec3(duv, h0)).rg, texture(uHeat, vec3(duv, h1)).rg, uHeatT - h0);
+      vec2 fv = texture(uHeat, vec3(duv, 8.0)).rg;
+      float anom = -1.0 + 3.5 * hv.r / max(hv.g, 1e-3), fc = fv.r / max(fv.g, 1e-3);
+      vec3 hot = anom < 0.0 ? mix(vec3(0.55, 0.62, 0.7), vec3(0.22, 0.48, 1.0), clamp(-anom / 0.7, 0.0, 1.0))
+        : anom < 0.6 ? mix(vec3(1.0, 0.82, 0.45), vec3(1.0, 0.45, 0.12), anom / 0.6)
+        : anom < 1.2 ? mix(vec3(1.0, 0.45, 0.12), vec3(0.92, 0.1, 0.12), (anom - 0.6) / 0.6)
+        : mix(vec3(0.92, 0.1, 0.12), vec3(1.0, 0.55, 0.7), clamp((anom - 1.2) / 0.8, 0.0, 1.0));
+      float hw = hv.g * smoothstep(0.25, 0.65, land) * uHeatMix * (0.3 + 0.7 * fc) * clamp(0.3 + abs(anom) / 0.9, 0.0, 1.0);
+      real = mix(real, hot * (0.3 + 0.9 * sun), hw * 0.88 * (1.0 - 0.6 * cl));
+      real += hot * hw * smoothstep(0.7, 1.6, anom) * (0.28 + 0.12 * sin(uTime * 3.0)) * (1.0 - 0.6 * cl);
+    }
     float dark = 1.0 - smoothstep(-0.2, 0.06, ndl);
     real += vec3(1.0, 0.72, 0.4) * texture2D(uLights, vUv).r * dark * (1.0 - 0.8 * cl) * 1.2;
     float fh = pow(1.0 - max(dot(N, V), 0.0), 2.3);
@@ -362,6 +379,7 @@ export function createGlobe({day, mask, zones, data = null, segments = 192, clou
     uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0}, uExposure: {value: 1}, uReveal: {value: 2},
     uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
     uHasData: {value: data ? 1 : 0},
+    uHeat: {value: new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)}, uHeatMix: {value: 0}, uHeatT: {value: 0},
     uYear: {value: 40}, uGrowth: {value: 0}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
     uTime: {value: 0}, uGridMix: {value: 0}, uTargetMix: {value: 0}, uDim: {value: 1}, uBase: {value: 1}, uSpec: {value: 0.22}, uNight: {value: 1},
     uSun: {value: new THREE.Vector3(-0.85, 0.38, 0.55).normalize()},
@@ -370,6 +388,7 @@ export function createGlobe({day, mask, zones, data = null, segments = 192, clou
     uTarget: {value: new THREE.Vector2(-10, -10)},
   };
   if (!data) uniforms.uData.value.format = THREE.RGFormat;
+  uniforms.uHeat.value.format = THREE.RGFormat;
   const material = new THREE.ShaderMaterial({uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true});
   const globe = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), material);
   const atmoU = {uSun: uniforms.uSun, uOpacity: {value: 1}, uEclipse: {value: 0}, uCenter: {value: new THREE.Vector3()}, uReal: uniforms.uReal};
@@ -569,11 +588,13 @@ export function createFlare() {
 }
 
 // Places on the globe that pulse: a hot point with a ring rippling out from it, sized in screen pixels and fading
-// toward the limb. points: [{lat, lon, color, t}]; each lights up as uP passes its t, with a flash, and all fade
-// with uOut. Children of the globe's spin group, drawn over it.
+// toward the limb. points: [{lat, lon, color, t, kind}]; each lights up as uP passes its t, with a flash, drawn by
+// its kind: a flickering flare (fire), a slow ring (drought), a pulsing glow (heat) or a square, like a cleared plot
+// (clearing). All fade with uOut and dim with uGain. Children of the globe's spin group, drawn over it.
+export const EVENT_KINDS = ['fire', 'drought', 'heat', 'clear'];
 export function createMarkers(points, px) {
   const n = points.length, v = new THREE.Vector3(), c = new THREE.Color();
-  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), t0 = new Float32Array(n), ph = new Float32Array(n);
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), t0 = new Float32Array(n), ph = new Float32Array(n), ty = new Float32Array(n);
   points.forEach((m, i) => {
     latLonToVec3(m.lat, m.lon, 1.004, v);
     pos.set([v.x, v.y, v.z], i * 3);
@@ -581,30 +602,38 @@ export function createMarkers(points, px) {
     col.set([c.r, c.g, c.b], i * 3);
     t0[i] = m.t;
     ph[i] = (i * 0.37) % 1;
+    ty[i] = Math.max(0, EVENT_KINDS.indexOf(m.kind));
   });
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('aCol', new THREE.BufferAttribute(col, 3));
   geo.setAttribute('aT', new THREE.BufferAttribute(t0, 1));
   geo.setAttribute('aPh', new THREE.BufferAttribute(ph, 1));
+  geo.setAttribute('aType', new THREE.BufferAttribute(ty, 1));
   const mat = new THREE.ShaderMaterial({
-    uniforms: {uP: {value: 0}, uOut: {value: 1}, uTime: {value: 0}, uPx: {value: px}},
-    vertexShader: `attribute vec3 aCol; attribute float aT; attribute float aPh;
-      uniform float uP, uOut, uPx; varying vec3 vCol; varying float vA, vPop, vPh;
+    uniforms: {uP: {value: 0}, uOut: {value: 1}, uGain: {value: 1}, uTime: {value: 0}, uPx: {value: px}},
+    vertexShader: `attribute vec3 aCol; attribute float aT; attribute float aPh; attribute float aType;
+      uniform float uP, uOut, uGain, uPx; varying vec3 vCol; varying float vA, vPop, vPh, vType;
       void main(){
         vec3 w = (modelMatrix * vec4(position, 1.0)).xyz, nW = normalize((modelMatrix * vec4(position, 0.0)).xyz);
         float mu = dot(nW, normalize(cameraPosition - w));
-        vA = smoothstep(0.04, 0.3, mu) * smoothstep(aT, aT + 0.05, uP) * uOut;
+        vA = smoothstep(0.04, 0.3, mu) * smoothstep(aT, aT + 0.05, uP) * uOut * uGain;
         vPop = smoothstep(aT, aT + 0.03, uP) * (1.0 - smoothstep(aT + 0.03, aT + 0.2, uP));
-        vCol = aCol; vPh = aPh;
+        vCol = aCol; vPh = aPh; vType = aType;
         gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
-        gl_PointSize = uPx * (30.0 + 26.0 * vPop);
+        gl_PointSize = uPx * (34.0 + 8.0 * step(1.5, aType) * step(aType, 2.5) + 30.0 * vPop);
       }`,
-    fragmentShader: `uniform float uTime; varying vec3 vCol; varying float vA, vPop, vPh;
+    fragmentShader: `uniform float uTime; varying vec3 vCol; varying float vA, vPop, vPh, vType;
       void main(){
-        float r = length(gl_PointCoord - 0.5) * 2.0;
+        vec2 q = gl_PointCoord - 0.5;
+        bool sq = vType > 2.5;
+        float r = (sq ? max(abs(q.x), abs(q.y)) : length(q)) * 2.0;
         float core = smoothstep(0.24, 0.12, r), glow = exp(-r * r * 9.0) * (0.45 + 0.8 * vPop);
-        float ring = fract(uTime * 0.5 + vPh), wave = smoothstep(0.07, 0.0, abs(r - ring)) * (1.0 - ring) * 0.9;
+        float rate = vType < 0.5 ? 0.8 : vType < 1.5 ? 0.3 : 0.5;
+        float ring = fract(uTime * rate + vPh), wave = smoothstep(0.07, 0.0, abs(r - ring)) * (1.0 - ring) * 0.9;
+        if (vType < 0.5) core *= 0.75 + 0.35 * sin(uTime * 17.0 + vPh * 40.0) * sin(uTime * 6.3 + vPh * 9.0);
+        if (vType > 1.5 && vType < 2.5) glow *= 1.25 + 0.45 * sin(uTime * 4.0 + vPh * 6.3);
+        if (sq) wave = smoothstep(0.06, 0.0, abs(r - 0.62)) * (0.55 + 0.45 * sin(uTime * 3.0 + vPh * 6.3)) + wave * 0.5;
         float a = (core + glow + wave) * vA;
         gl_FragColor = vec4(mix(vCol, vec3(1.0), core * 0.55) * a, 1.0);
       }`,
@@ -614,4 +643,85 @@ export function createMarkers(points, px) {
   pts.frustumCulled = false;
   pts.renderOrder = 4;
   return {points: pts, uniforms: mat.uniforms, positions: pos};
+}
+
+// NASA's GEDI, a lidar on the International Space Station: the station on its orbit (51.6 degrees inclined, 420 km
+// up, drawn higher) and the footprints its ground tracks leave over land, one orbit after another as n, the orbits
+// flown, runs from 0 to orbits, each orbit 23.2 degrees west of the last as Earth turns under it, the days' orbits interleaved. The first
+// crosses the Amazon site (3.3 S, 63.7 W) heading north, early in its orbit. The tracks are drawn, not GEDI data.
+export function createGedi(land, px, orbits = 128, steps = 720) {
+  const INC = THREE.MathUtils.degToRad(51.6), STEP = 23.17, ALT = 1.09, v = new THREE.Vector3();
+  const PHI0 = Math.asin(Math.sin(THREE.MathUtils.degToRad(-3.3)) / Math.sin(INC)) - 2 * Math.PI * 0.02;
+  const track = (k, f, r, out) => {
+    const phi = 2 * Math.PI * f + PHI0, node = -60.6 - (k + f) * STEP - Math.floor(k / 16) * 8.3;
+    const lat = Math.asin(Math.sin(INC) * Math.sin(phi)), lon = THREE.MathUtils.degToRad(node) + Math.atan2(Math.cos(INC) * Math.sin(phi), Math.cos(phi));
+    return latLonToVec3(THREE.MathUtils.radToDeg(lat), THREE.MathUtils.radToDeg(lon), r, out);
+  };
+  // every footprint over land, every third over the sea, fainter (the forests are what the shots are for)
+  const pos = [], s = [], onLand = [];
+  for (let k = 0; k < orbits; k++) for (let j = 0; j < steps; j++) {
+    track(k, j / steps, 1.003, v);
+    const {lat, lon} = vec3ToLatLon(v);
+    const row = Math.min(359, Math.floor((90 - lat) * 2)), col = ((Math.floor((lon + 180) * 2) % 720) + 720) % 720;
+    const l = land[row * 720 + col] ? 1 : 0;
+    if (!l && j % 3) continue;
+    pos.push(v.x, v.y, v.z);
+    s.push((k + j / steps) / orbits);
+    onLand.push(l);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('aS', new THREE.Float32BufferAttribute(s, 1));
+  geo.setAttribute('aLand', new THREE.Float32BufferAttribute(onLand, 1));
+  const uniforms = {uK: {value: 0}, uA: {value: 0}, uPx: {value: px}, uN: {value: orbits}};
+  const dots = new THREE.Points(geo, new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `attribute float aS; attribute float aLand; uniform float uK, uA, uPx, uN; varying float vA, vNew;
+      void main(){
+        vec3 w = (modelMatrix * vec4(position, 1.0)).xyz, nW = normalize((modelMatrix * vec4(position, 0.0)).xyz);
+        float age = (uK - aS) * uN, laid = step(0.0, age);   // in orbits since the footprint was laid
+        vNew = exp(-max(age, 0.0) * 9.0);
+        vA = laid * smoothstep(0.02, 0.25, dot(nW, normalize(cameraPosition - w))) * uA * (0.45 + 0.55 * exp(-max(age, 0.0) * 0.6))
+          * mix(0.22 + 0.6 * vNew, 1.0, aLand)
+          * mix(0.3, 1.0, sqrt(max(0.0, 1.0 - pow(position.y / 0.786, 2.0))));   // tracks crowd where they turn, at 51.6 degrees
+        gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
+        gl_PointSize = laid * uPx * (2.2 + 4.0 * vNew);   // footprints still to come are not drawn at all
+      }`,
+    fragmentShader: `varying float vA, vNew;
+      void main(){ float d = length(gl_PointCoord - 0.5) * 2.0;
+        gl_FragColor = vec4(mix(vec3(0.45, 1.0, 0.82), vec3(1.0), vNew * 0.6) * smoothstep(1.0, 0.2, d) * vA, 1.0); }`,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  dots.frustumCulled = false;
+  dots.renderOrder = 4;
+  // the station's orbit, a thin ring hidden behind the planet, and the station on it
+  const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length: 257}, () => new THREE.Vector3())),
+    new THREE.LineBasicMaterial({color: 0x7dffd8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending}));
+  ring.frustumCulled = false;
+  ring.renderOrder = 3;
+  const iss = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3)), new THREE.ShaderMaterial({
+    uniforms: {uA: uniforms.uA, uPx: uniforms.uPx},
+    vertexShader: `uniform float uPx; void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_PointSize = uPx * 22.0; }`,
+    fragmentShader: `uniform float uA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0;
+      gl_FragColor = vec4(vec3(0.8, 1.0, 0.95) * (smoothstep(0.22, 0.05, d) + 0.6 * exp(-d * d * 7.0)) * uA, 1.0); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  iss.frustumCulled = false;
+  iss.renderOrder = 4;
+  const group = new THREE.Group();
+  group.add(dots, ring, iss);
+  group.visible = false;
+  const rp = ring.geometry.attributes.position;
+  function update(n, a) {
+    group.visible = a > 0.002;
+    if (!group.visible) return;
+    const x = Math.min(n, orbits - 1e-4), o = Math.floor(x);
+    uniforms.uK.value = x / orbits;
+    uniforms.uA.value = a;
+    for (let i = 0; i <= 256; i++) rp.setXYZ(i, ...track(o, i / 256, ALT, v).toArray());
+    rp.needsUpdate = true;
+    ring.material.opacity = 0.32 * a;
+    iss.position.copy(track(o, x - o, ALT, v));
+  }
+  return {group, update, orbits};
 }

@@ -2,7 +2,7 @@
 import {loadTexture, loadAtlas, loadZones, loadTiles} from './globe.js';
 import {createForecast} from './forecast.js';
 import {createBench} from './bench.js';
-import {storyU} from './timeline.js';
+import {storyU, VIEWS, VIEW} from './timeline.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -13,7 +13,7 @@ const RENDER = PARAMS.has('render');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (RENDER) document.documentElement.classList.add('render');
 const mobile = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
-const U_END = 16.6;
+const U_END = 16.43;
 
 function webgl2() {
   try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
@@ -52,7 +52,9 @@ function textures() {
       loadTexture('assets/tex/amazon.webp'),
       loadTexture('assets/tex/amazon-cell.webp'),
       loadTexture('assets/tex/amazon-ground.webp'),
-    ]).then(([day, mask, zones, clouds, lights, amazon, amazonCell, amazonGround]) => ({day, mask, zones, clouds, lights, amazon, amazonCell, amazonGround}));
+      // the opening's warming: eight five-year windows of air temperature against 1981-90, then forest cover
+      loadTiles('assets/data/forcing/warming.png', 720, 360, 9, i => [i % 3, Math.floor(i / 3)]).catch(() => null),
+    ]).then(([day, mask, zones, clouds, lights, amazon, amazonCell, amazonGround, heat]) => ({day, mask, zones, clouds, lights, amazon, amazonCell, amazonGround, heat}));
   }
   return texP;
 }
@@ -138,7 +140,7 @@ function applyFades(u) {
     counters[i].forEach(({el, n}) => { el.textContent = fmtN(Math.round(n * e)); });
   });
   // where each chapter button takes over: the case for emulators, the primer, then CarbonGlobe
-  const marks = [0, 0.55, 1.9, 3.25, 4.55, 7.55, 9.25, 10.75, 12.2, 13.55, 14.85, 15.9];
+  const marks = [0, 0.55, 2.22, 3.45, 4.8, 6.1, 7.35, 10.0, 11.12, 12.03, 13.38, 14.68, 15.73];
   let cur = 0;
   marks.forEach((m, i) => { if (u >= m - 0.05) cur = i; });
   chapterBtns.forEach((b, i) => b.classList.toggle('on', i === cur));
@@ -182,7 +184,7 @@ function loop(now) {
     const {vh, top} = filmMetrics();
     // Linger while a caption is fully on screen, move faster through transitions and the years
     // of growth.
-    const s = storyU(uS), growing = (s > 2.15 && s < 3.45) || (s > 5.4 && s < 6.4);
+    const v = uS - VIEWS[0], growing = v > VIEW.years[0] && v < VIEW.years[1];
     const speed = (growing ? 1.45 : 1) * vh / (3.8 + 3.0 * captionShown);
     playY += speed * dt;
     window.scrollTo(0, playY);
@@ -327,11 +329,9 @@ async function boot() {
     canvas, meta, scen, maps, mobile, reduced, bloom: !mobile && !PARAMS.has('nobloom'), film: RENDER,
     tex: {...tex, height},
     dom: {
-      flash: $('#flash'), bars: $('#cohort-bars'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'),
-      treeYear: $('#tree-year'), cohortYear: $('#cohort-year'), treeH: $('#tree-h'), treeAgb: $('#tree-agb'), treeLai: $('#tree-lai'),
-      globeYear: $('#globe-year'), panels: $('#panels'),
-      whyLabels: $('#why-labels'), sim: $('#sim'), simDays: $('#sim-days'), simBar: $('#sim-bar'),
-      forcingCap: $('.cap-forcing'), netCap: $('.cap-net'),
+      flash: $('#flash'), alarm: $('#alarm'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'), globeYear: $('#globe-year'), panels: $('#panels'),
+      whyLabels: $('#why-labels'), kinds: $('#why-kinds'), heatYears: $('#heat-years'), heatMean: $('#heat-mean'),
+      sim: $('#sim'), simDays: $('#sim-days'), simBar: $('#sim-bar'), viewsCap: $('.cap-views'), netCap: $('.cap-net'),
     },
   });
   canvas.classList.add('ready');
