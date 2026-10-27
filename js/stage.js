@@ -2,8 +2,8 @@
 // simulator, the case for emulators) -> the primer (a dive to the Amazon, one forest, four forcings and fifteen
 // ages in one frame, the satellite lidar's planet) -> planet -> emulator -> what if -> numbers.
 import * as THREE from '../assets/vendor/three.module.js';
-import {createGlobe, createCanopy, createForestCloud, createStars, createFlare, createMarkers, createGedi, facing, cellOf, latLonToVec3} from './globe.js';
-import {WHY, VIEWS, VIEW, storyU} from './timeline.js';
+import {createGlobe, createCanopy, createForestCloud, createStars, createFlare, createMarkers, createGedi, equalEarth, facing, cellOf, latLonToVec3} from './globe.js';
+import {WHY, VIEWS, VIEW, SLOW, SPEED, storyU} from './timeline.js';
 import {createGround, createMotes, createWeather, createSky, createLidar} from './forest.js';
 import {mulberry32} from './random.js';
 import {growTrees, treePoints, createFlames, PRE_TAU} from './hero-tree.js';
@@ -22,15 +22,13 @@ const DIVE_ALT = 0.2;      // altitude (globe radii) the dive passes on its way 
 const GROUND_ALT = 0.002;  // ... and where it ends, about 13 km above the forest
 const GROUND = {lat: -3.29, lon: -63.68};   // the forest at the head of a lake, by the chapter's site
 
-// The opening globe's path through the case for emulators, [p, lat, lon], always turning west: from Africa and
-// Europe over the Atlantic to South and North America, across the Pacific to Australia and Asia (the events
-// pop as they come into view), on over Asia to Africa while the planet warms, then to the Atlantic while it is
-// simulated. HEAT: where the warming plays, its five-year windows in turn; REVEAL: where the simulation runs, its
-// cells landing one by one.
-const WHY_PATH = [[0.7, 10, 40], [0.95, 22, 12], [1.08, -6, -42], [1.3, -10, -58], [1.42, 34, -92], [1.62, 40, -104],
-  [1.76, -4, 166], [1.98, 14, 130], [2.3, 18, 112], [3.35, 20, 22], [4.55, 12, -45], [WHY[1], 8, -55]];
-const HEAT = [2.22, 2.45, 3.2, 3.4, 3.58];   // fade in, windows from 1981-85 to 2016-20, fade out
-const REVEAL = [3.57, 4.17];
+// The opening, on the page's own clock p: the globe unrolls into a still map of the world (FLAT: in, then back out),
+// on which the events pop kind by kind (fire, drought, heat, clearing) and the planet warms (HEAT: fade in, five-year
+// windows from 1981-85 to 2016-20, fade out). It rolls back into a globe facing the Atlantic, from where the dive turns
+// to the Amazon. WHY_PATH: where the globe faces meanwhile, [p, lat, lon]; the map is centred on longitude 0.
+const FLAT = [0.52, 0.86, 3.5, 3.9];
+const WHY_PATH = [[0.62, 6, 0], [3.5, 6, 0], [WHY[1], 2, -35]];
+const HEAT = [2.22, 2.45, 3.2, 3.4, 3.58];
 // the forest-area mean of each window against 1981-90 (scripts/export_pressure.py)
 const HEAT_MEAN = [-0.22, 0.22, 0.15, 0.38, 0.66, 0.46, 0.67, 0.82];
 const whyKeys = (() => {
@@ -202,7 +200,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     el.querySelector('b').insertAdjacentHTML('afterbegin', `<svg class="ev-icon" viewBox="0 0 24 24">${ICONS[kind]}</svg>`);
     return {el, t: +el.dataset.t, kind, color, pts: el.dataset.pts.split(';').map(q => q.split(',').map(Number))};
   });
-  const marks = createMarkers(whyLabels.flatMap(L => L.pts.map(([lat, lon]) => ({lat, lon, color: L.color, t: L.t, kind: L.kind}))), px);
+  const marks = createMarkers(whyLabels.flatMap(L => L.pts.map(([lat, lon]) => ({lat, lon, color: L.color, t: L.t, kind: L.kind}))), px, G.uniforms);
   G.spin.add(marks.points);
   const markOf = whyLabels.map((L, i) => whyLabels.slice(0, i).reduce((n, M) => n + M.pts.length, 0));
   const kindEls = [...(dom.kinds?.children ?? [])].map(el => {
@@ -569,6 +567,12 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     L.hero = narrow ? {x: 0, y: hh * 0.55, s: Math.min(0.82, hw * 0.78), d: dh} : {x: hw * 0.5, y: 0, s: 0.95, d: dh};
     // (the film's planet is a little smaller, clear of its corner tag)
     L.planet = narrow ? {x: 0, y: -hh * 0.18, s: Math.min(0.9, hw * 0.85), d: dh} : {x: hw * 0.36, y: 0, s: film ? 0.92 : 1, d: dh};
+    // the opening's map of the world: below its captions (in the film, below its one-line titles), as wide as fits;
+    // its 75 N to 60 S span (Equal Earth y from 1.247 to -1.088 on a unit sphere, 5.41 wide) on screen
+    const capB = Math.max(0, ...(dom.mapCaps ?? []).map(c => c.offsetTop + c.offsetHeight));
+    const top = film ? H * 0.27 : Math.max(H * (narrow ? 0.4 : 0.28), capB + 18), yTop = hh - 2 * hh * top / H;
+    const ms = Math.min(2 * hw * (narrow ? 0.96 : 0.92) / 5.4132, 2 * hh * (1 - top / H - 0.04) / 2.335);
+    L.map = {x: 0, y: yTop - 1.247 * ms, s: ms};
     // the case for emulators: the globe right of its captions, as the planet chapter's
     L.why = narrow ? {x: 0, y: -hh * 0.2, s: Math.min(0.86, hw * 0.8)} : aspect < 1.5 ? {x: hw * 0.42, y: 0, s: 0.88} : {x: hw * 0.36, y: 0, s: 1};
     // emulator: globe left, network right
@@ -778,14 +782,15 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     U.uDataMix.value = (1 - 0.92 * near) * (1 - (forest ? 0 : 0.85) * relief);
     U.uGrowth.value = forest ? 0.6 * growing : 0;
     U.uExposure.value = 1 + 0.4 * near;
-    // ... and thin a little while the planet warms and while it is simulated
+    // ... and thin on the opening's map, more while the planet warms
+    const flatK = ease(ss(FLAT[0], FLAT[1], p)) * (1 - ease(ss(FLAT[2], FLAT[3], p)));
     const heatA = ss(HEAT[0], HEAT[1], p) * (1 - ss(HEAT[3], HEAT[4], p));
-    U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing)
-      * (1 - 0.3 * Math.max(heatA, ss(REVEAL[0] - 0.12, REVEAL[0] + 0.08, p) * (1 - ss(WHY[1] - 0.3, WHY[1], p))));
+    U.uCloud.value = 0.62 * (1 - ss(0.9, 1.5, u) * (1 - ss(6.85, 7.2, u))) * (1 - 0.5 * growing) * (1 - 0.35 * flatK - 0.3 * heatA);
     U.uHeatMix.value = heatA;
     U.uHeatT.value = 7 * ss(HEAT[1], HEAT[2], p);
-    // the opening's events, then the planet simulated cell by cell; from then on every cell shows
-    U.uReveal.value = p < REVEAL[0] ? 0 : p > REVEAL[1] ? 2 : 1.05 * (p - REVEAL[0]) / (REVEAL[1] - REVEAL[0]);
+    U.uFlat.value = flatK;
+    U.uMapC.value.set(L.map.x, L.map.y, 0);
+    U.uMapS.value = L.map.s;
     const KU = marks.uniforms;
     KU.uP.value = p; KU.uTime.value = time; KU.uOut.value = 1 - ss(HEAT[3] - 0.05, HEAT[4] - 0.05, p);
     KU.uGain.value = 1 - 0.55 * ss(HEAT[0], HEAT[1], p);   // the events step back while the planet warms
@@ -813,18 +818,19 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     // the dive goes straight down into the forest; the grid and its cell appear only on the way back up
     U.uGridMix.value = u > 6.6 && u < 7.05 ? 1 : 0;
     U.uTargetMix.value = ss(6.55, 6.7, u) * (1 - ss(6.75, 7, u));
-    U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kDim), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum))
-      * (film ? 1 - 0.65 * ss(5.21, 5.33, p) * (1 - ss(5.83, 6, p)) : 1);   // the film's big number on the case
+    // what an emulator saves fills the frame over a dimmed planet and network
+    const speedA = ss(SPEED[0] - 0.05, SPEED[0] + 0.12, p) * (1 - ss(SPEED[1] - 0.12, SPEED[1] + 0.05, p));
+    U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kDim), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum)) * (1 - 0.6 * speedA);
     // the photographic Earth gives way to its digital twin behind a scan line, and comes back for the end card
     U.uTwin.value = -1.25 + 2.5 * ss(10.68, 10.95, u);
     U.uTwinMix.value = u > 10.6 ? 1 - ss(11.7, 12.15, u) : 0;
-    G.atmoUniforms.uOpacity.value = clamp((dist / gs - 1.25) / 0.6);
+    G.atmoUniforms.uOpacity.value = clamp((dist / gs - 1.25) / 0.6) * (1 - flatK);
     G.atmoUniforms.uCenter.value.copy(G.group.position);
     stars.material.uniforms.uTime.value = time;
     stars.rotation.y = time * 0.004;
 
     // network & streams
-    const netA = ss(8.2, 8.55, u) * (1 - (film ? 1 : 0.7) * ss(9.55, 9.8, u)) * (1 - ss(10.6, 10.85, u));
+    const netA = ss(8.2, 8.55, u) * (1 - (film ? 1 : 0.7) * ss(9.55, 9.8, u)) * (1 - ss(10.6, 10.85, u)) * (1 - 0.8 * speedA);
     net.group.visible = netA > 0.002;
     net.group.position.set(L.net.nx, L.net.ny, 0);
     net.group.scale.setScalar(L.net.ns);
@@ -997,7 +1003,6 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       });
     }
     dom.flash.style.opacity = (ss(1.93, 1.975, u) * (1 - ss(1.99, 2.25, u)) * 0.55 + ss(6.47, 6.59, u) * (1 - ss(6.63, 6.85, u)) * 0.3).toFixed(3);
-    dom.globeYear.textContent = 1981 + Math.round(U.uYear.value);
 
     // the fifteen-age forest's ages by their stands: a few in its column, all of them once it fills the frame,
     // gone before the satellite passes
@@ -1015,13 +1020,14 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
 
     // the events' labels sit by their markers while they face the camera, kept on screen, each for a while after it
     // pops; a phone shows only the latest one. The caption's legend lights each kind with its first event.
-    const latest = whyLabels.reduce((m, L, i) => (p >= L.t ? i : m), -1);
+    const latest = whyLabels.reduce((m, L, i) => (p >= L.t ? i : m), -1), map = L.map;
     whyLabels.forEach((L, i) => {
       const a = marks.points.visible && (!L.narrow || i === latest) ? ss(L.t + 0.02, L.t + 0.1, p) * (1 - ss(L.t + 0.42, L.t + 0.52, p)) * KU.uOut.value : 0;
       if (a < 0.01) { if (L.on) { L.el.style.opacity = 0; L.on = false; } return; }
-      const q = markOf[i] * 3;
+      const q = markOf[i] * 3, f = marks.flat;
       G.spin.localToWorld(tmp.set(marks.positions[q], marks.positions[q + 1], marks.positions[q + 2]));
-      const mu = nrm.copy(tmp).sub(G.group.position).normalize().dot(eye.copy(gCam.position).sub(tmp).normalize());
+      const mu = lerp(nrm.copy(tmp).sub(G.group.position).normalize().dot(eye.copy(gCam.position).sub(tmp).normalize()), 1, flatK);
+      tmp.lerp(nrm.set(map.x + f[q / 3 * 2] * map.s, map.y + f[q / 3 * 2 + 1] * map.s, 0.01), flatK);
       const s = project(tmp, gCam);
       L.el.style.opacity = (a * ss(0.15, 0.35, mu)).toFixed(3);
       const w = L.w || (L.w = L.el.offsetWidth), h = L.h || (L.h = L.el.offsetHeight);
@@ -1039,13 +1045,25 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       dom.heatYears.textContent = `${y0}–${String(y0 + 4).slice(2)}`;
       dom.heatMean.textContent = `${m < 0 ? '−' : '+'}${Math.abs(m).toFixed(2)}`;
     }
-    // the clock of one global run, counting while the cells land
-    if (p > REVEAL[0] - 0.15 && p < REVEAL[1] + 0.7) {
-      const k = clamp((p - REVEAL[0]) / (REVEAL[1] - REVEAL[0]));
+    // the clock of one global run, counting while the planet's forests grow, then what more would cost
+    if (u > 7.2 && p < SLOW[1] + 0.3) {
+      const k = U.uYear.value / 40;
       dom.simDays.textContent = (40.6 * k).toFixed(1);
+      dom.simYear.textContent = 1981 + Math.round(U.uYear.value);
       dom.simBar.style.transform = `scaleX(${k.toFixed(4)})`;
-      dom.sim.style.setProperty('--r1', ss(REVEAL[1] + 0.02, REVEAL[1] + 0.14, p).toFixed(3));
-      dom.sim.style.setProperty('--r2', ss(REVEAL[1] + 0.16, REVEAL[1] + 0.28, p).toFixed(3));
+      dom.sim.style.setProperty('--r1', ss(SLOW[0] + 0.12, SLOW[0] + 0.27, p).toFixed(3));
+      dom.sim.style.setProperty('--r2', ss(SLOW[0] + 0.32, SLOW[0] + 0.47, p).toFixed(3));
+    }
+    // ED and its emulator race one global run: the clock runs on a log scale, so the emulator's 1.2 hours finish
+    // early and ED's 974 hours fill the rest; then the bill
+    if (p > SPEED[0] - 0.1 && p < SPEED[1] + 0.1) {
+      const k = ss(SPEED[0] + 0.12, SPEED[0] + 0.62, p), T = Math.expm1(k * Math.log1p(974.4));
+      dom.raceT.textContent = T < 48 ? `${T.toFixed(T < 10 ? 1 : 0)} h` : `${(T / 24).toFixed(1)} days`;
+      dom.raceEd.style.transform = `scaleX(${(T / 974.4).toFixed(4)})`;
+      dom.raceAi.style.transform = `scaleX(${Math.min(1, T / 1.2).toFixed(4)})`;
+      dom.speed.classList.toggle('ai-done', T >= 1.2);
+      dom.speed.classList.toggle('ed-done', k >= 1);
+      dom.speed.style.setProperty('--bill', ss(SPEED[0] + 0.64, SPEED[0] + 0.8, p).toFixed(3));
     }
 
     // annotations appear with the parts they name; the forcing's names the map at the front of the deck

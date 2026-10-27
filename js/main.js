@@ -13,7 +13,7 @@ const RENDER = PARAMS.has('render');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (RENDER) document.documentElement.classList.add('render');
 const mobile = matchMedia('(max-width: 760px), (pointer: coarse)').matches;
-const U_END = 16.43;
+const U_END = 16.88;
 
 function webgl2() {
   try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
@@ -123,7 +123,7 @@ function applyFades(u) {
   for (const f of fades) {
     const [a, b, c, d] = f.k;
     const o = (a < 0 ? 1 : ss(a, b, u)) * (1 - ss(c, d, u));
-    if (f.isCap) captionShown = Math.max(captionShown, o);
+    if (f.isCap || f.el.id === 'speed') captionShown = Math.max(captionShown, o);   // play lingers on the race too
     f.el.style.setProperty('--k', (reduced || a < 0 || u >= (b + c) / 2 ? 1 : ss(a, b, u)).toFixed(3));
     const vis = o > 0.002;
     f.el.style.opacity = o.toFixed(3);
@@ -139,8 +139,8 @@ function applyFades(u) {
     const e = 1 - Math.pow(1 - k, 3);
     counters[i].forEach(({el, n}) => { el.textContent = fmtN(Math.round(n * e)); });
   });
-  // where each chapter button takes over: the case for emulators, the primer, then CarbonGlobe
-  const marks = [0, 0.55, 2.22, 3.45, 4.8, 6.1, 7.35, 10.0, 11.12, 12.03, 13.38, 14.68, 15.73];
+  // where each chapter button takes over: why, understand (the primer), accelerate
+  const marks = [0, 0.55, 2.22, 3.45, 5.6, 8.3, 9.37, 11.38, 12.58, 13.83, 15.13, 16.18];
   let cur = 0;
   marks.forEach((m, i) => { if (u >= m - 0.05) cur = i; });
   chapterBtns.forEach((b, i) => b.classList.toggle('on', i === cur));
@@ -329,9 +329,10 @@ async function boot() {
     canvas, meta, scen, maps, mobile, reduced, bloom: !mobile && !PARAMS.has('nobloom'), film: RENDER,
     tex: {...tex, height},
     dom: {
-      flash: $('#flash'), alarm: $('#alarm'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'), globeYear: $('#globe-year'), panels: $('#panels'),
+      flash: $('#flash'), alarm: $('#alarm'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'), panels: $('#panels'),
       whyLabels: $('#why-labels'), kinds: $('#why-kinds'), heatYears: $('#heat-years'), heatMean: $('#heat-mean'),
-      sim: $('#sim'), simDays: $('#sim-days'), simBar: $('#sim-bar'), viewsCap: $('.cap-views'), netCap: $('.cap-net'),
+      sim: $('#sim'), simDays: $('#sim-days'), simYear: $('#sim-year'), simBar: $('#sim-bar'), viewsCap: $('.cap-views'), netCap: $('.cap-net'),
+      mapCaps: $$('.cap-map'), speed: $('#speed'), raceT: $('#race-t'), raceEd: $('#race-ed'), raceAi: $('#race-ai'),
     },
   });
   canvas.classList.add('ready');

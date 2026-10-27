@@ -143,14 +143,34 @@ export async function loadZones(url) {
 const colorVec = hex => new THREE.Color(hex);
 export function rampUniform(name) { return VARS[name].ramp.map(colorVec); }
 
+// The Equal Earth projection (Savric, Patterson & Jenny, 2018) of longitude lam and latitude phi (radians), on a
+// sphere of radius 1: x within +-2.71, y within +-1.32. The globe unrolls into it (uFlat), centred on longitude 0
+// where the sphere's own seam, at 180 degrees, becomes the map's edges; uMapC and uMapS place it in the world.
+const EQUAL_EARTH = /* glsl */`
+uniform float uFlat, uMapS;
+uniform vec3 uMapC;
+vec2 equalEarth(float lam, float phi) {
+  float th = asin(0.8660254 * sin(phi)), t2 = th * th, t6 = t2 * t2 * t2;
+  return vec2(3.4641016 * lam * cos(th) / (3.0 * (9.0 * 0.003796 * t6 * t2 + 7.0 * 0.000893 * t6 + 3.0 * -0.081106 * t2 + 1.340264)),
+              th * (1.340264 - 0.081106 * t2 + t6 * (0.000893 + 0.003796 * t2)));
+}
+vec3 onMap(vec2 ee) { return uMapC + vec3(ee * uMapS, 0.0); }`;
+export function equalEarth(lat, lon) {
+  const th = Math.asin(0.8660254 * Math.sin(lat * D2R)), t2 = th * th, t6 = t2 * t2 * t2;
+  return [3.4641016 * lon * D2R * Math.cos(th) / (3 * (9 * 0.003796 * t6 * t2 + 7 * 0.000893 * t6 + 3 * -0.081106 * t2 + 1.340264)),
+    th * (1.340264 - 0.081106 * t2 + t6 * (0.000893 + 0.003796 * t2))];
+}
+
 const VERT = /* glsl */`
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vW;
+${EQUAL_EARTH}
 void main() {
   vUv = uv;
-  vN = normalize(mat3(modelMatrix) * normal);
+  vN = normalize(mix(normalize(mat3(modelMatrix) * normal), vec3(0.0, 0.0, 1.0), uFlat));
   vec4 w = modelMatrix * vec4(position, 1.0);
+  if (uFlat > 0.0) w.xyz = mix(w.xyz, onMap(equalEarth((uv.x - 0.5) * 6.2831853, (uv.y - 0.5) * 3.1415927)), uFlat);
   vW = w.xyz;
   gl_Position = projectionMatrix * viewMatrix * w;
 }`;
@@ -380,6 +400,7 @@ export function createGlobe({day, mask, zones, data = null, segments = 192, clou
     uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
     uHasData: {value: data ? 1 : 0},
     uHeat: {value: new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)}, uHeatMix: {value: 0}, uHeatT: {value: 0},
+    uFlat: {value: 0}, uMapC: {value: new THREE.Vector3()}, uMapS: {value: 1},
     uYear: {value: 40}, uGrowth: {value: 0}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
     uTime: {value: 0}, uGridMix: {value: 0}, uTargetMix: {value: 0}, uDim: {value: 1}, uBase: {value: 1}, uSpec: {value: 0.22}, uNight: {value: 1},
     uSun: {value: new THREE.Vector3(-0.85, 0.38, 0.55).normalize()},
@@ -590,14 +611,17 @@ export function createFlare() {
 // Places on the globe that pulse: a hot point with a ring rippling out from it, sized in screen pixels and fading
 // toward the limb. points: [{lat, lon, color, t, kind}]; each lights up as uP passes its t, with a flash, drawn by
 // its kind: a flickering flare (fire), a slow ring (drought), a pulsing glow (heat) or a square, like a cleared plot
-// (clearing). All fade with uOut and dim with uGain. Children of the globe's spin group, drawn over it.
+// (clearing). All fade with uOut and dim with uGain. Children of the globe's spin group, drawn over it; map holds the
+// globe's uFlat, uMapC and uMapS, so they move with it onto its flat map.
 export const EVENT_KINDS = ['fire', 'drought', 'heat', 'clear'];
-export function createMarkers(points, px) {
+export function createMarkers(points, px, map) {
   const n = points.length, v = new THREE.Vector3(), c = new THREE.Color();
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), t0 = new Float32Array(n), ph = new Float32Array(n), ty = new Float32Array(n);
+  const flat = new Float32Array(n * 2);
   points.forEach((m, i) => {
     latLonToVec3(m.lat, m.lon, 1.004, v);
     pos.set([v.x, v.y, v.z], i * 3);
+    flat.set(equalEarth(m.lat, m.lon), i * 2);
     c.set(m.color);
     col.set([c.r, c.g, c.b], i * 3);
     t0[i] = m.t;
@@ -610,13 +634,16 @@ export function createMarkers(points, px) {
   geo.setAttribute('aT', new THREE.BufferAttribute(t0, 1));
   geo.setAttribute('aPh', new THREE.BufferAttribute(ph, 1));
   geo.setAttribute('aType', new THREE.BufferAttribute(ty, 1));
+  geo.setAttribute('aFlat', new THREE.BufferAttribute(flat, 2));
   const mat = new THREE.ShaderMaterial({
-    uniforms: {uP: {value: 0}, uOut: {value: 1}, uGain: {value: 1}, uTime: {value: 0}, uPx: {value: px}},
-    vertexShader: `attribute vec3 aCol; attribute float aT; attribute float aPh; attribute float aType;
+    uniforms: {uP: {value: 0}, uOut: {value: 1}, uGain: {value: 1}, uTime: {value: 0}, uPx: {value: px}, uFlat: map.uFlat, uMapC: map.uMapC, uMapS: map.uMapS},
+    vertexShader: `attribute vec3 aCol; attribute float aT; attribute float aPh; attribute float aType; attribute vec2 aFlat;
       uniform float uP, uOut, uGain, uPx; varying vec3 vCol; varying float vA, vPop, vPh, vType;
+      ${EQUAL_EARTH}
       void main(){
         vec3 w = (modelMatrix * vec4(position, 1.0)).xyz, nW = normalize((modelMatrix * vec4(position, 0.0)).xyz);
-        float mu = dot(nW, normalize(cameraPosition - w));
+        float mu = mix(dot(nW, normalize(cameraPosition - w)), 1.0, uFlat);   // on the map, every event faces the camera
+        w = mix(w, onMap(aFlat) + vec3(0.0, 0.0, 0.01), uFlat);
         vA = smoothstep(0.04, 0.3, mu) * smoothstep(aT, aT + 0.05, uP) * uOut * uGain;
         vPop = smoothstep(aT, aT + 0.03, uP) * (1.0 - smoothstep(aT + 0.03, aT + 0.2, uP));
         vCol = aCol; vPh = aPh; vType = aType;
@@ -642,7 +669,7 @@ export function createMarkers(points, px) {
   const pts = new THREE.Points(geo, mat);
   pts.frustumCulled = false;
   pts.renderOrder = 4;
-  return {points: pts, uniforms: mat.uniforms, positions: pos};
+  return {points: pts, uniforms: mat.uniforms, positions: pos, flat};
 }
 
 // NASA's GEDI, a lidar on the International Space Station: the station on its orbit (51.6 degrees inclined, 420 km
