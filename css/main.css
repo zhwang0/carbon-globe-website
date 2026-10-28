@@ -1038,11 +1038,13 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
 .t-big .t-main { font-size: clamp(84px, 13.5vw, 200px); font-weight: 750; letter-spacing: -0.05em; line-height: .95; text-shadow: none; }
 .t-big .t-num { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; padding: 0 .04em; }
 .t-card.t-big .t-sub { margin-top: 10px; color: var(--text); font-weight: 500; }
-.t-parts { display: flex; gap: clamp(18px, 2.4vw, 36px); font: 550 clamp(15px, 1.75vw, 25px)/1.2 var(--sans); letter-spacing: -0.01em; color: var(--muted); }
+.t-parts { display: flex; flex-wrap: wrap; gap: 6px clamp(18px, 2.4vw, 36px); font: 550 clamp(15px, 1.75vw, 25px)/1.2 var(--sans); letter-spacing: -0.01em; color: var(--muted); }
 .t-parts span.now, .t-big .t-parts span { color: var(--text); }
 .t-card .t-parts { margin-top: 22px; }
 .t-center .t-parts { justify-content: center; }
 .render .forecast { width: min(780px, 56vw); right: 4vw; }
+/* the race in the film: its headline, bars and verdicts only */
+.render .speed-sub { display: none; }
 /* the imagery's credits, small at the foot of the film's end card */
 .film-credits { display: none; }
 .render .film-credits { display: block; left: 0; right: 0; bottom: 3.2vh; margin: 0; text-align: center; font: 9.5px/1.4 var(--mono); letter-spacing: .02em; color: rgba(236, 243, 239, .55); text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }

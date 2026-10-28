@@ -819,7 +819,7 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
     U.uGridMix.value = u > 6.6 && u < 7.05 ? 1 : 0;
     U.uTargetMix.value = ss(6.55, 6.7, u) * (1 - ss(6.75, 7, u));
     // what an emulator saves fills the frame over a dimmed planet and network
-    const speedA = ss(SPEED[0] - 0.05, SPEED[0] + 0.12, p) * (1 - ss(SPEED[1] - 0.12, SPEED[1] + 0.05, p));
+    const speedA = ss(SPEED[0] - 0.05, SPEED[0] + 0.12, p) * (1 - ss(SPEED[1] - 0.18, SPEED[1] - 0.03, p));
     U.uDim.value = lerp(lerp(1, film ? 0.3 : 0.45, kDim), 1, kEnd) * lerp(1, 0.6, kFc * (1 - kNum)) * (1 - 0.6 * speedA);
     // the photographic Earth gives way to its digital twin behind a scan line, and comes back for the end card
     U.uTwin.value = -1.25 + 2.5 * ss(10.68, 10.95, u);
@@ -1055,12 +1055,14 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       dom.sim.style.setProperty('--r2', ss(SLOW[0] + 0.32, SLOW[0] + 0.47, p).toFixed(3));
     }
     // ED and its emulator race one global run: the clock runs on a log scale, so the emulator's 1.2 hours finish
-    // early and ED's 974 hours fill the rest; then the bill
+    // early and ED's 974 hours fill the rest; both bars share one scale, so the emulator's stays a sliver (never
+    // thinner than 3 px); then the bill
     if (p > SPEED[0] - 0.1 && p < SPEED[1] + 0.1) {
       const k = ss(SPEED[0] + 0.12, SPEED[0] + 0.62, p), T = Math.expm1(k * Math.log1p(974.4));
       dom.raceT.textContent = T < 48 ? `${T.toFixed(T < 10 ? 1 : 0)} h` : `${(T / 24).toFixed(1)} days`;
       dom.raceEd.style.transform = `scaleX(${(T / 974.4).toFixed(4)})`;
-      dom.raceAi.style.transform = `scaleX(${Math.min(1, T / 1.2).toFixed(4)})`;
+      const tw = dom.raceAi.parentElement.clientWidth || 300;
+      dom.raceAi.style.transform = `scaleX(${(T > 0.01 ? Math.max(Math.min(T, 1.2) / 974.4, 3 / tw * Math.min(1, T / 1.2)) : 0).toFixed(4)})`;
       dom.speed.classList.toggle('ai-done', T >= 1.2);
       dom.speed.classList.toggle('ed-done', k >= 1);
       dom.speed.style.setProperty('--bill', ss(SPEED[0] + 0.64, SPEED[0] + 0.8, p).toFixed(3));
