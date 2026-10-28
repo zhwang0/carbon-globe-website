@@ -203,6 +203,15 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
   const marks = createMarkers(whyLabels.flatMap(L => L.pts.map(([lat, lon]) => ({lat, lon, color: L.color, t: L.t, kind: L.kind}))), px, G.uniforms);
   G.spin.add(marks.points);
   const markOf = whyLabels.map((L, i) => whyLabels.slice(0, i).reduce((n, M) => n + M.pts.length, 0));
+  // ... and each event leaves its kind's icon pinned on the map once its label has gone, so the map fills up with
+  // the world's pressures
+  const pins = dom.whyPins ? whyLabels.flatMap((L, i) => L.pts.map((_, k) => {
+    const el = document.createElement('span');
+    el.style.setProperty('--c', L.color);
+    el.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[L.kind]}</svg>`;
+    dom.whyPins.append(el);
+    return {el, t: L.t, j: markOf[i] + k, on: false};
+  })) : [];
   const kindEls = [...(dom.kinds?.children ?? [])].map(el => {
     const kind = el.dataset.k;
     el.style.setProperty('--c', KIND_COLOR[kind]);
@@ -1036,6 +1045,19 @@ export function createStage({canvas, meta, scen, tex, maps, dom, mobile, reduced
       L.on = true;
     });
     kindEls.forEach(K => K.el.classList.toggle('on', p >= K.t));
+    const pinA = marks.points.visible ? KU.uOut.value * lerp(1, 0.7, ss(HEAT[0], HEAT[1], p)) : 0;
+    pins.forEach(P => {
+      const a = pinA * ss(P.t, P.t + 0.04, p);
+      if (a < 0.01) { if (P.on) { P.el.style.opacity = 0; P.on = false; } return; }
+      const q = P.j * 3, f = marks.flat;
+      G.spin.localToWorld(tmp.set(marks.positions[q], marks.positions[q + 1], marks.positions[q + 2]));
+      const mu = lerp(nrm.copy(tmp).sub(G.group.position).normalize().dot(eye.copy(gCam.position).sub(tmp).normalize()), 1, flatK);
+      tmp.lerp(nrm.set(map.x + f[P.j * 2] * map.s, map.y + f[P.j * 2 + 1] * map.s, 0.01), flatK);
+      const s = project(tmp, gCam), pop = ss(P.t, P.t + 0.03, p) * (1 - ss(P.t + 0.03, P.t + 0.09, p));
+      P.el.style.opacity = (a * ss(0.15, 0.35, mu)).toFixed(3);
+      P.el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%) scale(${(0.7 + 0.3 * ss(P.t, P.t + 0.03, p) + 0.25 * pop).toFixed(3)})`;
+      P.on = true;
+    });
     const pulse = whyLabels.reduce((m, L) => (p >= L.t ? Math.max(m, Math.exp(-(p - L.t) / 0.035)) : m), 0) * KU.uOut.value;
     dom.alarm.style.opacity = Math.min(1, 0.5 * pulse + 0.55 * heatA * ss(0.5, 1, U.uHeatT.value / 7)).toFixed(3);
     // the warming's period and its mean over forests

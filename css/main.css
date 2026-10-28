@@ -233,6 +233,9 @@ html.no-webgl .stage-fallback {
 /* part one: the events' labels by their markers */
 #why-labels > span { max-width: 250px; padding: 7px 11px 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: rgba(5, 10, 12, .62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #d3dfda; font: 12px/1.4 var(--sans); white-space: normal; }
 #why-labels b { display: flex; align-items: center; gap: 6px; margin-bottom: 1px; color: var(--c); font: 500 10.5px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+/* ... and the icons the events leave on the map */
+#why-pins > span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--c); background: rgba(5, 10, 12, .72); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 55%, transparent); color: var(--c); }
+#why-pins svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .ev-icon { flex: none; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 /* the kinds of pressure, each lit as its first event pops */
 .kinds { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px !important; }
@@ -944,6 +947,8 @@ sup.ref a:hover { opacity: 1; text-decoration: underline; }
   .forecast { left: 16px; right: 16px; width: auto; top: auto; bottom: 4vh; transform: none; padding: 14px; }
   .hud-sim { left: 16px; right: 16px; width: auto; bottom: 4vh; padding: 12px 14px 10px; }
   .sim-clock b { font-size: 34px; }
+  #why-pins > span { width: 17px; height: 17px; border-width: 1px; }
+  #why-pins svg { width: 11px; height: 11px; }
   #why-labels > span { max-width: 200px; padding: 5px 8px 6px; font-size: 10.5px; }
   #why-labels b { font-size: 9.5px; }
   .hud-globe { display: none; }

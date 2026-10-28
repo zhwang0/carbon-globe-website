@@ -330,7 +330,7 @@ async function boot() {
     tex: {...tex, height},
     dom: {
       flash: $('#flash'), alarm: $('#alarm'), cohortLabels: $('#cohort-labels'), netLabels: $('#net-labels'), panels: $('#panels'),
-      whyLabels: $('#why-labels'), kinds: $('#why-kinds'), heatYears: $('#heat-years'), heatMean: $('#heat-mean'),
+      whyLabels: $('#why-labels'), whyPins: $('#why-pins'), kinds: $('#why-kinds'), heatYears: $('#heat-years'), heatMean: $('#heat-mean'),
       sim: $('#sim'), simDays: $('#sim-days'), simYear: $('#sim-year'), simBar: $('#sim-bar'), viewsCap: $('.cap-views'), netCap: $('.cap-net'),
       mapCaps: $$('.cap-map'), speed: $('#speed'), raceT: $('#race-t'), raceEd: $('#race-ed'), raceAi: $('#race-ai'),
     },
