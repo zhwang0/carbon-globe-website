@@ -124,7 +124,7 @@ b { font-weight: 650; }
 @media (max-width: 640px) { .ft-label small { display: none; } .ft-note { font-size: 12px; } }
 
 /* ------------------------------------------------------------------ film */
-.film { position: relative; height: 1888vh; background: var(--bg); }
+.film { position: relative; height: 1795vh; background: var(--bg); }
 .stage { position: sticky; top: 0; height: 100vh; height: 100lvh; overflow: hidden; isolation: isolate; }
 #stage-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; touch-action: pan-y; }
 .stage-fallback { display: none; }
@@ -509,6 +509,20 @@ html.no-js .reveal { opacity: 1; transform: none; }
 .lane li { position: relative; color: var(--dim); font-size: 13px; line-height: 1.45; padding-right: 26px; }
 .lane li b { color: var(--text); font-size: 16px; font-weight: 600; }
 .lane li:last-child { padding-right: 0; }
+.lane li b.yours { display: inline-block; margin-left: 2px; padding: 1px 10px 2px; border: 1px dashed rgba(185, 244, 107, .7); border-radius: 99px; color: var(--g1); box-shadow: 0 0 18px rgba(185, 244, 107, .25); animation: yours 2.4s ease-in-out infinite; }
+@keyframes yours { 50% { box-shadow: 0 0 26px rgba(185, 244, 107, .5); border-color: rgba(185, 244, 107, 1); } }
+/* ... and what the open slot could hold */
+.opps { max-width: 1040px; margin: clamp(28px, 4vw, 48px) auto 0; }
+.opps-head { text-align: center; margin-bottom: 18px; }
+.opps-head h3 { margin: 8px 0 6px; font-size: clamp(22px, 2.2vw, 30px); letter-spacing: -0.02em; }
+.opps-head p:last-child { margin: 0; color: var(--muted); }
+.opps-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.opps-list li { display: flex; flex-direction: column; gap: 6px; padding: 18px 18px 16px; border-radius: var(--radius); border: 1px dashed rgba(185, 244, 107, .35); background: linear-gradient(180deg, rgba(185, 244, 107, .06), rgba(255, 255, 255, .015)); }
+.opps-list b { color: var(--text); font-size: 16.5px; }
+.opps-list p { flex: 1; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.opps-list a { color: var(--g1); font: 500 12px var(--mono); letter-spacing: .06em; }
+@media (max-width: 900px) { .opps-list { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .opps-list { grid-template-columns: 1fr; } }
 .lane li:not(:last-child)::after { content: "→"; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--dim); }
 @media (max-width: 720px) { .lane { grid-template-columns: 1fr; } .lane ol { grid-template-columns: 1fr; } .lane li::after { display: none; } }
 
@@ -727,8 +741,9 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 
 /* why: a statement that lights up word by word as it scrolls through */
 .why { position: relative; padding-bottom: clamp(100px, 15vh, 170px); border-top: 1px solid var(--line); background: radial-gradient(80% 40% at 50% 0%, rgba(62, 224, 143, .08), transparent 70%), var(--bg); }
-.statement { position: relative; height: 175vh; }
-.statement-stage { position: sticky; top: 0; height: 100vh; height: 100svh; display: flex; align-items: center; }
+/* the statement scrolls with the page (never pinned, so the page never seems to stop), lighting word by word as it rises */
+.statement { position: relative; }
+.statement-stage { padding: clamp(96px, 18vh, 180px) 0 clamp(48px, 9vh, 96px); }
 .statement .eyebrow { text-align: center; }
 .statement-text { margin: 0 auto; max-width: 900px; text-align: center; font-size: clamp(26px, 3.2vw, 46px); line-height: 1.16; letter-spacing: -0.03em; font-weight: 600; text-wrap: balance; }
 .statement-text .w { --q: clamp(0, calc((var(--p, 1) * (var(--n, 50) + 10) - var(--i, 0)) / 10), 1); opacity: calc(.14 + .86 * var(--q)); }

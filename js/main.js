@@ -231,15 +231,15 @@ $('#copy-bib').addEventListener('click', async e => {
   setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
 });
 
-// the statement lights up word by word while it is pinned on screen
+// the statement lights up word by word as it rises through the screen, from near the bottom to above the middle
 {
   const track = $('#statement'), text = track.querySelector('.statement-text');
   splitWords(text);
   let queued = false;
   const update = () => {
     queued = false;
-    const r = track.getBoundingClientRect(), vh = innerHeight;
-    const p = reduced ? 1 : clamp((vh * 0.2 - r.top) / (vh * 0.2 + 0.8 * (r.height - vh)));
+    const r = text.getBoundingClientRect(), vh = innerHeight;
+    const p = reduced ? 1 : clamp((vh * 0.88 - r.top) / (vh * 0.5));
     text.style.setProperty('--p', p.toFixed(3));
   };
   addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(update); } }, {passive: true});
