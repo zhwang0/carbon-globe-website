@@ -294,6 +294,21 @@ $$('.spot').forEach(el => el.addEventListener('pointermove', e => {
   new IntersectionObserver(([e]) => { if (e.intersectionRatio < 0.25 && !video.paused) video.pause(); }, {threshold: [0, 0.25]}).observe(video);
 }
 
+// the references fold away; a citation (or a link to one) opens them first, so the jump lands on its entry
+{
+  const fold = $('#refs-fold');
+  fold.querySelector('.rf-n').textContent = fold.querySelectorAll('.refs > li').length;
+  const reveal = id => {
+    const el = /^r\d+$/.test(id) && document.getElementById(id);
+    if (el && fold.contains(el)) fold.open = true;
+    return el && fold.contains(el) ? el : null;
+  };
+  addEventListener('click', e => { const a = e.target.closest('a[href^="#r"]'); if (a) reveal(a.hash.slice(1)); });
+  const fromHash = () => reveal(location.hash.slice(1))?.scrollIntoView({block: 'start'});
+  addEventListener('hashchange', fromHash);
+  fromHash();
+}
+
 // the top bar marks the section on screen
 {
   const links = $$('.topbar nav a');

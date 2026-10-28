@@ -917,6 +917,16 @@ sup.ref a { color: var(--g2); opacity: .8; text-decoration: none; pointer-events
 sup.ref a:hover { opacity: 1; text-decoration: underline; }
 .paper-fig sup.ref a { color: #157347; }
 /* the references, numbered as cited */
+/* the list folds away behind one button; a citation opens it (js/main.js) */
+.refs-fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; width: fit-content; margin: 0 auto; padding: 10px 18px; border: 1px solid var(--line-2); border-radius: 99px; color: var(--text); font: 500 13px var(--mono); letter-spacing: .06em; cursor: pointer; transition: border-color .25s, background .25s; }
+.refs-fold > summary::-webkit-details-marker { display: none; }
+.refs-fold > summary:hover, .refs-fold > summary:focus-visible { border-color: rgba(62, 224, 143, .5); background: rgba(62, 224, 143, .06); }
+.refs-fold > summary b { color: var(--g2); font-weight: 600; }
+.refs-fold > summary i { width: 7px; height: 7px; margin: -3px 0 0 2px; border-right: 1.5px solid var(--g2); border-bottom: 1.5px solid var(--g2); transform: rotate(45deg); transition: transform .25s, margin .25s; }
+.refs-fold[open] > summary { margin-bottom: 30px; }
+.refs-fold[open] > summary i { margin-top: 3px; transform: rotate(225deg); }
+.refs-fold .rf-hide, .refs-fold[open] .rf-show { display: none; }
+.refs-fold[open] .rf-hide { display: inline; }
 .refs { margin: 0; padding: 0; list-style: none; counter-reset: ref; columns: 2 330px; column-gap: clamp(28px, 4vw, 52px); }
 .refs li { position: relative; break-inside: avoid; padding: 0 0 14px 32px; color: var(--muted); font-size: 13.5px; line-height: 1.55; counter-increment: ref; scroll-margin-top: 96px; transition: color .4s; }
 .refs li::before { content: counter(ref); position: absolute; left: 0; width: 21px; text-align: right; color: var(--g2); font: 600 12px/1.75 var(--mono); }
