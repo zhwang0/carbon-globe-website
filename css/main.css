@@ -905,10 +905,10 @@ input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 
 .faq details { border-bottom: 1px solid var(--line); }
 .faq summary { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px 4px; cursor: pointer; list-style: none; font-size: clamp(17px, 1.6vw, 20px); font-weight: 600; letter-spacing: -0.01em; }
 .faq summary::-webkit-details-marker { display: none; }
-.faq summary i { position: relative; flex: none; width: 14px; height: 14px; }
-.faq summary i::before, .faq summary i::after { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 2px; border-radius: 2px; background: var(--muted); transition: transform .3s; }
-.faq summary i::after { transform: rotate(90deg); }
-.faq details[open] summary i::after { transform: rotate(0deg); }
+.faq summary i, .refs-fold > summary i { position: relative; flex: none; width: 14px; height: 14px; }
+.faq summary i::before, .faq summary i::after, .refs-fold > summary i::before, .refs-fold > summary i::after { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 2px; border-radius: 2px; background: var(--muted); transition: transform .3s; }
+.faq summary i::after, .refs-fold > summary i::after { transform: rotate(90deg); }
+.faq details[open] summary i::after, .refs-fold[open] > summary i::after { transform: rotate(0deg); }
 .faq details p { margin: 0; max-width: 740px; padding: 0 4px 24px; color: var(--muted); font-size: 16px; line-height: 1.65; }
 
 /* citations: small numbers that lead to the references */
@@ -916,24 +916,19 @@ sup.ref { margin-left: .1em; color: var(--dim); font: 600 max(9px, .6em)/0 var(-
 sup.ref a { color: var(--g2); opacity: .8; text-decoration: none; pointer-events: auto; }
 sup.ref a:hover { opacity: 1; text-decoration: underline; }
 .paper-fig sup.ref a { color: #157347; }
-/* the references, numbered as cited */
-/* the list folds away behind one button; a citation opens it (js/main.js) */
-.refs-fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; width: fit-content; margin: 0 auto; padding: 10px 18px; border: 1px solid var(--line-2); border-radius: 99px; color: var(--text); font: 500 13px var(--mono); letter-spacing: .06em; cursor: pointer; transition: border-color .25s, background .25s; }
+/* the references, numbered as cited: one plain row that unfolds the list; a citation opens it (js/main.js) */
+.refs-sec { padding: 36px 0; }
+.refs-fold > summary { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 6px 4px; cursor: pointer; list-style: none; }
 .refs-fold > summary::-webkit-details-marker { display: none; }
-.refs-fold > summary:hover, .refs-fold > summary:focus-visible { border-color: rgba(62, 224, 143, .5); background: rgba(62, 224, 143, .06); }
-.refs-fold > summary b { color: var(--g2); font-weight: 600; }
-.refs-fold > summary i { width: 7px; height: 7px; margin: -3px 0 0 2px; border-right: 1.5px solid var(--g2); border-bottom: 1.5px solid var(--g2); transform: rotate(45deg); transition: transform .25s, margin .25s; }
-.refs-fold[open] > summary { margin-bottom: 30px; }
-.refs-fold[open] > summary i { margin-top: 3px; transform: rotate(225deg); }
-.refs-fold .rf-hide, .refs-fold[open] .rf-show { display: none; }
-.refs-fold[open] .rf-hide { display: inline; }
-.refs { margin: 0; padding: 0; list-style: none; counter-reset: ref; columns: 2 330px; column-gap: clamp(28px, 4vw, 52px); }
-.refs li { position: relative; break-inside: avoid; padding: 0 0 14px 32px; color: var(--muted); font-size: 13.5px; line-height: 1.55; counter-increment: ref; scroll-margin-top: 96px; transition: color .4s; }
-.refs li::before { content: counter(ref); position: absolute; left: 0; width: 21px; text-align: right; color: var(--g2); font: 600 12px/1.75 var(--mono); }
-.refs li i { color: #c4d2cc; }
-.refs li a { color: var(--g2); overflow-wrap: anywhere; }
-.refs li:target { color: var(--text); }
-.refs li:target::before { text-shadow: 0 0 12px var(--g2); }
+.refs-fold > summary h2 { margin: 0; font-size: clamp(17px, 1.6vw, 20px); font-weight: 600; letter-spacing: -0.01em; }
+.refs-fold .rf-n { margin-left: 4px; color: var(--dim); font-weight: 500; }
+.refs-note { margin: 12px 4px 20px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.refs { margin: 0; padding: 0 4px; list-style: none; counter-reset: ref; }
+.refs li { position: relative; padding: 0 0 10px 34px; color: var(--muted); font-size: 13.5px; line-height: 1.55; counter-increment: ref; scroll-margin-top: 96px; }
+.refs li::before { content: counter(ref) "."; position: absolute; left: 0; width: 24px; text-align: right; color: var(--dim); font-variant-numeric: tabular-nums; }
+.refs li a { color: inherit; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 2px; overflow-wrap: anywhere; }
+.refs li a:hover { color: var(--text); }
+.refs li:target, .refs li:target::before { color: var(--text); }
 
 /* footer */
 .footer { padding: 72px 0 48px; border-top: 1px solid var(--line); background: linear-gradient(180deg, var(--bg), #030607); }
