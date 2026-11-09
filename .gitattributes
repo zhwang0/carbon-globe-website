@@ -1,0 +1,2 @@
+# Keep upstream shader strings unchanged in vendored rendering code.
+assets/vendor/*.js -whitespace

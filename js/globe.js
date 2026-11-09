@@ -1,0 +1,754 @@
+// Shared globe: textures, data atlases and the luminous globe material.
+import * as THREE from '../assets/vendor/three.module.js';
+import {mulberry32} from './random.js';
+
+export const VARS = {
+  height: {label: 'Canopy height', short: 'Height', unit: 'm', ramp: ['#06231f', '#0c4d3b', '#168257', '#5cc46c', '#dcf7a4']},
+  agb: {label: 'Aboveground biomass', short: 'AGB', unit: 'kgC m⁻²', ramp: ['#091d1d', '#124842', '#22876a', '#7ccc6c', '#eefdc0']},
+  soil: {label: 'Soil carbon', short: 'Soil C', unit: 'kgC m⁻²', ramp: ['#24150a', '#6a3a12', '#b5671f', '#eaa94a', '#ffeab0']},
+  lai: {label: 'Leaf area index', short: 'LAI', unit: 'm² m⁻²', ramp: ['#0d2418', '#1f5a2c', '#3f9a3a', '#a6d94a', '#f4ffb0']},
+  gpp: {label: 'Gross primary production', short: 'GPP', unit: 'kgC m⁻² yr⁻¹', ramp: ['#081d2b', '#0d4b5c', '#139a8a', '#6fdc9a', '#e6ffc4']},
+  npp: {label: 'Net primary production', short: 'NPP', unit: 'kgC m⁻² yr⁻¹', ramp: ['#0a1830', '#163f7a', '#2b7fc0', '#5fd0d8', '#dcfff6']},
+  rh: {label: 'Heterotrophic respiration', short: 'Rh', unit: 'kgC m⁻² yr⁻¹', ramp: ['#200d22', '#5a1a4a', '#a8325e', '#f07a4a', '#ffe0a0']},
+};
+export const ZONE_COLORS = ['#000000', '#3b82f6', '#f59e0b', '#4ade80', '#a78bfa', '#cbd5e1'];
+export const ZONES = ['', 'Tropical', 'Arid', 'Temperate', 'Cold', 'Polar'];
+
+export const D2R = Math.PI / 180;
+
+// Matches THREE.SphereGeometry's UV layout: u = 0 at 180°W, u = 0.5 at the prime meridian (+X).
+export function latLonToVec3(lat, lon, r = 1, out = new THREE.Vector3()) {
+  const phi = (lon + 180) * D2R, theta = (90 - lat) * D2R;
+  return out.set(-Math.cos(phi) * Math.sin(theta) * r, Math.cos(theta) * r, Math.sin(phi) * Math.sin(theta) * r);
+}
+export function vec3ToLatLon(v) {
+  const n = v.clone().normalize();
+  const lat = 90 - Math.acos(THREE.MathUtils.clamp(n.y, -1, 1)) / D2R;
+  let lon = Math.atan2(n.z, -n.x) / D2R - 180;
+  if (lon < -180) lon += 360;
+  return {lat, lon};
+}
+// Euler (XYZ) that brings (lat, lon) to face +Z.
+export function facing(lat, lon) {
+  const p = latLonToVec3(0, lon);
+  return {x: lat * D2R, y: -Math.atan2(p.x, p.z)};
+}
+export function cellOf(lat, lon) {
+  return {row: Math.min(359, Math.max(0, Math.floor((90 - lat) / 0.5))), col: Math.min(719, Math.max(0, Math.floor((lon + 180) / 0.5)))};
+}
+export function fmtLat(lat) { return `${Math.abs(lat).toFixed(2)}°${lat < 0 ? 'S' : 'N'}`; }
+export function fmtLon(lon) { return `${Math.abs(lon).toFixed(2)}°${lon < 0 ? 'W' : 'E'}`; }
+
+const loader = new THREE.TextureLoader();
+export function loadTexture(url, {srgb = false, mips = true} = {}) {
+  return new Promise((resolve, reject) => loader.load(url, t => {
+    t.anisotropy = 4;
+    t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.generateMipmaps = mips;
+    t.minFilter = mips ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
+    t.wrapS = THREE.RepeatWrapping;
+    resolve(t);
+  }, undefined, reject));
+}
+
+export async function decodePNG(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: ${res.status}`);
+  const blob = await res.blob();
+  const bmp = await createImageBitmap(blob, {colorSpaceConversion: 'none', premultiplyAlpha: 'none'});
+  const canvas = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(bmp.width, bmp.height) : Object.assign(document.createElement('canvas'), {width: bmp.width, height: bmp.height});
+  const ctx = canvas.getContext('2d', {willReadFrequently: true});
+  ctx.drawImage(bmp, 0, 0);
+  const img = ctx.getImageData(0, 0, bmp.width, bmp.height);
+  bmp.close?.();
+  return img;
+}
+
+// A packed atlas (7 x 6 tiles of 720 x 360, one per year) -> raw bytes + RG8 array texture.
+// R holds the gamma-encoded value, G marks data coverage so filtering stays clean at coastlines.
+// The bytes span the variable's full range (vmax); R is rescaled to its colour scale (show), saturating above.
+export async function loadAtlas(url, meta, name) {
+  const {width: W, height: H, cols, years, gamma} = meta.grid;
+  const v = meta.vars[name], k = Math.pow(v.vmax / (v.show || v.vmax), gamma) * 255 / 254;
+  const img = await decodePNG(url);
+  const raw = new Uint8Array(W * H * years);
+  const rg = new Uint8Array(W * H * years * 2);
+  const src = img.data, stride = img.width * 4;
+  for (let y = 0; y < years; y++) {
+    const ox = (y % cols) * W, oy = Math.floor(y / cols) * H;
+    for (let r = 0; r < H; r++) {
+      let s = (oy + r) * stride + ox * 4;
+      let d = (y * H + r) * W;
+      for (let c = 0; c < W; c++, s += 4, d++) {
+        const b = src[s];
+        raw[d] = b;
+        if (b) { rg[d * 2] = Math.min(255, Math.round((b - 1) * k)); rg[d * 2 + 1] = 255; }
+      }
+    }
+  }
+  const tex = new THREE.DataArrayTexture(rg, W, H, years);
+  tex.format = THREE.RGFormat;
+  tex.type = THREE.UnsignedByteType;
+  tex.minFilter = tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.unpackAlignment = 1;
+  tex.needsUpdate = true;
+  return {tex, raw, W, H, years};
+}
+// Tiles of an 8-bit atlas (byte 0 = no data) -> RG8 array texture, one layer per tile, with R the
+// value and G the data coverage. where(i) gives the column and row of tile i in the atlas.
+export async function loadTiles(url, W, H, n, where) {
+  const img = await decodePNG(url);
+  const rg = new Uint8Array(W * H * n * 2), src = img.data, stride = img.width * 4;
+  for (let i = 0; i < n; i++) {
+    const [tc, tr] = where(i);
+    for (let r = 0; r < H; r++) {
+      let s = (tr * H + r) * stride + tc * W * 4, d = (i * H + r) * W;
+      for (let c = 0; c < W; c++, s += 4, d++) {
+        const b = src[s];
+        if (b) { rg[d * 2] = Math.round((b - 1) * 255 / 254); rg[d * 2 + 1] = 255; }
+      }
+    }
+  }
+  const tex = new THREE.DataArrayTexture(rg, W, H, n);
+  tex.format = THREE.RGFormat;
+  tex.type = THREE.UnsignedByteType;
+  tex.minFilter = tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.unpackAlignment = 1;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// Physical value at (row, col, year) from raw atlas bytes.
+export function atlasValue(atlas, vmax, gamma, row, col, year) {
+  const b = atlas.raw[(year * atlas.H + row) * atlas.W + col];
+  if (!b) return null;
+  return vmax * Math.pow((b - 1) / 254, 1 / gamma);
+}
+
+export async function loadZones(url) {
+  const img = await decodePNG(url);
+  const n = img.width * img.height, z = new Uint8Array(n);
+  for (let i = 0; i < n; i++) z[i] = img.data[i * 4];
+  const tex = new THREE.DataTexture(z, img.width, img.height, THREE.RedFormat, THREE.UnsignedByteType);
+  tex.minFilter = tex.magFilter = THREE.NearestFilter;
+  tex.unpackAlignment = 1;
+  tex.needsUpdate = true;
+  return {tex, data: z, W: img.width, H: img.height};
+}
+
+const colorVec = hex => new THREE.Color(hex);
+export function rampUniform(name) { return VARS[name].ramp.map(colorVec); }
+
+// The Equal Earth projection (Savric, Patterson & Jenny, 2018) of longitude lam and latitude phi (radians), on a
+// sphere of radius 1: x within +-2.71, y within +-1.32. The globe unrolls into it (uFlat), centred on longitude 0
+// where the sphere's own seam, at 180 degrees, becomes the map's edges; uMapC and uMapS place it in the world.
+const EQUAL_EARTH = /* glsl */`
+uniform float uFlat, uMapS;
+uniform vec3 uMapC;
+vec2 equalEarth(float lam, float phi) {
+  float th = asin(0.8660254 * sin(phi)), t2 = th * th, t6 = t2 * t2 * t2;
+  return vec2(3.4641016 * lam * cos(th) / (3.0 * (9.0 * 0.003796 * t6 * t2 + 7.0 * 0.000893 * t6 + 3.0 * -0.081106 * t2 + 1.340264)),
+              th * (1.340264 - 0.081106 * t2 + t6 * (0.000893 + 0.003796 * t2)));
+}
+vec3 onMap(vec2 ee) { return uMapC + vec3(ee * uMapS, 0.0); }`;
+export function equalEarth(lat, lon) {
+  const th = Math.asin(0.8660254 * Math.sin(lat * D2R)), t2 = th * th, t6 = t2 * t2 * t2;
+  return [3.4641016 * lon * D2R * Math.cos(th) / (3 * (9 * 0.003796 * t6 * t2 + 7 * 0.000893 * t6 + 3 * -0.081106 * t2 + 1.340264)),
+    th * (1.340264 - 0.081106 * t2 + t6 * (0.000893 + 0.003796 * t2))];
+}
+
+const VERT = /* glsl */`
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vW;
+${EQUAL_EARTH}
+void main() {
+  vUv = uv;
+  vN = normalize(mix(normalize(mat3(modelMatrix) * normal), vec3(0.0, 0.0, 1.0), uFlat));
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  if (uFlat > 0.0) w.xyz = mix(w.xyz, onMap(equalEarth((uv.x - 0.5) * 6.2831853, (uv.y - 0.5) * 3.1415927)), uFlat);
+  vW = w.xyz;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+
+const FRAG = /* glsl */`
+precision highp float;
+precision highp sampler2DArray;
+uniform sampler2D uDay;
+uniform sampler2D uMask;
+uniform sampler2D uZones;
+uniform sampler2D uClouds;
+uniform sampler2D uLights;
+uniform sampler2D uDetail, uDetail2, uDetail3;
+uniform sampler2DArray uData;
+uniform sampler2DArray uHeat;
+uniform float uHeatMix, uHeatT;
+uniform float uYear, uDataMix, uZoneMix, uOpacity, uTime, uGridMix, uTargetMix, uDim, uHasData, uBase, uSpec, uNight, uGrowth;
+uniform float uReal, uCloud, uCloudShift, uDetailMix, uExposure, uTwin, uTwinMix, uReveal;
+uniform vec4 uDetailBox, uDetailBox2, uDetailBox3;
+uniform vec3 uSun;
+uniform vec3 uRamp[5];
+uniform vec3 uZone[6];
+uniform vec2 uTarget;
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vW;
+
+vec3 ramp(float t) {
+  t = clamp(t, 0.0, 1.0) * 4.0;
+  float i = min(floor(t), 3.0);
+  float f = t - i;
+  vec3 a = uRamp[0], b = uRamp[1];
+  if (i > 2.5) { a = uRamp[3]; b = uRamp[4]; }
+  else if (i > 1.5) { a = uRamp[2]; b = uRamp[3]; }
+  else if (i > 0.5) { a = uRamp[1]; b = uRamp[2]; }
+  return mix(a, b, f);
+}
+
+// a sharper image of a region (box: west, south, east, north in texture space), feathered into img
+vec3 detail(vec3 img, sampler2D tex, vec4 box) {
+  vec2 dq = (vUv - box.xy) / (box.zw - box.xy);
+  if (dq.x <= 0.0 || dq.x >= 1.0 || dq.y <= 0.0 || dq.y >= 1.0) return img;
+  float edge = smoothstep(0.0, 0.08, min(min(dq.x, 1.0 - dq.x), min(dq.y, 1.0 - dq.y)));
+  return mix(img, texture2D(tex, dq).rgb, edge);
+}
+
+void main() {
+  vec3 N = normalize(vN);
+  vec3 V = normalize(cameraPosition - vW);
+  vec3 L = normalize(uSun);
+  float ndl = dot(N, L);
+  float day = smoothstep(-0.2, 0.45, ndl);
+
+  vec3 base = texture2D(uDay, vUv).rgb;
+  float land = texture2D(uMask, vUv).r;
+  float lum = dot(base, vec3(0.299, 0.587, 0.114));
+  vec3 landCol = mix(vec3(lum), base, 0.5) * 0.62 * uBase;
+  vec3 oceanCol = vec3(0.012, 0.035, 0.06) + base * vec3(0.10, 0.20, 0.30);
+  vec3 col = mix(oceanCol, landCol, land);
+  col *= mix(0.07 * uNight, 1.0, day);
+
+  vec3 H = normalize(L + V);
+  float spec = pow(max(dot(N, H), 0.0), 140.0) * (1.0 - land) * day;
+  col += vec3(0.55, 0.75, 0.95) * spec * uSpec;
+
+  vec2 duv = vec2(vUv.x, 1.0 - vUv.y);
+  float t = 0.0, cov = 0.0;
+  if (uHasData > 0.5) {
+    // the data's layers span the forty years evenly: one per year, or a few key years
+    float last = float(textureSize(uData, 0).z - 1);
+    float yl = uYear * last / 40.0;
+    float y0 = floor(yl);
+    float y1 = min(y0 + 1.0, last);
+    vec2 a = texture(uData, vec3(duv, y0)).rg;
+    vec2 b = texture(uData, vec3(duv, y1)).rg;
+    vec2 d = mix(a, b, yl - y0);
+    cov = smoothstep(0.2, 0.75, d.g) * smoothstep(0.25, 0.65, land);
+    t = d.r / max(d.g, 1e-3);
+  }
+  // the story's opening simulates the planet: its cells land in a random order as uReveal runs from 0 to 1,
+  // each flashing as it lands (uReveal above 1 shows them all)
+  uvec2 rc = uvec2(floor(duv * vec2(720.0, 360.0)));
+  uint rk = (rc.x * 1597334677u) ^ (rc.y * 3812015801u);
+  rk = (rk ^ (rk >> 16u)) * 2246822519u;
+  rk ^= rk >> 13u;
+  float rh = (float(rk & 0xFFFFFFu) + 0.5) / 16777216.0;
+  float shown = step(rh, uReveal), fresh = shown * (1.0 - smoothstep(0.0, 0.05, uReveal - rh)) * cov;
+  cov *= shown;
+  vec3 dc = ramp(t);
+  vec3 dataCol = dc * mix(0.22 * uNight, 1.0, day) * (0.82 + 0.3 * t) + dc * t * t * 0.22 * (1.0 - day) * uNight;
+  col = mix(col, dataCol, cov * uDataMix * 0.94);
+  // the digital twin: left of a scan line that sweeps across the disc, the photographic Earth gives way to
+  // its data twin, the forest layer over muted imagery under a fine graticule
+  float sx = dot(N, vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]));
+  float twin = uTwinMix * (1.0 - smoothstep(uTwin - 0.015, uTwin + 0.015, sx));
+
+  // The photographic globe of the film: the daylit Blue Marble with drifting clouds and their shadows,
+  // sun glint on the sea, blue haze toward the limb and city lights at night. Forest data is laid over
+  // the imagery only where forest stands, more opaque the taller it is, so bare land stays as it looks.
+  if (uReal > 0.001) {
+    float lit = smoothstep(-0.1, 0.2, ndl);
+    float sun = pow(max(ndl, 0.0), 0.7);
+    // sharper images of the film's dive into the Amazon, each nested in the last: the region, the grid
+    // cell, the ground where it ends
+    vec3 img = base;
+    if (uDetailMix > 0.0) img = detail(detail(detail(img, uDetail, uDetailBox), uDetail2, uDetailBox2), uDetail3, uDetailBox3);
+    vec3 alb = pow(img, vec3(1.08)) * 1.18;
+    // a green tint that keeps the imagery's texture, deepening as the canopy grows
+    alb = mix(alb, ramp(t * 0.82) * 0.92 + alb * 0.22, cov * smoothstep(0.06, 0.6, t) * uDataMix * 0.78);
+    vec2 cuv = vec2(vUv.x + uCloudShift, vUv.y);
+    float cl = texture2D(uClouds, cuv).r * uCloud;
+    float shade = texture2D(uClouds, cuv + vec2(0.0022, 0.0018)).r * uCloud;
+    vec3 real = alb * (1.0 - 0.4 * shade) * (0.02 + 1.22 * sun);
+    vec3 Hh = normalize(L + V);
+    float nh = max(dot(N, Hh), 0.0);
+    real += (vec3(1.0, 0.95, 0.86) * pow(nh, 260.0) * 0.32 + vec3(0.45, 0.62, 0.85) * pow(nh, 14.0) * 0.035) * (1.0 - land) * lit * (1.0 - cl);
+    real = mix(real, vec3(0.03) + vec3(1.02, 1.02, 1.0) * sun, cl);
+    real *= uExposure;
+    // growth: forest glows softly by how much taller it has grown since the data's first year, read from a
+    // coarser level of the data (when it has one) so the simulation's cells don't show as blocks
+    if (uGrowth > 0.0) {
+      float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0, y0 = floor(yl);
+      vec2 gn = mix(textureLod(uData, vec3(duv, y0), 2.5).rg, textureLod(uData, vec3(duv, min(y0 + 1.0, last)), 2.5).rg, yl - y0);
+      vec2 g0 = textureLod(uData, vec3(duv, 0.0), 2.5).rg;
+      float tn = gn.r / max(gn.g, 1e-3), t0 = g0.r / max(g0.g, 1e-3);
+      real += ramp(0.95) * smoothstep(0.0, 0.25, max(tn * tn - t0 * t0, 0.0)) * cov * uGrowth * (0.35 + 0.65 * lit) * (1.0 - cl);
+    }
+    real += vec3(0.62, 1.0, 0.7) * fresh * (0.25 + 0.75 * lit) * 0.6;
+    // the opening's warming: each cell's air temperature against its 1981-90 mean, through eight five-year windows
+    // (uHeatT 0..7), strongest where forest stands; cooler cells blue, the hottest glowing
+    if (uHeatMix > 0.001) {
+      float h0 = floor(uHeatT), h1 = min(h0 + 1.0, 7.0);
+      vec2 hv = mix(texture(uHeat, vec3(duv, h0)).rg, texture(uHeat, vec3(duv, h1)).rg, uHeatT - h0);
+      vec2 fv = texture(uHeat, vec3(duv, 8.0)).rg;
+      float anom = -1.0 + 3.5 * hv.r / max(hv.g, 1e-3), fc = fv.r / max(fv.g, 1e-3);
+      vec3 hot = anom < 0.0 ? mix(vec3(0.55, 0.62, 0.7), vec3(0.22, 0.48, 1.0), clamp(-anom / 0.7, 0.0, 1.0))
+        : anom < 0.6 ? mix(vec3(1.0, 0.82, 0.45), vec3(1.0, 0.45, 0.12), anom / 0.6)
+        : anom < 1.2 ? mix(vec3(1.0, 0.45, 0.12), vec3(0.92, 0.1, 0.12), (anom - 0.6) / 0.6)
+        : mix(vec3(0.92, 0.1, 0.12), vec3(1.0, 0.55, 0.7), clamp((anom - 1.2) / 0.8, 0.0, 1.0));
+      float hw = hv.g * smoothstep(0.25, 0.65, land) * uHeatMix * (0.3 + 0.7 * fc) * clamp(0.3 + abs(anom) / 0.9, 0.0, 1.0);
+      real = mix(real, hot * (0.3 + 0.9 * sun), hw * 0.88 * (1.0 - 0.6 * cl));
+      real += hot * hw * smoothstep(0.7, 1.6, anom) * (0.28 + 0.12 * sin(uTime * 3.0)) * (1.0 - 0.6 * cl);
+    }
+    float dark = 1.0 - smoothstep(-0.2, 0.06, ndl);
+    real += vec3(1.0, 0.72, 0.4) * texture2D(uLights, vUv).r * dark * (1.0 - 0.8 * cl) * 1.2;
+    float fh = pow(1.0 - max(dot(N, V), 0.0), 2.3);
+    real = mix(real, vec3(0.36, 0.6, 1.0) * (0.06 + 0.9 * sun), fh * (0.18 + 0.5 * lit));
+    vec2 gg = duv * vec2(72.0, 36.0), gwid = fwidth(gg), gfr = abs(fract(gg) - 0.5);
+    vec2 gl2 = smoothstep(0.5 - gwid * 1.1, vec2(0.5), gfr);
+    col += vec3(0.4, 0.95, 0.85) * max(gl2.x, gl2.y) * twin * 0.28 * (0.3 + 0.7 * day);
+    col = mix(col, real, uReal * (1.0 - twin));
+    col += vec3(0.45, 1.0, 0.85) * exp(-pow((sx - uTwin) / 0.012, 2.0)) * uTwinMix * step(-1.0, uTwin) * step(uTwin, 1.0) * 0.9;
+  }
+
+  float z = texture2D(uZones, duv).r * 255.0;
+  int zi = int(z + 0.5);
+  vec3 zc = uZone[0];
+  if (zi == 1) zc = uZone[1]; else if (zi == 2) zc = uZone[2]; else if (zi == 3) zc = uZone[3]; else if (zi == 4) zc = uZone[4]; else if (zi == 5) zc = uZone[5];
+  float zcov = step(0.5, z) * smoothstep(0.25, 0.65, land);
+  col = mix(col, zc * mix(0.45, 1.0, day), zcov * uZoneMix * 0.85);
+
+  vec2 g = duv * vec2(720.0, 360.0);
+  vec2 gw = fwidth(g);
+  vec2 gf = abs(fract(g) - 0.5);
+  vec2 ll = smoothstep(0.5 - gw * 1.2, vec2(0.5), gf);
+  float line = max(ll.x, ll.y) * smoothstep(0.6, 0.12, max(gw.x, gw.y));
+  vec2 cell = floor(g);
+  // the photographic globe draws the 0.5° grid only around the target cell, fainter, so the forest shows
+  float local = mix(1.0, (1.0 - smoothstep(3.0, 8.0, length(cell - uTarget))) * 0.55, uReal);
+  col += vec3(0.55, 1.0, 0.75) * line * uGridMix * 0.35 * local * smoothstep(0.2, 0.6, land);
+  float isT = 1.0 - step(0.5, length(cell - uTarget));
+  float pulse = 0.7 + 0.3 * sin(uTime * 3.0);
+  col = mix(col, col * 1.6 + vec3(0.06, 0.12, 0.06), isT * uTargetMix * 0.5);
+  vec2 inner = smoothstep(0.5 - gw * 3.0, vec2(0.5), gf);
+  float edge = max(inner.x, inner.y) * isT;
+  col += vec3(0.85, 1.0, 0.7) * edge * uTargetMix * pulse;
+
+  float fr = pow(1.0 - max(dot(N, V), 0.0), 2.6);
+  col += vec3(0.22, 0.72, 0.95) * fr * (0.12 + 0.55 * day) * max(1.0 - uReal, twin);
+  col *= uDim;
+  gl_FragColor = vec4(col, uOpacity);
+}`;
+
+const ATMO_VERT = /* glsl */`
+varying vec3 vN;
+varying vec3 vW;
+void main() {
+  vN = normalize(mat3(modelMatrix) * normal);
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vW = w.xyz;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+const ATMO_FRAG = /* glsl */`
+uniform vec3 uSun;
+uniform float uOpacity, uEclipse, uReal;
+uniform vec3 uCenter;
+varying vec3 vN;
+varying vec3 vW;
+void main() {
+  vec3 V = normalize(cameraPosition - vW);
+  vec3 N = normalize(vN);
+  // Back faces of a 1.16x shell: strongest at the planet's limb, fading outward; the photographic
+  // globe keeps a thinner, bluer rim, lit on the day side.
+  float k = clamp(-dot(N, V) / 0.51, 0.0, 1.0);
+  float a = pow(k, mix(2.6, 6.5, uReal));
+  vec3 S = normalize(uSun), rel = normalize(vW - uCenter);
+  float lit = mix(0.3 + 0.7 * smoothstep(-0.45, 0.8, dot(rel, S)), 0.06 + 0.94 * smoothstep(-0.35, 0.55, dot(rel, S)), uReal);
+  // with the sun behind the planet, the ring gathers on the sun's side of the limb
+  vec3 vc = normalize(cameraPosition - uCenter);
+  float side = dot(normalize(rel - vc * dot(rel, vc)), normalize(S - vc * dot(S, vc) + 1e-4));
+  lit *= mix(1.0, 0.08 + 1.3 * pow(max(side * 0.5 + 0.5, 0.0), 4.0), uEclipse);
+  gl_FragColor = vec4(mix(vec3(0.26, 0.8, 1.0), vec3(0.42, 0.68, 1.0), uReal) * lit * mix(1.25, 1.6, uReal), a * uOpacity);
+}`;
+
+// real: 0 for the stylised data globe (the explorer), 1 for the photographic Earth of the film, which
+// also takes clouds and night lights.
+// details: up to three {tex, box: [west, north, east, south] in degrees}, sharper images of nested regions.
+export function createGlobe({day, mask, zones, data = null, segments = 192, clouds = null, lights = null, real = 0, details = []}) {
+  const boxVec = d => (d ? new THREE.Vector4((d.box[0] + 180) / 360, (d.box[3] + 90) / 180, (d.box[2] + 180) / 360, (d.box[1] + 90) / 180) : new THREE.Vector4(2, 2, 3, 3));   // unused: a box off the globe
+  const uniforms = {
+    uDay: {value: day}, uMask: {value: mask}, uZones: {value: zones},
+    uClouds: {value: clouds || mask}, uLights: {value: lights || mask},
+    uDetail: {value: details[0]?.tex || mask}, uDetail2: {value: details[1]?.tex || mask}, uDetail3: {value: details[2]?.tex || mask},
+    uDetailBox: {value: boxVec(details[0])}, uDetailBox2: {value: boxVec(details[1])}, uDetailBox3: {value: boxVec(details[2])},
+    uDetailMix: {value: details.length ? 1 : 0}, uTwin: {value: -2}, uTwinMix: {value: 0},
+    uReal: {value: real}, uCloud: {value: clouds ? 0.6 : 0}, uCloudShift: {value: 0}, uExposure: {value: 1}, uReveal: {value: 2},
+    uData: {value: data || new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)},
+    uHasData: {value: data ? 1 : 0},
+    uHeat: {value: new THREE.DataArrayTexture(new Uint8Array(2), 1, 1, 1)}, uHeatMix: {value: 0}, uHeatT: {value: 0},
+    uFlat: {value: 0}, uMapC: {value: new THREE.Vector3()}, uMapS: {value: 1},
+    uYear: {value: 40}, uGrowth: {value: 0}, uDataMix: {value: 1}, uZoneMix: {value: 0}, uOpacity: {value: 1},
+    uTime: {value: 0}, uGridMix: {value: 0}, uTargetMix: {value: 0}, uDim: {value: 1}, uBase: {value: 1}, uSpec: {value: 0.22}, uNight: {value: 1},
+    uSun: {value: new THREE.Vector3(-0.85, 0.38, 0.55).normalize()},
+    uRamp: {value: rampUniform('height')},
+    uZone: {value: ZONE_COLORS.map(colorVec)},
+    uTarget: {value: new THREE.Vector2(-10, -10)},
+  };
+  if (!data) uniforms.uData.value.format = THREE.RGFormat;
+  uniforms.uHeat.value.format = THREE.RGFormat;
+  const material = new THREE.ShaderMaterial({uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true});
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), material);
+  const atmoU = {uSun: uniforms.uSun, uOpacity: {value: 1}, uEclipse: {value: 0}, uCenter: {value: new THREE.Vector3()}, uReal: uniforms.uReal};
+  const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.16, 96, 48), new THREE.ShaderMaterial({
+    uniforms: atmoU, vertexShader: ATMO_VERT, fragmentShader: ATMO_FRAG,
+    side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  const group = new THREE.Group();
+  const spin = new THREE.Group();
+  spin.add(globe);
+  group.add(spin, atmo);
+  return {group, spin, globe, atmo, uniforms, atmoUniforms: atmoU,
+    setData(tex) { uniforms.uData.value = tex; uniforms.uHasData.value = tex ? 1 : 0; },
+    setRamp(name) { uniforms.uRamp.value = rampUniform(name); },
+  };
+}
+
+// The planet's forests in relief, for the film: a shell over the globe raised by each site's canopy height
+// in the given year (exaggerated: lift is the height of a 35 m canopy, in globe radii), coloured by it, and
+// see-through where little or no forest stands, so the forests visibly rise as the years pass.
+const CANOPY_VERT = /* glsl */`
+precision highp sampler2DArray;
+uniform sampler2DArray uData;
+uniform float uYear, uLift;
+varying float vT;
+varying float vH;
+varying vec3 vW;
+void main() {
+  vec2 duv = vec2(uv.x, 1.0 - uv.y);
+  float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0;
+  float y0 = floor(yl), y1 = min(y0 + 1.0, last);
+  vec2 d = mix(texture(uData, vec3(duv, y0)).rg, texture(uData, vec3(duv, y1)).rg, yl - y0);
+  float cov = smoothstep(0.3, 0.85, d.g);
+  vT = d.r / max(d.g, 1e-3);
+  vH = vT * vT * cov;                       // canopy height / 35 m (values are stored as its square root)
+  vec4 w = modelMatrix * vec4(position * (1.0015 + vH * uLift), 1.0);
+  vW = w.xyz;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+// the five-colour ramp of a variable, t from 0 to 1
+const RAMP = /* glsl */`
+vec3 ramp(float t) {
+  t = clamp(t, 0.0, 1.0) * 4.0;
+  float i = min(floor(t), 3.0);
+  float f = t - i;
+  vec3 a = uRamp[0], b = uRamp[1];
+  if (i > 2.5) { a = uRamp[3]; b = uRamp[4]; }
+  else if (i > 1.5) { a = uRamp[2]; b = uRamp[3]; }
+  else if (i > 0.5) { a = uRamp[1]; b = uRamp[2]; }
+  return mix(a, b, f);
+}`;
+const CANOPY_FRAG = /* glsl */`
+uniform vec3 uSun;
+uniform vec3 uRamp[5];
+uniform vec3 uCenter;
+uniform float uOpacity;
+varying float vT;
+varying float vH;
+varying vec3 vW;
+${RAMP}
+void main() {
+  float a = smoothstep(0.03, 0.2, vH) * uOpacity;
+  if (a < 0.01) discard;
+  vec3 N = normalize(cross(dFdx(vW), dFdy(vW)));
+  if (dot(N, vW - uCenter) < 0.0) N = -N;
+  float diff = max(dot(N, normalize(uSun)), 0.0);
+  gl_FragColor = vec4(ramp(0.25 + 0.7 * vT) * (0.12 + 1.05 * diff), a);
+}`;
+
+export function createCanopy({data, ramp, sun, segments = 360}) {
+  const uniforms = {uData: {value: data}, uYear: {value: 0}, uLift: {value: 0}, uOpacity: {value: 0},
+    uRamp: ramp, uSun: sun, uCenter: {value: new THREE.Vector3()}};
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), new THREE.ShaderMaterial({
+    uniforms, vertexShader: CANOPY_VERT, fragmentShader: CANOPY_FRAG, transparent: true,
+  }));
+  mesh.visible = false;
+  return {mesh, uniforms};
+}
+
+// A forest as a lidar point cloud: each tree a faint strand from the ground up to a glowing crown, its height and
+// colour read from the data (blended across its years) and lit by the sun. trees holds [u, v, seed] per tree, in
+// the data's coordinates (v = 0 at the north pole).
+const FOREST_VERT = /* glsl */`
+precision highp sampler2DArray;
+uniform sampler2DArray uData;
+uniform vec3 uSun;
+uniform float uYear, uLift, uPx, uCrown, uLimb;
+attribute float aEnd;
+varying float vT, vA, vDay, vEnd;
+void main() {
+  float last = float(textureSize(uData, 0).z - 1), yl = uYear * last / 40.0;
+  float y0 = floor(yl), y1 = min(y0 + 1.0, last);
+  vec2 d = mix(textureLod(uData, vec3(position.xy, y0), 0.0).rg, textureLod(uData, vec3(position.xy, y1), 0.0).rg, yl - y0);
+  float t = d.r / max(d.g, 1e-3), h = t * t;
+  float phi = position.x * 6.2831853, theta = position.y * 3.1415927;
+  vec3 dir = vec3(-cos(phi) * sin(theta), cos(theta), sin(phi) * sin(theta));
+  float end = uCrown > 0.0 ? 1.0 : aEnd;
+  vec3 p = dir * (1.0015 + end * h * uLift * (0.7 + 0.6 * position.z));
+  vec3 nW = normalize((modelMatrix * vec4(dir, 0.0)).xyz);
+  vDay = smoothstep(-0.12, 0.35, dot(nW, normalize(uSun)));
+  // limb: trees show only where the view grazes the surface, so they stand against space at the planet's edge
+  float mu = dot(nW, normalize(cameraPosition - (modelMatrix * vec4(dir, 1.0)).xyz));
+  float limb = mix(1.0, 1.0 - smoothstep(0.08, 0.32, mu), uLimb);
+  vT = t;
+  vEnd = end;
+  vA = smoothstep(0.02, 0.12, h) * smoothstep(0.05, 0.35, d.g) * limb;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  gl_PointSize = uPx * (0.6 + 0.9 * t);
+}`;
+const FOREST_FRAG = /* glsl */`
+uniform vec3 uRamp[5];
+uniform float uOpacity, uCrown;
+varying float vT, vA, vDay, vEnd;
+${RAMP}
+void main() {
+  float a = vA * uOpacity;
+  if (uCrown > 0.0) a *= 0.6 * smoothstep(0.5, 0.1, length(gl_PointCoord - 0.5));
+  else a *= 0.35 * mix(0.1, 1.0, vEnd);
+  if (a < 0.01) discard;
+  vec3 c = ramp(0.25 + 0.7 * vT) * (0.15 + 1.05 * vDay) * (uCrown > 0.0 ? 1.2 : 0.75);
+  gl_FragColor = vec4(c, a);
+}`;
+
+export function createForestCloud({data, trees, ramp, sun}) {
+  const n = trees.length / 3;
+  const shared = {uData: {value: data}, uYear: {value: 0}, uLift: {value: 0}, uOpacity: {value: 0}, uPx: {value: 1}, uLimb: {value: 1},
+    uRamp: ramp, uSun: sun};
+  const make = (geo, crown, Kind) => {
+    const obj = new Kind(geo, new THREE.ShaderMaterial({uniforms: {...shared, uCrown: {value: crown}},
+      vertexShader: FOREST_VERT, fragmentShader: FOREST_FRAG, transparent: true, depthWrite: false}));
+    obj.frustumCulled = false;
+    return obj;
+  };
+  const strands = new THREE.BufferGeometry(), pos = new Float32Array(n * 6), end = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) {
+    pos.set(trees.subarray(i * 3, i * 3 + 3), i * 6);
+    pos.set(trees.subarray(i * 3, i * 3 + 3), i * 6 + 3);
+    end[i * 2 + 1] = 1;
+  }
+  strands.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  strands.setAttribute('aEnd', new THREE.BufferAttribute(end, 1));
+  const crowns = new THREE.BufferGeometry();
+  crowns.setAttribute('position', new THREE.BufferAttribute(trees, 3));
+  crowns.setAttribute('aEnd', new THREE.BufferAttribute(new Float32Array(n), 1));
+  const group = new THREE.Group();
+  group.add(make(strands, 0, THREE.LineSegments), make(crowns, 1, THREE.Points));
+  group.visible = false;
+  return {group, uniforms: shared};
+}
+
+// stars from a seeded generator, so every render of the film (and every parallel renderer) has the same sky
+export function createStars(count = 2400, radius = 60) {
+  const pos = new Float32Array(count * 3), size = new Float32Array(count), tw = new Float32Array(count), rng = mulberry32(5);
+  for (let i = 0; i < count; i++) {
+    const u = rng() * 2 - 1, a = rng() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+    pos.set([Math.cos(a) * s * radius, u * radius, Math.sin(a) * s * radius], i * 3);
+    size[i] = Math.pow(rng(), 6) * 2.4 + 0.6;
+    tw[i] = rng() * 6.28;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  geo.setAttribute('aTw', new THREE.BufferAttribute(tw, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {uTime: {value: 0}, uOpacity: {value: 1}, uPx: {value: 1}},
+    vertexShader: `attribute float aSize; attribute float aTw; uniform float uTime; uniform float uPx; varying float vA;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv;
+      vA = 0.55 + 0.45 * sin(uTime * 1.3 + aTw); gl_PointSize = aSize * uPx; }`,
+    fragmentShader: `uniform float uOpacity; varying float vA;
+      void main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d);
+      gl_FragColor = vec4(vec3(0.8, 0.92, 1.0), a * vA * uOpacity * 0.85); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  return new THREE.Points(geo, mat);
+}
+
+// A sun flare for the moment the sun clears the planet's limb: a hot core, a soft halo and a thin
+// anamorphic streak. Drawn additively on top, as a quad facing a camera that looks down -Z.
+export function createFlare() {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {uI: {value: 0}},
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform float uI; varying vec2 vUv;
+      void main(){
+        vec2 p = vUv * 2.0 - 1.0; float r2 = dot(p, p);
+        float core = exp(-r2 * 140.0), halo = exp(-r2 * 9.0) * 0.32;
+        float streak = exp(-p.y * p.y * 3000.0) * exp(-p.x * p.x * 3.2) * 0.6;
+        vec3 c = vec3(1.0, 0.98, 0.92) * core * 1.6 + vec3(0.55, 0.88, 1.0) * (halo + streak);
+        gl_FragColor = vec4(c * uI, 1.0);
+      }`,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+  m.frustumCulled = false;
+  m.visible = false;
+  return m;
+}
+
+// Places on the globe that pulse: a hot point with a ring rippling out from it, sized in screen pixels and fading
+// toward the limb. points: [{lat, lon, color, t, kind}]; each lights up as uP passes its t, with a flash, drawn by
+// its kind: a flickering flare (fire), a slow ring (drought), a pulsing glow (heat) or a square, like a cleared plot
+// (clearing). All fade with uOut and dim with uGain. Children of the globe's spin group, drawn over it; map holds the
+// globe's uFlat, uMapC and uMapS, so they move with it onto its flat map.
+export const EVENT_KINDS = ['fire', 'drought', 'heat', 'clear'];
+export function createMarkers(points, px, map) {
+  const n = points.length, v = new THREE.Vector3(), c = new THREE.Color();
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), t0 = new Float32Array(n), ph = new Float32Array(n), ty = new Float32Array(n);
+  const flat = new Float32Array(n * 2);
+  points.forEach((m, i) => {
+    latLonToVec3(m.lat, m.lon, 1.004, v);
+    pos.set([v.x, v.y, v.z], i * 3);
+    flat.set(equalEarth(m.lat, m.lon), i * 2);
+    c.set(m.color);
+    col.set([c.r, c.g, c.b], i * 3);
+    t0[i] = m.t;
+    ph[i] = (i * 0.37) % 1;
+    ty[i] = Math.max(0, EVENT_KINDS.indexOf(m.kind));
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aCol', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('aT', new THREE.BufferAttribute(t0, 1));
+  geo.setAttribute('aPh', new THREE.BufferAttribute(ph, 1));
+  geo.setAttribute('aType', new THREE.BufferAttribute(ty, 1));
+  geo.setAttribute('aFlat', new THREE.BufferAttribute(flat, 2));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {uP: {value: 0}, uOut: {value: 1}, uGain: {value: 1}, uTime: {value: 0}, uPx: {value: px}, uFlat: map.uFlat, uMapC: map.uMapC, uMapS: map.uMapS},
+    vertexShader: `attribute vec3 aCol; attribute float aT; attribute float aPh; attribute float aType; attribute vec2 aFlat;
+      uniform float uP, uOut, uGain, uPx; varying vec3 vCol; varying float vA, vPop, vPh, vType;
+      ${EQUAL_EARTH}
+      void main(){
+        vec3 w = (modelMatrix * vec4(position, 1.0)).xyz, nW = normalize((modelMatrix * vec4(position, 0.0)).xyz);
+        float mu = mix(dot(nW, normalize(cameraPosition - w)), 1.0, uFlat);   // on the map, every event faces the camera
+        w = mix(w, onMap(aFlat) + vec3(0.0, 0.0, 0.01), uFlat);
+        vA = smoothstep(0.04, 0.3, mu) * smoothstep(aT, aT + 0.05, uP) * uOut * uGain;
+        vPop = smoothstep(aT, aT + 0.03, uP) * (1.0 - smoothstep(aT + 0.03, aT + 0.2, uP));
+        vCol = aCol; vPh = aPh; vType = aType;
+        gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
+        gl_PointSize = uPx * (34.0 + 8.0 * step(1.5, aType) * step(aType, 2.5) + 30.0 * vPop);
+      }`,
+    fragmentShader: `uniform float uTime; varying vec3 vCol; varying float vA, vPop, vPh, vType;
+      void main(){
+        vec2 q = gl_PointCoord - 0.5;
+        bool sq = vType > 2.5;
+        float r = (sq ? max(abs(q.x), abs(q.y)) : length(q)) * 2.0;
+        float core = smoothstep(0.24, 0.12, r), glow = exp(-r * r * 9.0) * (0.45 + 0.8 * vPop);
+        float rate = vType < 0.5 ? 0.8 : vType < 1.5 ? 0.3 : 0.5;
+        float ring = fract(uTime * rate + vPh), wave = smoothstep(0.07, 0.0, abs(r - ring)) * (1.0 - ring) * 0.9;
+        if (vType < 0.5) core *= 0.75 + 0.35 * sin(uTime * 17.0 + vPh * 40.0) * sin(uTime * 6.3 + vPh * 9.0);
+        if (vType > 1.5 && vType < 2.5) glow *= 1.25 + 0.45 * sin(uTime * 4.0 + vPh * 6.3);
+        if (sq) wave = smoothstep(0.06, 0.0, abs(r - 0.62)) * (0.55 + 0.45 * sin(uTime * 3.0 + vPh * 6.3)) + wave * 0.5;
+        float a = (core + glow + wave) * vA;
+        gl_FragColor = vec4(mix(vCol, vec3(1.0), core * 0.55) * a, 1.0);
+      }`,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  pts.renderOrder = 4;
+  return {points: pts, uniforms: mat.uniforms, positions: pos, flat};
+}
+
+// NASA's GEDI, a lidar on the International Space Station: the station on its orbit (51.6 degrees inclined, 420 km
+// up, drawn higher) and the footprints its ground tracks leave over land, one orbit after another as n, the orbits
+// flown, runs from 0 to orbits, each orbit 23.2 degrees west of the last as Earth turns under it, the days' orbits interleaved. The first
+// crosses the Amazon site (3.3 S, 63.7 W) heading north, early in its orbit. The tracks are drawn, not GEDI data.
+export function createGedi(land, px, orbits = 128, steps = 720) {
+  const INC = THREE.MathUtils.degToRad(51.6), STEP = 23.17, ALT = 1.09, v = new THREE.Vector3();
+  const PHI0 = Math.asin(Math.sin(THREE.MathUtils.degToRad(-3.3)) / Math.sin(INC)) - 2 * Math.PI * 0.02;
+  const track = (k, f, r, out) => {
+    const phi = 2 * Math.PI * f + PHI0, node = -60.6 - (k + f) * STEP - Math.floor(k / 16) * 8.3;
+    const lat = Math.asin(Math.sin(INC) * Math.sin(phi)), lon = THREE.MathUtils.degToRad(node) + Math.atan2(Math.cos(INC) * Math.sin(phi), Math.cos(phi));
+    return latLonToVec3(THREE.MathUtils.radToDeg(lat), THREE.MathUtils.radToDeg(lon), r, out);
+  };
+  // every footprint over land, every third over the sea, fainter (the forests are what the shots are for)
+  const pos = [], s = [], onLand = [];
+  for (let k = 0; k < orbits; k++) for (let j = 0; j < steps; j++) {
+    track(k, j / steps, 1.003, v);
+    const {lat, lon} = vec3ToLatLon(v);
+    const row = Math.min(359, Math.floor((90 - lat) * 2)), col = ((Math.floor((lon + 180) * 2) % 720) + 720) % 720;
+    const l = land[row * 720 + col] ? 1 : 0;
+    if (!l && j % 3) continue;
+    pos.push(v.x, v.y, v.z);
+    s.push((k + j / steps) / orbits);
+    onLand.push(l);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('aS', new THREE.Float32BufferAttribute(s, 1));
+  geo.setAttribute('aLand', new THREE.Float32BufferAttribute(onLand, 1));
+  const uniforms = {uK: {value: 0}, uA: {value: 0}, uPx: {value: px}, uN: {value: orbits}};
+  const dots = new THREE.Points(geo, new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `attribute float aS; attribute float aLand; uniform float uK, uA, uPx, uN; varying float vA, vNew;
+      void main(){
+        vec3 w = (modelMatrix * vec4(position, 1.0)).xyz, nW = normalize((modelMatrix * vec4(position, 0.0)).xyz);
+        float age = (uK - aS) * uN, laid = step(0.0, age);   // in orbits since the footprint was laid
+        vNew = exp(-max(age, 0.0) * 9.0);
+        vA = laid * smoothstep(0.02, 0.25, dot(nW, normalize(cameraPosition - w))) * uA * (0.45 + 0.55 * exp(-max(age, 0.0) * 0.6))
+          * mix(0.22 + 0.6 * vNew, 1.0, aLand)
+          * mix(0.3, 1.0, sqrt(max(0.0, 1.0 - pow(position.y / 0.786, 2.0))));   // tracks crowd where they turn, at 51.6 degrees
+        gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
+        gl_PointSize = laid * uPx * (2.2 + 4.0 * vNew);   // footprints still to come are not drawn at all
+      }`,
+    fragmentShader: `varying float vA, vNew;
+      void main(){ float d = length(gl_PointCoord - 0.5) * 2.0;
+        gl_FragColor = vec4(mix(vec3(0.45, 1.0, 0.82), vec3(1.0), vNew * 0.6) * smoothstep(1.0, 0.2, d) * vA, 1.0); }`,
+    transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  dots.frustumCulled = false;
+  dots.renderOrder = 4;
+  // the station's orbit, a thin ring hidden behind the planet, and the station on it
+  const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length: 257}, () => new THREE.Vector3())),
+    new THREE.LineBasicMaterial({color: 0x7dffd8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending}));
+  ring.frustumCulled = false;
+  ring.renderOrder = 3;
+  const iss = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3)), new THREE.ShaderMaterial({
+    uniforms: {uA: uniforms.uA, uPx: uniforms.uPx},
+    vertexShader: `uniform float uPx; void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_PointSize = uPx * 22.0; }`,
+    fragmentShader: `uniform float uA; void main(){ float d = length(gl_PointCoord - 0.5) * 2.0;
+      gl_FragColor = vec4(vec3(0.8, 1.0, 0.95) * (smoothstep(0.22, 0.05, d) + 0.6 * exp(-d * d * 7.0)) * uA, 1.0); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  iss.frustumCulled = false;
+  iss.renderOrder = 4;
+  const group = new THREE.Group();
+  group.add(dots, ring, iss);
+  group.visible = false;
+  const rp = ring.geometry.attributes.position;
+  function update(n, a) {
+    group.visible = a > 0.002;
+    if (!group.visible) return;
+    const x = Math.min(n, orbits - 1e-4), o = Math.floor(x);
+    uniforms.uK.value = x / orbits;
+    uniforms.uA.value = a;
+    for (let i = 0; i <= 256; i++) rp.setXYZ(i, ...track(o, i / 256, ALT, v).toArray());
+    rp.needsUpdate = true;
+    ring.material.opacity = 0.32 * a;
+    iss.position.copy(track(o, x - o, ALT, v));
+  }
+  return {group, update, orbits};
+}
