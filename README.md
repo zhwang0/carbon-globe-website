@@ -9,7 +9,26 @@ Project page for **CarbonGlobe: A Global-Scale, Multi-Decade Dataset and Benchma
 - Code: [zhwang0/carbon-globe](https://github.com/zhwang0/carbon-globe)
 - Challenge: [IEEE Big Data Cup 2026](https://www.kaggle.com/competitions/ieee-bigdata-cup-2026-ai-emulation-challenge/overview)
 
-To view the page locally, serve this directory (the page fetches its data files), for example with `python -m http.server 8000`, and open `http://localhost:8000`.
+## Authors
+
+Zhihao Wang<sup>1</sup>, Lei Ma<sup>1</sup>, George Hurtt<sup>1</sup>, Xiaowei Jia<sup>2</sup>, Yanhua Li<sup>3</sup>, Ruohan Li<sup>1</sup>, Zhili Li<sup>1</sup>, Shuo Xu<sup>1</sup>, Yiqun Xie<sup>1,*</sup>
+
+<sup>1</sup>University of Maryland, <sup>2</sup>University of Pittsburgh, <sup>3</sup>Worcester Polytechnic Institute<br>
+<sup>*</sup>Corresponding author
+
+## Citation
+
+If CarbonGlobe helps your research, please cite the NeurIPS 2025 paper:
+
+```bibtex
+@inproceedings{wang2025carbonglobe,
+  title     = {{CarbonGlobe}: A Global-Scale, Multi-Decade Dataset and Benchmark for Carbon Forecasting in Forest Ecosystems},
+  author    = {Wang, Zhihao and Ma, Lei and Hurtt, George and Jia, Xiaowei and Li, Yanhua and Li, Ruohan and Li, Zhili and Xu, Shuo and Xie, Yiqun},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {38},
+  year      = {2025}
+}
+```
 
 ## Credits
 
